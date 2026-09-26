@@ -5,12 +5,14 @@ import type {
   PassportCandidate,
 } from './access';
 import type { FeedPage, FeedQuery } from './feed';
+import type { RenewMembershipInput } from './membership';
 import type {
   CompleteOnboardingInput,
   MyProfile,
   ProfileStepInput,
   SaveAnswerInput,
 } from './onboarding';
+import type { ReactionState, SetReactionInput } from './reaction';
 import type { Session } from './session';
 
 /**
@@ -44,4 +46,10 @@ export interface AituRepository {
   /** Publishes the Карточка together with the last answer, all or nothing. */
   completeOnboarding(input: CompleteOnboardingInput): Promise<MyProfile>;
   getMyProfile(): Promise<MyProfile>;
+
+  /** Продление for an expired member: new dates, same card, no Анкета. */
+  renewMembership(input: RenewMembershipInput): Promise<MyProfile>;
+
+  // Social actions. Guests get UNAUTHENTICATED, expired members MEMBERSHIP_EXPIRED.
+  setReaction(input: SetReactionInput): Promise<ReactionState>;
 }

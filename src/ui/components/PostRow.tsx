@@ -93,6 +93,8 @@ export const PostRow = memo(function PostRow({ post, clock, onAction }: Props) {
             icon={Heart}
             count={post.reactions}
             label={strings.post.actions.reaction(post.reactions)}
+            active={post.reactedByMe}
+            testID="post-like"
             onPress={() => onAction('reaction', post)}
           />
           <ActionButton
@@ -116,12 +118,17 @@ function ActionButton({
   icon: IconComponent,
   count,
   label,
+  active,
   onPress,
+  testID,
 }: {
   icon: Icon;
   count?: number;
   label: string;
+  /** Toggle actions (like) report their state; the icon fills, not just recolours. */
+  active?: boolean;
   onPress: () => void;
+  testID?: string;
 }) {
   const styles = useStyles();
   const { colors } = useTheme();
@@ -129,10 +136,17 @@ function ActionButton({
     <Pressable
       role="button"
       aria-label={label}
+      aria-pressed={active}
       onPress={onPress}
+      testID={testID}
       style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
     >
-      <IconComponent size={20} color={colors.text} strokeWidth={iconStroke.default} />
+      <IconComponent
+        size={20}
+        color={colors.text}
+        fill={active ? colors.text : 'none'}
+        strokeWidth={iconStroke.default}
+      />
       {count !== undefined && count > 0 ? (
         <AppText variant="caption" tone="textMuted">
           {String(count)}

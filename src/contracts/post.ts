@@ -58,6 +58,8 @@ export const PostView = z.strictObject({
   reactions: z.number().int().min(0),
   reposts: z.number().int().min(0),
   commentsCount: z.number().int().min(0),
+  /** Present for active members only: whether the viewer has liked the post. */
+  reactedByMe: z.boolean().optional(),
   media: MediaRef.optional(),
   plan: PlanSummary.optional(),
   quoted: QuotedPost.optional(),

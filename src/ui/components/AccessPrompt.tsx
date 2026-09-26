@@ -16,7 +16,8 @@ type Props = { text: string; testID: string; children?: ReactNode };
 
 /**
  * What a guest sees on a member-only surface: why, and the single way in. A guest
- * whose identity already has a card gets «Войти» instead of the access flow.
+ * whose identity already has a card gets «Войти» instead of the access flow, and an
+ * expired member gets Продление.
  */
 export function AccessPrompt({ text, testID, children }: Props) {
   const router = useRouter();
@@ -25,6 +26,25 @@ export function AccessPrompt({ text, testID, children }: Props) {
   const login = useLogin();
   const toast = useToast((s) => s.show);
   const canLogin = !!session.data?.canLogin;
+  const expired = session.data?.accessState === 'ACTIVE_MEMBER_EXPIRED';
+
+  if (expired) {
+    return (
+      <View style={{ gap: spacing.md, alignItems: 'flex-start' }} testID={testID}>
+        <ShieldCheck size={32} color={colors.text} strokeWidth={1.75} />
+        <AppText variant="title" role="heading">
+          {strings.renew.bannerTitle}
+        </AppText>
+        <AppText tone="textMuted">{strings.renew.bannerText}</AppText>
+        <PrimaryButton
+          label={strings.renew.action}
+          onPress={() => router.push('/renew')}
+          testID={`${testID}-renew`}
+        />
+        {children}
+      </View>
+    );
+  }
 
   return (
     <View style={{ gap: spacing.md, alignItems: 'flex-start' }} testID={testID}>

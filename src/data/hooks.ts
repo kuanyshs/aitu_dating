@@ -1,4 +1,10 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from '@tanstack/react-query';
 
 import type { City } from '@/catalogs';
 import type {
@@ -6,7 +12,9 @@ import type {
   FeedTab,
   MembershipSelection,
   PartialAnswers,
+  PostView,
   ProfileStepInput,
+  RenewMembershipInput,
   SaveAnswerInput,
 } from '@/contracts';
 import type { DemoFlags } from '@/repository/mock';
@@ -203,4 +211,56 @@ export function useCandidateStatus() {
     queryFn: () => demo!.listCandidateStatus(),
     enabled: !!demo,
   });
+}
+
+/** Продление changes what the member may see, so every cached response is reset. */
+export function useRenewMembership() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: RenewMembershipInput) => repository.renewMembership(input),
+    onSuccess: async (me) => {
+      await client.resetQueries();
+      client.setQueryData(queryKeys.myProfile, me);
+    },
+  });
+}
+
+type FeedData = InfiniteData<{ items: PostView[] }>;
+
+/** Like / unlike with the new count written into every cached feed page. */
+export function useSetReaction() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { postId: string; active: boolean }) =>
+      repository.setReaction({ ...input, reaction: 'like' }),
+    onSuccess: (result) => {
+      client.setQueriesData<FeedData>({ queryKey: ['feed'] }, (data) =>
+        data
+          ? {
+              ...data,
+              pages: data.pages.map((page) => ({
+                ...page,
+                items: page.items.map((post) =>
+                  post.id === result.postId
+                    ? { ...post, reactions: result.reactions, reactedByMe: result.reactedByMe }
+                    : post,
+                ),
+              })),
+            }
+          : data,
+      );
+    },
+  });
+}
+
+export function useExpireMembership() {
+  const demo = useDemoControls();
+  return useSessionSwitch(() => demo!.expireMembership());
+}
+
+export function useRestoreMembership() {
+  const demo = useDemoControls();
+  return useSessionSwitch(() => demo!.restoreMembership());
 }

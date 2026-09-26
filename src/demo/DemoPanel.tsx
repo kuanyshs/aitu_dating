@@ -3,7 +3,9 @@ import { View } from 'react-native';
 import {
   useCandidateStatus,
   useDemoFlags,
+  useExpireMembership,
   useResetDemo,
+  useRestoreMembership,
   useSession,
   useSetDemoFlags,
   useSwitchCandidate,
@@ -24,6 +26,9 @@ export function DemoPanel() {
   const session = useSession();
   const candidates = useCandidateStatus();
   const switchCandidate = useSwitchCandidate();
+  const expire = useExpireMembership();
+  const restore = useRestoreMembership();
+  const accessState = session.data?.accessState;
   const toast = useToast((s) => s.show);
   const t = strings.demo;
 
@@ -57,6 +62,29 @@ export function DemoPanel() {
             }}
             testID="demo-candidate"
           />
+        </View>
+      ) : null}
+      {accessState === 'ACTIVE_MEMBER' || accessState === 'ACTIVE_MEMBER_EXPIRED' ? (
+        <View style={{ gap: spacing.xs }}>
+          <AppText variant="bodyStrong">{t.membership}</AppText>
+          <AppText variant="caption" tone="textMuted">
+            {t.expireHint}
+          </AppText>
+          {accessState === 'ACTIVE_MEMBER' ? (
+            <SecondaryButton
+              label={t.expire}
+              loading={expire.isPending}
+              onPress={() => expire.mutate(undefined, { onSuccess: () => toast(t.expired) })}
+              testID="demo-expire"
+            />
+          ) : (
+            <SecondaryButton
+              label={t.restore}
+              loading={restore.isPending}
+              onPress={() => restore.mutate(undefined, { onSuccess: () => toast(t.restored) })}
+              testID="demo-restore"
+            />
+          )}
         </View>
       ) : null}
       <ToggleRow

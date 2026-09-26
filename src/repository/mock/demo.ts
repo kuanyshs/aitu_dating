@@ -8,7 +8,7 @@ import {
   ProfileStepInput,
 } from '@/contracts';
 
-import { MemberRecord } from './records';
+import { MemberRecord, ReactionRecord } from './records';
 
 /**
  * Mock-only switches for demos and QA. They live next to the mock backend, not in the
@@ -54,10 +54,16 @@ export const MockState = z.strictObject({
   onboardings: z.record(z.string(), z.string()),
   /** Unfinished access flows of other Passport identities, kept while switching. */
   parkedFlows: z.record(z.string(), AccessFlowRecord),
+  /** Reactions made during the demo, on top of the seed ones. */
+  reactions: z.array(ReactionRecord),
+  /** Completed renewals by idempotency key → member id, so a retry renews once. */
+  renewals: z.record(z.string(), z.string()),
+  /** Membership end dates saved by «Истечь membership», so «Восстановить» brings them back. */
+  expiredMemberships: z.record(z.string(), z.string()),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 4;
+export const MOCK_STATE_VERSION = 5;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -66,6 +72,8 @@ export const mockStateMigrations = [
   (v2: unknown) => ({ ...(v2 as object), members: [], onboardings: {} }),
   // v4 keeps unfinished flows per Passport identity.
   (v3: unknown) => ({ ...(v3 as object), parkedFlows: {} }),
+  // v5 adds reactions, renewals and demo-expired memberships.
+  (v4: unknown) => ({ ...(v4 as object), reactions: [], renewals: {}, expiredMemberships: {} }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -75,6 +83,9 @@ export const defaultMockState = (): MockState => ({
   members: [],
   onboardings: {},
   parkedFlows: {},
+  reactions: [],
+  renewals: {},
+  expiredMemberships: {},
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';
@@ -88,6 +99,10 @@ export interface DemoControls {
   switchCandidate(candidateId: string): Promise<void>;
   /** Which Passport identities already have a published card. */
   listCandidateStatus(): Promise<{ candidateId: string; name: string; hasCard: boolean }[]>;
+  /** Ends the current member's membership now; the card stays. */
+  expireMembership(): Promise<void>;
+  /** Undoes «Истечь membership»: the saved end date, or a fresh period if it has passed. */
+  restoreMembership(): Promise<void>;
   /** Why persisted state was reset on startup, reported once so the UI can explain it. */
   takeResetNotice(): Promise<ResetNotice | undefined>;
 }

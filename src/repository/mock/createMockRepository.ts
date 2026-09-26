@@ -7,8 +7,11 @@ import {
   FeedPage,
   FeedQuery,
   PassportCandidate,
+  ReactionState,
+  RenewMembershipInput,
   RepositoryError,
   Session,
+  SetReactionInput,
   type AituRepository,
   type ApiError,
 } from '@/contracts';
@@ -88,10 +91,28 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   }
 
   const seedMembersById = new Map(data.members.map((m) => [m.id, m]));
-  /** Seed community plus members who joined during the demo. */
+  /**
+   * Members who joined during the demo, plus the seed community. A seed member changed
+   * by the demo (renewed, expired) is stored in state and wins over the seed copy.
+   */
   function member(id: string): MemberRecord | undefined {
-    return seedMembersById.get(id) ?? state.members.find((m) => m.id === id);
+    return state.members.find((m) => m.id === id) ?? seedMembersById.get(id);
   }
+
+  async function saveMember(record: MemberRecord, patch: Partial<MockState> = {}) {
+    await saveState({
+      ...state,
+      ...patch,
+      members: [...state.members.filter((m) => m.id !== record.id), record],
+    });
+  }
+
+  /**
+   * The demo clock restarts from the seed instant on every app start, so a membership
+   * ended from the demo panel is flagged rather than trusted to a date in the past.
+   */
+  const isExpired = (record: MemberRecord) =>
+    record.id in state.expiredMemberships || new Date(record.membership.endsAt) <= clock.now();
   const plansById = new Map(data.plans.map((p) => [p.id, p]));
   const postsById = new Map(data.posts.map((p) => [p.id, p]));
 
@@ -135,9 +156,13 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return work(requestId);
   }
 
+  function reactionsOf(postId: string) {
+    return [...data.reactions, ...state.reactions].filter((r) => r.postId === postId);
+  }
+
   function counters(postId: string): PostCounters {
     return {
-      reactions: data.reactions.filter((r) => r.postId === postId).length,
+      reactions: reactionsOf(postId).length,
       reposts: data.reposts.filter((r) => r.postId === postId).length,
       commentsCount: data.comments.filter((c) => c.postId === postId && !c.deleted).length,
     };
@@ -159,7 +184,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   }
 
   function toMyProfile(record: MemberRecord): MyProfile {
-    const expired = new Date(record.membership.endsAt) <= clock.now();
+    const expired = isExpired(record);
     return MyProfile.parse({
       id: record.id,
       name: record.name,
@@ -190,10 +215,39 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return publicSession();
   }
 
+  /** A member's mode follows their membership dates, so it also expires on its own. */
+  function effectiveSession(): Session {
+    const record = session.userId ? member(session.userId) : undefined;
+    if (!record) return session;
+    if (session.accessState !== 'ACTIVE_MEMBER' && session.accessState !== 'ACTIVE_MEMBER_EXPIRED')
+      return session;
+    return {
+      ...session,
+      accessState: isExpired(record) ? 'ACTIVE_MEMBER_EXPIRED' : 'ACTIVE_MEMBER',
+    };
+  }
+
   /** The stored session plus what the client may derive from it. */
   function publicSession(): Session {
-    const canLogin = session.accessState === 'GUEST_PREVIEW' && hasCard(session.candidateId);
-    return Session.parse({ ...session, ...(canLogin ? { canLogin: true } : {}) });
+    const current = effectiveSession();
+    const canLogin = current.accessState === 'GUEST_PREVIEW' && hasCard(current.candidateId);
+    return Session.parse({ ...current, ...(canLogin ? { canLogin: true } : {}) });
+  }
+
+  /** Social actions need an active membership; the server says why when they don't. */
+  function requireActiveMember(requestId: string): MemberRecord {
+    const current = effectiveSession();
+    if (current.accessState === 'ACTIVE_MEMBER_EXPIRED') {
+      fail(requestId, { code: 'MEMBERSHIP_EXPIRED', message: 'Renew the membership to do this.' });
+    }
+    if (current.accessState === 'BLOCKED') {
+      fail(requestId, { code: 'FORBIDDEN', message: 'Access is restricted.' });
+    }
+    const record = current.userId ? member(current.userId) : undefined;
+    if (current.accessState !== 'ACTIVE_MEMBER' || !record) {
+      fail(requestId, { code: 'UNAUTHENTICATED', message: 'Join the community to do this.' });
+    }
+    return record;
   }
 
   function addMonths(iso: string, months: number): string {
@@ -225,9 +279,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         if (!candidateId || !record) {
           fail(requestId, { code: 'CONFLICT', message: 'This identity has no published card.' });
         }
-        const expired = new Date(record.membership.endsAt) <= clock.now();
         return setSession({
-          accessState: expired ? 'ACTIVE_MEMBER_EXPIRED' : 'ACTIVE_MEMBER',
+          accessState: isExpired(record) ? 'ACTIVE_MEMBER_EXPIRED' : 'ACTIVE_MEMBER',
           roles: ['member'],
           userId: record.id,
           candidateId,
@@ -241,9 +294,15 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           fail(requestId, { code: 'VALIDATION_ERROR', message: parsed.error.message });
         }
         const query = parsed.data;
-        const viewer = viewerOf(session);
+        const viewer = viewerOf(effectiveSession());
         const isMember = viewer.accessState === 'ACTIVE_MEMBER';
 
+        if (query.tab === 'following' && viewer.accessState === 'ACTIVE_MEMBER_EXPIRED') {
+          fail(requestId, {
+            code: 'MEMBERSHIP_EXPIRED',
+            message: 'Renew the membership to see the following feed.',
+          });
+        }
         if (query.tab === 'following' && !isMember) {
           fail(requestId, {
             code: 'FORBIDDEN',
@@ -297,6 +356,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           plan: (id) => plansById.get(id),
           post: (id) => postsById.get(id),
           counters,
+          reactedByMe: (postId) => reactionsOf(postId).some((r) => r.userId === viewer.userId),
           isVisible,
         };
 
@@ -473,6 +533,97 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         return toMyProfile(record);
       }),
 
+    renewMembership: (input) =>
+      respond(
+        'data',
+        async (requestId) => {
+          const parsed = RenewMembershipInput.safeParse(input);
+          if (!parsed.success) {
+            fail(requestId, {
+              code: 'VALIDATION_ERROR',
+              message: 'Exactly one period and an idempotency key are required.',
+              fieldErrors: { selection: 'invalid' },
+            });
+          }
+          const { selection, idempotencyKey } = parsed.data;
+
+          // A retried checkout returns the renewal it already made, never a second one.
+          const renewedId = state.renewals[idempotencyKey];
+          const renewed = renewedId ? member(renewedId) : undefined;
+          if (renewed) return toMyProfile(renewed);
+
+          const current = effectiveSession();
+          const record = current.userId ? member(current.userId) : undefined;
+          if (!record || current.accessState === 'GUEST_PREVIEW') {
+            fail(requestId, { code: 'UNAUTHENTICATED', message: 'Log in to renew.' });
+          }
+          if (current.accessState !== 'ACTIVE_MEMBER_EXPIRED') {
+            fail(requestId, { code: 'CONFLICT', message: 'The membership is still active.' });
+          }
+
+          const now = clock.now().toISOString();
+          const updated: MemberRecord = {
+            ...record,
+            membership: {
+              tier: selection.tier,
+              periodMonths: selection.periodMonths,
+              startsAt: now,
+              endsAt: addMonths(now, selection.periodMonths),
+            },
+          };
+          const expiredMemberships = { ...state.expiredMemberships };
+          delete expiredMemberships[record.id];
+          // One write: new dates, receipt and idempotency record land together.
+          await saveMember(updated, {
+            renewals: { ...state.renewals, [idempotencyKey]: record.id },
+            payments: {
+              ...state.payments,
+              [idempotencyKey]: {
+                reference: `mock-pay-${Object.keys(state.payments).length + 1}`,
+                amountKzt: access.priceOf(selection),
+                paidAt: now,
+              },
+            },
+            expiredMemberships,
+          });
+          await setSession({ ...session, accessState: 'ACTIVE_MEMBER' });
+          return toMyProfile(updated);
+        },
+        (input as Partial<RenewMembershipInput> | undefined)?.selection?.tier === 'paid' ? 1500 : 0,
+      ),
+
+    setReaction: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const parsed = SetReactionInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, { code: 'VALIDATION_ERROR', message: parsed.error.message });
+        }
+        const { postId, active } = parsed.data;
+        const post = postsById.get(postId);
+        if (!post || !isVisible(post)) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
+        }
+        const mine = (r: { userId: string; postId: string }) =>
+          r.userId === me.id && r.postId === postId;
+        const others = state.reactions.filter((r) => !mine(r));
+        const has = reactionsOf(postId).some(mine);
+        // Setting the same value twice is a no-op, so a retried request is safe.
+        if (active !== has) {
+          await saveState({
+            ...state,
+            reactions: active
+              ? [...others, { userId: me.id, postId, createdAt: clock.now().toISOString() }]
+              : others,
+          });
+        }
+        return ReactionState.parse({
+          postId,
+          reactions: reactionsOf(postId).length,
+          reactedByMe: reactionsOf(postId).some(mine),
+        });
+      }),
+
     async getDemoFlags(): Promise<DemoFlags> {
       await ready;
       return { ...state.demoFlags };
@@ -513,6 +664,44 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         name: c.name,
         hasCard: hasCard(c.id),
       }));
+    },
+
+    async expireMembership() {
+      await ready;
+      const record = session.userId ? member(session.userId) : undefined;
+      if (!record) throw new RepositoryError({ code: 'CONFLICT', message: 'Not a member.' });
+      if (isExpired(record)) return;
+      await saveMember(
+        { ...record, membership: { ...record.membership, endsAt: clock.now().toISOString() } },
+        {
+          expiredMemberships: {
+            ...state.expiredMemberships,
+            [record.id]: record.membership.endsAt,
+          },
+        },
+      );
+      await setSession({ ...session, accessState: 'ACTIVE_MEMBER_EXPIRED' });
+    },
+
+    async restoreMembership() {
+      await ready;
+      const record = session.userId ? member(session.userId) : undefined;
+      if (!record) throw new RepositoryError({ code: 'CONFLICT', message: 'Not a member.' });
+      const saved = state.expiredMemberships[record.id];
+      const now = clock.now();
+      const endsAt =
+        saved && new Date(saved) > now
+          ? saved
+          : addMonths(now.toISOString(), record.membership.periodMonths);
+      const expiredMemberships = { ...state.expiredMemberships };
+      delete expiredMemberships[record.id];
+      await saveMember(
+        { ...record, membership: { ...record.membership, endsAt } },
+        {
+          expiredMemberships,
+        },
+      );
+      await setSession({ ...session, accessState: 'ACTIVE_MEMBER' });
     },
 
     async takeResetNotice() {

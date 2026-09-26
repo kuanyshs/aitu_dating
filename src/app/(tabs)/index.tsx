@@ -6,12 +6,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cities, cityLabels, type City } from '@/catalogs';
 import { isRepositoryError, type FeedTab, type PostView } from '@/contracts';
-import { useDemoFlags, useHomeFeed, useLogin, useMyProfile, useSession } from '@/data/hooks';
+import {
+  useDemoFlags,
+  useHomeFeed,
+  useLogin,
+  useMyProfile,
+  useSession,
+  useSetReaction,
+} from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { IconAction, PrimaryButton } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
 import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
 import { PostRow, type PostAction } from '@/ui/components/PostRow';
+import { RenewBanner } from '@/ui/components/RenewBanner';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
 import { Menu, MessageCircle } from '@/ui/icons';
@@ -35,17 +43,19 @@ export default function HomeScreen() {
 
   const session = useSession();
   const isMember = session.data?.accessState === 'ACTIVE_MEMBER';
+  const isExpired = session.data?.accessState === 'ACTIVE_MEMBER_EXPIRED';
   const tabs = isMember ? memberTabs : guestTabs;
 
   const canLogin = !!session.data?.canLogin;
-  const me = useMyProfile(isMember);
+  const me = useMyProfile(isMember || isExpired);
   const login = useLogin();
+  const setReaction = useSetReaction();
   const toast = useToast((s) => s.show);
 
   const [tab, setTab] = useState<FeedTab>('for_you');
   // «В городе» starts at the member's Passport city (Алматы for guests) until changed.
   const [chosenCity, setCity] = useState<City | undefined>(undefined);
-  const city: City = chosenCity ?? (isMember ? me.data?.city : undefined) ?? 'almaty';
+  const city: City = chosenCity ?? (isMember || isExpired ? me.data?.city : undefined) ?? 'almaty';
   const feed = useHomeFeed(tab, city);
   const posts = useMemo(() => feed.data?.pages.flatMap((p) => p.items) ?? [], [feed.data]);
   // Offline keeps showing the last loaded feed under the global banner; any other
@@ -54,12 +64,24 @@ export default function HomeScreen() {
   const showError = feed.isError && (posts.length === 0 || !offline);
 
   const openAccess = useCallback(() => router.push('/access'), [router]);
-  // Guests: every social action leads into the single access flow. Members get honest
-  // feedback until reactions, comments and reposts land in their own tickets.
+  // Guests: every social action leads into the single access flow; expired members into
+  // Продление. Members like for real and get honest feedback on what is still to come.
   const onAction = useCallback(
-    (_action: PostAction, _post: PostView) =>
-      isMember ? toast(strings.post.comingSoon) : openAccess(),
-    [isMember, openAccess, toast],
+    (action: PostAction, post: PostView) => {
+      if (isExpired) return router.push('/renew');
+      if (!isMember) return openAccess();
+      if (action !== 'reaction') return toast(strings.post.comingSoon);
+      setReaction.mutate(
+        { postId: post.id, active: !post.reactedByMe },
+        {
+          onError: (error) =>
+            isRepositoryError(error) && error.code === 'MEMBERSHIP_EXPIRED'
+              ? router.push('/renew')
+              : toast(strings.post.reactionFailed),
+        },
+      );
+    },
+    [isExpired, isMember, openAccess, router, setReaction, toast],
   );
 
   const renderItem = useCallback(
@@ -81,7 +103,11 @@ export default function HomeScreen() {
             {strings.home.brand}
           </AppText>
           <AppText variant="caption" tone="textMuted">
-            {isMember ? strings.home.descriptorMember : strings.home.descriptorGuest}
+            {isMember
+              ? strings.home.descriptorMember
+              : isExpired
+                ? strings.home.descriptorExpired
+                : strings.home.descriptorGuest}
           </AppText>
         </View>
         {isMember ? (
@@ -90,6 +116,14 @@ export default function HomeScreen() {
             accessibilityLabel={strings.home.messages}
             onPress={() => router.push('/chats')}
             testID="home-messages"
+          />
+        ) : isExpired ? (
+          <PrimaryButton
+            label={strings.renew.short}
+            accessibilityLabel={strings.renew.action}
+            onPress={() => router.push('/renew')}
+            testID="home-renew"
+            style={styles.join}
           />
         ) : canLogin ? (
           <PrimaryButton
@@ -114,6 +148,12 @@ export default function HomeScreen() {
           />
         )}
       </View>
+
+      {isExpired ? (
+        <View style={styles.banner}>
+          <RenewBanner testID="home-renew-banner" />
+        </View>
+      ) : null}
 
       <ScrollView
         horizontal
@@ -238,6 +278,7 @@ const useStyles = createStyles((colors) => ({
     gap: spacing.sm,
   },
   brand: { flex: 1, alignItems: 'center' },
+  banner: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   join: { minHeight: 40, paddingHorizontal: spacing.lg },
   chips: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
   divider: { height: 1, backgroundColor: colors.line },

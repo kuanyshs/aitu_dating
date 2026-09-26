@@ -5,6 +5,7 @@ import { useLogout, useMyProfile, useSession } from '@/data/hooks';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { TextButton } from '@/ui/components/buttons';
 import { ProfileCardView } from '@/ui/components/ProfileCardView';
+import { RenewBanner } from '@/ui/components/RenewBanner';
 import { Screen } from '@/ui/components/Screen';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -30,8 +31,12 @@ function ProfileLinks() {
 
 export default function ProfileScreen() {
   const session = useSession();
-  const isMember = session.data?.accessState === 'ACTIVE_MEMBER';
+  const state = session.data?.accessState;
+  const isExpired = state === 'ACTIVE_MEMBER_EXPIRED';
+  // An expired member keeps their own card in full; only other people are hidden.
+  const isMember = state === 'ACTIVE_MEMBER' || isExpired;
   const me = useMyProfile(isMember);
+  const router = useRouter();
   const logout = useLogout();
   const toast = useToast((s) => s.show);
   if (!isMember) {
@@ -46,7 +51,13 @@ export default function ProfileScreen() {
   }
   return (
     <Screen testID="screen-profile">
+      {isExpired ? <RenewBanner testID="profile-renew-banner" /> : null}
       {me.data ? <ProfileCardView me={me.data} /> : null}
+      <TextButton
+        label={strings.profile.editCard}
+        onPress={() => router.push('/card-edit')}
+        testID="profile-edit-card"
+      />
       <ProfileLinks />
       <TextButton
         label={strings.session.logout}
