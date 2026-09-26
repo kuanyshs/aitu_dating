@@ -6,6 +6,7 @@ import {
   CommentReactionState,
   CommentView,
   CompleteOnboardingInput,
+  CreateCommentInput,
   ConfirmPaymentInput,
   MyProfile,
   FeedPage,
@@ -855,7 +856,6 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
     createPost: notImplemented('createPost'),
     deletePost: notImplemented('deletePost'),
-    createComment: notImplemented('createComment'),
     deleteComment: notImplemented('deleteComment'),
     setRepost: notImplemented('setRepost'),
     setFollow: notImplemented('setFollow'),
@@ -970,6 +970,79 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           reactions: reactionsOf(postId).length,
           reactedByMe: reactionsOf(postId).some(mine),
         });
+      }),
+
+    createComment: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const parsed = CreateCommentInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the reply text.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const { postId, parentId, text, idempotencyKey } = parsed.data;
+        const viewer = viewerOf(effectiveSession());
+        const toView = (c: CommentRecord): CommentView => ({
+          id: c.id,
+          postId: c.postId,
+          ...(c.parentCommentId ? { parentId: c.parentCommentId } : {}),
+          author: toAuthorView(me, viewer),
+          text: c.text,
+          createdAt: c.createdAt,
+          reactions: commentReactionsOf(c.id).length,
+          deleted: c.deleted,
+          mine: true,
+          reactedByMe: false,
+        });
+
+        // A retry of a request that already went through returns the same comment.
+        const existingId = state.commentKeys[idempotencyKey];
+        const existing = existingId ? allComments().find((c) => c.id === existingId) : undefined;
+        if (existing) return CommentView.parse(toView(existing));
+
+        const post = postsById.get(postId);
+        if (!post || !isVisible(post)) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
+        }
+        if (parentId) {
+          const parent = allComments().find((c) => c.id === parentId);
+          const parentAuthor = parent ? member(parent.authorId) : undefined;
+          if (
+            !parent ||
+            parent.postId !== postId ||
+            parent.deleted ||
+            !parentAuthor ||
+            isRestricted(parentAuthor)
+          ) {
+            fail(requestId, { code: 'NOT_FOUND', message: 'Comment not found.' });
+          }
+          // Nothing answers an Ответ: the thread has two levels.
+          if (parent.parentCommentId) {
+            fail(requestId, {
+              code: 'CONFLICT',
+              message: 'Replies cannot be answered.',
+              fieldErrors: { parentId: 'reply_depth' },
+            });
+          }
+        }
+        const record: CommentRecord = {
+          id: `c-new-${state.comments.length + 1}`,
+          postId,
+          authorId: me.id,
+          ...(parentId ? { parentCommentId: parentId } : {}),
+          text,
+          createdAt: clock.now().toISOString(),
+          deleted: false,
+        };
+        await saveState({
+          ...state,
+          comments: [...state.comments, record],
+          commentKeys: { ...state.commentKeys, [idempotencyKey]: record.id },
+        });
+        return CommentView.parse(toView(record));
       }),
 
     setCommentReaction: (input) =>

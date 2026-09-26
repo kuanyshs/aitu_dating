@@ -58,7 +58,7 @@ test.describe('post screen', () => {
     await expect(page.getByTestId('author-name').first()).toBeVisible();
     await expect(page.getByTestId('reply-composer')).toBeVisible();
     await page.getByTestId('reply-composer').click();
-    await expect(page.getByTestId('toast')).toContainText('Скоро');
+    await expect(page.getByTestId('screen-reply')).toBeVisible();
   });
 
   test('an expired member is offered Продление', async ({ page }) => {

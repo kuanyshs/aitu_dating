@@ -41,6 +41,10 @@ export function usePostActions() {
   const onAction = useCallback(
     (action: PostAction, post: PostView) => {
       if (!allow()) return;
+      // 💬 opens the post with the reply surface already on top.
+      if (action === 'comment') {
+        return router.push({ pathname: '/post/[id]', params: { id: post.id, compose: '1' } });
+      }
       if (action !== 'reaction') return toast(strings.post.comingSoon);
       likePost(
         { postId: post.id, active: !post.reactedByMe },

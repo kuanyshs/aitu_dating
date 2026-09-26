@@ -416,3 +416,49 @@ export function usePostComments(postId: string, sort: CommentSort) {
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
   });
 }
+
+/**
+ * Publishes a Комментарий or an Ответ. Not optimistic: the reply surface shows
+ * «Отправляем…» and keeps the text until the server confirms; then the thread reloads
+ * and every cached copy of the post counts one more reply.
+ */
+export function useCreateComment(postId: string) {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { parentId?: string; text: string; idempotencyKey: string }) =>
+      repository.createComment({ postId, ...input }),
+    onSuccess: async () => {
+      const bump = (post: PostView) =>
+        post.id === postId ? { ...post, commentsCount: post.commentsCount + 1 } : post;
+      client.setQueriesData<FeedData>({ queryKey: ['feed'] }, (data) =>
+        data
+          ? { ...data, pages: data.pages.map((p) => ({ ...p, items: p.items.map(bump) })) }
+          : data,
+      );
+      client.setQueryData<PostView>(queryKeys.post(postId), (post) => (post ? bump(post) : post));
+      await client.invalidateQueries({ queryKey: ['comments', postId] });
+    },
+  });
+}
+
+/** A post already loaded by the feed or the post screen; never fetches on its own. */
+export function useCachedPost(postId: string): PostView | undefined {
+  const client = useQueryClient();
+  return findPost(client, postId);
+}
+
+/** A comment already loaded on the post screen, to show as the reply's context. */
+export function useCachedComment(postId: string, commentId: string | undefined) {
+  const client = useQueryClient();
+  if (!commentId) return undefined;
+  for (const [, data] of client.getQueriesData<CommentsData>({ queryKey: ['comments', postId] })) {
+    for (const page of data?.pages ?? []) {
+      for (const thread of page.items) {
+        const found = [thread.comment, ...thread.replies].find((c) => c.id === commentId);
+        if (found) return found;
+      }
+    }
+  }
+  return undefined;
+}

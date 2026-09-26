@@ -78,10 +78,12 @@ export const MockState = z.strictObject({
   deletedPostIds: z.array(z.string()),
   commentReactions: z.array(CommentReactionRecord),
   reposts: z.array(RepostRecord),
+  /** Created comments by idempotency key → comment id, so a retry publishes once. */
+  commentKeys: z.record(z.string(), z.string()),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 8;
+export const MOCK_STATE_VERSION = 9;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -105,6 +107,8 @@ export const mockStateMigrations = [
     commentReactions: [],
     reposts: [],
   }),
+  // v9 remembers comment idempotency keys.
+  (v8: unknown) => ({ ...(v8 as object), commentKeys: {} }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -124,6 +128,7 @@ export const defaultMockState = (): MockState => ({
   deletedPostIds: [],
   commentReactions: [],
   reposts: [],
+  commentKeys: {},
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';

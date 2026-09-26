@@ -1,6 +1,6 @@
 import { FlashList } from '@shopify/flash-list';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -38,7 +38,7 @@ export default function PostScreen() {
   const clock = useClock();
   const { colors } = useTheme();
   const toast = useToast((s) => s.show);
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, compose } = useLocalSearchParams<{ id: string; compose?: string }>();
   const postId = String(id);
   const t = strings.postDetail;
 
@@ -50,7 +50,29 @@ export default function PostScreen() {
     [comments.data],
   );
   const { onAction, onOpen } = usePostActions();
-  const { allow } = useSocialGate();
+  const { allow, isMember } = useSocialGate();
+
+  const openReply = useCallback(
+    (parentId?: string) =>
+      router.push({ pathname: '/reply', params: { postId, ...(parentId ? { parentId } : {}) } }),
+    [postId, router],
+  );
+  // 💬 in the feed lands here with the reply surface on top; the flag is consumed once.
+  const hasPost = !!post.data;
+  useEffect(() => {
+    if (compose && hasPost && isMember) {
+      router.setParams({ compose: undefined });
+      openReply();
+    }
+  }, [compose, hasPost, isMember, openReply, router]);
+
+  const onPostAction = useCallback<typeof onAction>(
+    (action, target) => {
+      if (action !== 'comment') return onAction(action, target);
+      if (allow()) openReply();
+    },
+    [allow, onAction, openReply],
+  );
 
   const leave = useCallback(
     () => (router.canGoBack() ? router.back() : router.replace('/')),
@@ -62,7 +84,7 @@ export default function PostScreen() {
   const onCommentAction = useCallback(
     (action: CommentAction, comment: CommentView) => {
       if (!allow()) return;
-      if (action === 'reply') return toast(strings.post.comingSoon);
+      if (action === 'reply') return openReply(comment.id);
       likeComment(
         { commentId: comment.id, active: !comment.reactedByMe },
         {
@@ -73,7 +95,7 @@ export default function PostScreen() {
         },
       );
     },
-    [allow, likeComment, router, toast],
+    [allow, likeComment, openReply, router, toast],
   );
 
   const renderItem = useCallback(
@@ -143,7 +165,7 @@ export default function PostScreen() {
 
   const listHeader = (
     <View>
-      <PostRow post={post.data} clock={clock} onAction={onAction} onOpen={onOpen} full />
+      <PostRow post={post.data} clock={clock} onAction={onPostAction} onOpen={onOpen} full />
       <View style={styles.repliesBar}>
         <AppText variant="bodyStrong" testID="post-replies-count">
           {t.replies(post.data.commentsCount)}
@@ -208,7 +230,7 @@ export default function PostScreen() {
           />
         )}
       </View>
-      <PostFooter onCompose={() => toast(t.composerSoon)} />
+      <PostFooter onCompose={() => openReply()} />
     </SafeAreaView>
   );
 }

@@ -141,7 +141,7 @@ export function fieldErrorsOf(error: z.ZodError, prefix: string): Record<string,
   const result: Record<string, string> = {};
   for (const issue of error.issues) {
     const field = String(issue.path[0] ?? 'form');
-    result[`${prefix}.${field}`] ??= issue.message;
+    result[prefix ? `${prefix}.${field}` : field] ??= issue.message;
   }
   return result;
 }
