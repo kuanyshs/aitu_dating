@@ -1,0 +1,4 @@
+/* Hidden in visual baselines: transient feedback that depends on timing. */
+[data-testid='toast'] {
+  visibility: hidden !important;
+}
