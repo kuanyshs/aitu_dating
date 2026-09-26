@@ -1,0 +1,12 @@
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.tsbuildinfo
+playwright-report/
+test-results/
+/ios
+/android
+.DS_Store
+.env*.local
