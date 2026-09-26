@@ -34,17 +34,22 @@ import { AppText } from './Text';
 
 export type PostAction = 'comment' | 'reaction' | 'repost' | 'quote';
 
+/** Surfaces a feed entry leads to: the post itself, its plan, or its author. */
+export type PostTarget =
+  { kind: 'post'; id: string } | { kind: 'plan'; id: string } | { kind: 'member'; id: string };
+
 type Props = {
   post: PostView;
   clock: Clock;
   onAction: (action: PostAction, post: PostView) => void;
+  onOpen: (target: PostTarget) => void;
 };
 
 const COLLAPSE_AFTER = 320;
 const PREVIEW_LENGTH = 260;
 
 /** A feed entry in the Threads rhythm: avatar column, then author, type, text and actions. */
-export const PostRow = memo(function PostRow({ post, clock, onAction }: Props) {
+export const PostRow = memo(function PostRow({ post, clock, onAction, onOpen }: Props) {
   const styles = useStyles();
   const [expanded, setExpanded] = useState(false);
   const collapsible = post.text.length > COLLAPSE_AFTER;
@@ -55,13 +60,34 @@ export const PostRow = memo(function PostRow({ post, clock, onAction }: Props) {
     <View style={styles.row} testID={`post-${post.id}`} role="article">
       <Avatar avatar={post.author.avatar} size={36} />
       <View style={styles.content}>
-        <AuthorRow author={post.author} time={formatRelative(post.createdAt, clock)} />
+        {/* Only the full view carries an id; a safe author cannot be opened. */}
+        {post.author.view === 'member' ? (
+          <Pressable
+            role="link"
+            aria-label={strings.post.openAuthor(post.author.name)}
+            onPress={() =>
+              post.author.view === 'member' && onOpen({ kind: 'member', id: post.author.id })
+            }
+            testID="post-author"
+          >
+            <AuthorRow author={post.author} time={formatRelative(post.createdAt, clock)} />
+          </Pressable>
+        ) : (
+          <AuthorRow author={post.author} time={formatRelative(post.createdAt, clock)} />
+        )}
         {post.type !== 'post' ? (
           <AppText variant="caption" tone="textMuted" testID="post-type">
             {strings.post.type[post.type]}
           </AppText>
         ) : null}
-        <AppText>{text}</AppText>
+        <Pressable
+          role="link"
+          aria-label={strings.post.open}
+          onPress={() => onOpen({ kind: 'post', id: post.id })}
+          testID="post-open"
+        >
+          <AppText>{text}</AppText>
+        </Pressable>
         {collapsible && !expanded ? (
           <Pressable role="button" onPress={() => setExpanded(true)} hitSlop={8}>
             <AppText variant="bodyStrong">{strings.post.showMore}</AppText>
@@ -72,7 +98,15 @@ export const PostRow = memo(function PostRow({ post, clock, onAction }: Props) {
             {post.topics.map((t) => `#${topicLabels[t]}`).join('  ')}
           </AppText>
         ) : null}
-        {post.plan ? <PlanCard plan={post.plan} clock={clock} /> : null}
+        {post.plan ? (
+          <Pressable
+            role="link"
+            aria-label={strings.plan.open}
+            onPress={() => post.plan && onOpen({ kind: 'plan', id: post.plan.id })}
+          >
+            <PlanCard plan={post.plan} clock={clock} />
+          </Pressable>
+        ) : null}
         {post.quoted ? (
           <View style={styles.quoted} testID="quoted-post">
             <AuthorRow author={post.quoted.author} />

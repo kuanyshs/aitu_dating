@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   AccessFlowStep,
+  UserSettings,
   MembershipSelection,
   PartialAnswers,
   PaymentReceipt,
@@ -62,10 +63,12 @@ export const MockState = z.strictObject({
   expiredMemberships: z.record(z.string(), z.string()),
   /** Aitu subject ids under Ограничение, decided by moderation. */
   restrictedSubjects: z.array(z.string()),
+  /** Server-side settings per member. */
+  settings: z.record(z.string(), UserSettings),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 6;
+export const MOCK_STATE_VERSION = 7;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -78,6 +81,8 @@ export const mockStateMigrations = [
   (v4: unknown) => ({ ...(v4 as object), reactions: [], renewals: {}, expiredMemberships: {} }),
   // v6 adds moderation restrictions.
   (v5: unknown) => ({ ...(v5 as object), restrictedSubjects: [] }),
+  // v7 adds member settings.
+  (v6: unknown) => ({ ...(v6 as object), settings: {} }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -91,6 +96,7 @@ export const defaultMockState = (): MockState => ({
   renewals: {},
   expiredMemberships: {},
   restrictedSubjects: [],
+  settings: {},
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';

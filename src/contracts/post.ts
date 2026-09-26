@@ -9,6 +9,7 @@ import {
 } from '@/catalogs';
 
 import { Id, IsoDate, IsoDateTime } from './common';
+import { LIMITS } from './limits';
 import { AuthorView, CityKey } from './people';
 
 export const PostType = z.enum(['post', 'question', 'quote', 'plan']);
@@ -51,7 +52,7 @@ export type QuotedPost = z.infer<typeof QuotedPost>;
 export const PostView = z.strictObject({
   id: Id,
   type: PostType,
-  text: z.string().max(1000),
+  text: z.string().max(LIMITS.postText),
   topics: z.array(TopicKey),
   author: AuthorView,
   createdAt: IsoDateTime,
@@ -65,3 +66,31 @@ export const PostView = z.strictObject({
   quoted: QuotedPost.optional(),
 });
 export type PostView = z.infer<typeof PostView>;
+
+/** A new Пост. Plans are created with `createPlan`, which also publishes their post. */
+export const CreatePostInput = z
+  .strictObject({
+    type: z.enum(['post', 'question', 'quote']),
+    text: z.string().trim().min(1, 'required').max(LIMITS.postText, 'too_long'),
+    topics: z.array(TopicKey).max(4),
+    quotedPostId: Id.optional(),
+    idempotencyKey: z.string().min(8),
+  })
+  .refine((p) => (p.type === 'quote') === !!p.quotedPostId, {
+    message: 'A quote needs exactly one quoted post',
+    path: ['quotedPostId'],
+  });
+export type CreatePostInput = z.infer<typeof CreatePostInput>;
+
+export const PostRef = z.strictObject({ postId: Id });
+export type PostRef = z.infer<typeof PostRef>;
+
+export const SetRepostInput = z.strictObject({ postId: Id, active: z.boolean() });
+export type SetRepostInput = z.infer<typeof SetRepostInput>;
+
+export const RepostState = z.strictObject({
+  postId: Id,
+  reposts: z.number().int().min(0),
+  repostedByMe: z.boolean(),
+});
+export type RepostState = z.infer<typeof RepostState>;

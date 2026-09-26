@@ -45,7 +45,17 @@ export default function RootLayout() {
                 <Stack.Screen name="access" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="about" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="chats" options={{ presentation: 'modal' }} />
+                {/* Full-screen surfaces. */}
+                <Stack.Screen name="post/[id]" options={{ presentation: 'fullScreenModal' }} />
+                <Stack.Screen name="member/[id]" options={{ presentation: 'fullScreenModal' }} />
+                <Stack.Screen name="plan/[id]" options={{ presentation: 'fullScreenModal' }} />
+                <Stack.Screen name="chats/index" options={{ presentation: 'fullScreenModal' }} />
+                <Stack.Screen name="chats/[id]" options={{ presentation: 'fullScreenModal' }} />
+                {/* Sheets. */}
+                <Stack.Screen name="safety" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="membership" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="report" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="menu" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="renew" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="card-edit" options={{ presentation: 'modal' }} />

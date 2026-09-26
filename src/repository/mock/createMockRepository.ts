@@ -1,6 +1,9 @@
 import type { Clock } from '@/clock';
 import {
   AccessFlowState,
+  CommentPage,
+  CommentQuery,
+  CommentView,
   CompleteOnboardingInput,
   ConfirmPaymentInput,
   MyProfile,
@@ -8,12 +11,24 @@ import {
   FeedQuery,
   ModerateMemberInput,
   ModerationResult,
+  MemberRef,
   PassportCandidate,
+  PlanRef,
+  PlanView,
+  PostRef,
+  PostView,
+  ProfilePostsQuery,
+  ProfileStepInput,
+  ProfileView,
   ReactionState,
   RenewMembershipInput,
   RepositoryError,
   Session,
   SetReactionInput,
+  UpdateSettingsInput,
+  UserSettings,
+  defaultUserSettings,
+  type RepositoryMethod,
   type AituRepository,
   type ApiError,
 } from '@/contracts';
@@ -30,11 +45,20 @@ import {
   type DemoFlags,
   type ResetNotice,
 } from './demo';
+import { buildThreads } from './comments';
 import { selectFeed } from './feed';
 import type { MemberRecord, PostRecord, SeedData } from './records';
 import { loadSeed } from './seed';
 import { passportCandidates } from './seed/candidates';
-import { toPostView, type PostCounters, type ShapingContext, type Viewer } from './shaping';
+import {
+  seesFullView,
+  toAuthorView,
+  toPlanSummary,
+  toPostView,
+  type PostCounters,
+  type ShapingContext,
+  type Viewer,
+} from './shaping';
 
 export type MockRepositoryOptions = {
   clock: Clock;
@@ -284,6 +308,81 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return { accessState: current.accessState, userId: current.userId };
   }
 
+  function shapingContext(viewer: Viewer): ShapingContext {
+    return {
+      viewer,
+      member: (id) => member(id),
+      plan: (id) => plansById.get(id),
+      post: (id) => postsById.get(id),
+      counters,
+      reactedByMe: (postId) => reactionsOf(postId).some((r) => r.userId === viewer.userId),
+      isVisible,
+    };
+  }
+
+  /** Readers of community content: anyone but a restricted session. */
+  function requireReader(requestId: string): Viewer {
+    const viewer = viewerOf(effectiveSession());
+    if (viewer.accessState === 'BLOCKED') {
+      fail(requestId, { code: 'FORBIDDEN', message: 'Access is restricted.' });
+    }
+    return viewer;
+  }
+
+  /** The own card: active and expired members (an expired card stays editable). */
+  function requireOwnCard(requestId: string): MemberRecord {
+    const current = effectiveSession();
+    if (current.accessState === 'BLOCKED') {
+      fail(requestId, { code: 'FORBIDDEN', message: 'Access is restricted.' });
+    }
+    const record = current.userId ? member(current.userId) : undefined;
+    if (current.accessState === 'GUEST_PREVIEW' || !record) {
+      fail(requestId, { code: 'UNAUTHENTICATED', message: 'No published card.' });
+    }
+    return record;
+  }
+
+  function page<T>(items: T[], cursor: string | undefined, limit: number, requestId: string) {
+    const offset = cursor === undefined ? 0 : Number(cursor);
+    if (!Number.isInteger(offset) || offset < 0) {
+      fail(requestId, {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid cursor.',
+        fieldErrors: { cursor: 'invalid' },
+      });
+    }
+    const hasMore = offset + limit < items.length;
+    return {
+      items: items.slice(offset, offset + limit),
+      hasMore,
+      ...(hasMore ? { nextCursor: String(offset + limit) } : {}),
+    };
+  }
+
+  function parseOrFail<T>(
+    schema: {
+      safeParse(
+        v: unknown,
+      ): { success: true; data: T } | { success: false; error: { message: string } };
+    },
+    input: unknown,
+    requestId: string,
+  ): T {
+    const parsed = schema.safeParse(input);
+    if (!parsed.success)
+      fail(requestId, { code: 'VALIDATION_ERROR', message: parsed.error.message });
+    return parsed.data;
+  }
+
+  /** Part of the frozen contract; the behaviour lands with its own spec. */
+  const notImplemented = (method: RepositoryMethod) => () =>
+    respond('local', (requestId) =>
+      fail(requestId, {
+        code: 'NOT_IMPLEMENTED',
+        message: `${method} is not implemented in the mock yet.`,
+      }),
+    );
+
   return {
     getSession: () => respond('local', () => publicSession()),
 
@@ -377,15 +476,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const slice = ordered.slice(offset, offset + limit);
         const hasMore = offset + limit < ordered.length;
 
-        const ctx: ShapingContext = {
-          viewer,
-          member: (id) => member(id),
-          plan: (id) => plansById.get(id),
-          post: (id) => postsById.get(id),
-          counters,
-          reactedByMe: (postId) => reactionsOf(postId).some((r) => r.userId === viewer.userId),
-          isVisible,
-        };
+        const ctx = shapingContext(viewer);
 
         return FeedPage.parse({
           items: slice.map((post) => toPostView(post, ctx)),
@@ -559,6 +650,206 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         }
         return toMyProfile(record);
       }),
+
+    updateMyCard: (input) =>
+      respond('data', async (requestId) => {
+        const record = requireOwnCard(requestId);
+        const parsed = ProfileStepInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the profile fields.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, 'profile'),
+          });
+        }
+        const updated: MemberRecord = { ...record, card: { ...record.card, ...parsed.data } };
+        await saveMember(updated);
+        return toMyProfile(updated);
+      }),
+
+    getPost: (input) =>
+      respond('data', (requestId) => {
+        const viewer = requireReader(requestId);
+        const { postId } = parseOrFail(PostRef, input, requestId);
+        const post = postsById.get(postId);
+        if (!post || !isVisible(post)) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
+        }
+        return PostView.parse(toPostView(post, shapingContext(viewer)));
+      }),
+
+    listComments: (query) =>
+      respond('data', (requestId) => {
+        const viewer = requireReader(requestId);
+        const { postId, sort, cursor, limit } = parseOrFail(CommentQuery, query, requestId);
+        const post = postsById.get(postId);
+        if (!post || !isVisible(post)) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
+        }
+        // Comments of restricted people are hidden like their posts.
+        const visible = data.comments.filter((c) => {
+          const author = member(c.authorId);
+          return c.postId === postId && !!author && !isRestricted(author);
+        });
+        const threads = buildThreads(visible, sort, () => 0);
+        const toView = (c: (typeof visible)[number]): CommentView => ({
+          id: c.id,
+          postId: c.postId,
+          ...(c.parentCommentId ? { parentId: c.parentCommentId } : {}),
+          author: toAuthorView(member(c.authorId)!, viewer),
+          text: c.deleted ? '' : c.text,
+          createdAt: c.createdAt,
+          reactions: 0,
+          deleted: c.deleted,
+          ...(seesFullView(viewer) ? { mine: c.authorId === viewer.userId } : {}),
+        });
+        return CommentPage.parse(
+          page(
+            threads.map((t) => ({ comment: toView(t.root), replies: t.replies.map(toView) })),
+            cursor,
+            limit ?? DEFAULT_PAGE_SIZE,
+            requestId,
+          ),
+        );
+      }),
+
+    getProfile: (input) =>
+      respond('data', (requestId) => {
+        const viewer = requireReader(requestId);
+        if (viewer.accessState === 'GUEST_PREVIEW') {
+          fail(requestId, { code: 'UNAUTHENTICATED', message: 'Profiles are for members.' });
+        }
+        const { memberId } = parseOrFail(MemberRef, input, requestId);
+        const record = member(memberId);
+        if (!record || isRestricted(record)) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Member not found.' });
+        }
+        const full = seesFullView(viewer);
+        return ProfileView.parse({
+          person: toAuthorView(record, viewer),
+          ...(full
+            ? {
+                card: {
+                  bio: record.card.bio,
+                  intent: record.card.intent,
+                  interests: record.card.interests,
+                  communicationStyle: record.card.communicationStyle,
+                },
+              }
+            : {}),
+          stats: {
+            posts: data.posts.filter((p) => p.authorId === record.id).length,
+            followers: data.follows.filter((f) => f.followingId === record.id).length,
+            following: data.follows.filter((f) => f.followerId === record.id).length,
+          },
+          ...(full
+            ? {
+                relation: {
+                  following: data.follows.some(
+                    (f) => f.followerId === viewer.userId && f.followingId === record.id,
+                  ),
+                  followsMe: data.follows.some(
+                    (f) => f.followerId === record.id && f.followingId === viewer.userId,
+                  ),
+                  blocked: false,
+                },
+              }
+            : {}),
+        });
+      }),
+
+    listProfilePosts: (query) =>
+      respond('data', (requestId) => {
+        const viewer = requireReader(requestId);
+        if (viewer.accessState === 'GUEST_PREVIEW') {
+          fail(requestId, { code: 'UNAUTHENTICATED', message: 'Profiles are for members.' });
+        }
+        const { memberId, cursor, limit } = parseOrFail(ProfilePostsQuery, query, requestId);
+        const record = member(memberId);
+        if (!record || isRestricted(record)) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Member not found.' });
+        }
+        const posts = data.posts
+          .filter((p) => p.authorId === memberId)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        const ctx = shapingContext(viewer);
+        return FeedPage.parse(
+          page(
+            posts.map((p) => toPostView(p, ctx)),
+            cursor,
+            limit ?? DEFAULT_PAGE_SIZE,
+            requestId,
+          ),
+        );
+      }),
+
+    getPlan: (input) =>
+      respond('data', (requestId) => {
+        const viewer = requireReader(requestId);
+        const { planId } = parseOrFail(PlanRef, input, requestId);
+        const plan = plansById.get(planId);
+        const author = plan ? member(plan.authorId) : undefined;
+        const post = data.posts.find((p) => p.planId === planId);
+        if (!plan || !author || isRestricted(author) || !post) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Plan not found.' });
+        }
+        const full = seesFullView(viewer);
+        return PlanView.parse({
+          ...toPlanSummary(plan),
+          postId: post.id,
+          author: toAuthorView(author, viewer),
+          description: plan.description,
+          ...(full ? { place: plan.place } : {}),
+          createdAt: plan.createdAt,
+          ...(full && plan.authorId === viewer.userId ? { pendingResponses: 0 } : {}),
+        });
+      }),
+
+    getSettings: () =>
+      respond('data', (requestId) => {
+        const record = requireOwnCard(requestId);
+        return UserSettings.parse(state.settings[record.id] ?? defaultUserSettings());
+      }),
+
+    updateSettings: (input) =>
+      respond('data', async (requestId) => {
+        const record = requireOwnCard(requestId);
+        const patch = parseOrFail(UpdateSettingsInput, input, requestId);
+        const current = state.settings[record.id] ?? defaultUserSettings();
+        const next = UserSettings.parse({
+          notifications: { ...current.notifications, ...patch.notifications },
+        });
+        await saveState({ ...state, settings: { ...state.settings, [record.id]: next } });
+        return next;
+      }),
+
+    createPost: notImplemented('createPost'),
+    deletePost: notImplemented('deletePost'),
+    createComment: notImplemented('createComment'),
+    deleteComment: notImplemented('deleteComment'),
+    setRepost: notImplemented('setRepost'),
+    setFollow: notImplemented('setFollow'),
+    search: notImplemented('search'),
+    createPlan: notImplemented('createPlan'),
+    cancelPlan: notImplemented('cancelPlan'),
+    closePlan: notImplemented('closePlan'),
+    listPlanResponses: notImplemented('listPlanResponses'),
+    respondToPlan: notImplemented('respondToPlan'),
+    acceptPlanResponse: notImplemented('acceptPlanResponse'),
+    declinePlanResponse: notImplemented('declinePlanResponse'),
+    withdrawPlanResponse: notImplemented('withdrawPlanResponse'),
+    listChats: notImplemented('listChats'),
+    getChat: notImplemented('getChat'),
+    listMessages: notImplemented('listMessages'),
+    sendMessage: notImplemented('sendMessage'),
+    retryMessage: notImplemented('retryMessage'),
+    markChatRead: notImplemented('markChatRead'),
+    listActivity: notImplemented('listActivity'),
+    createReport: notImplemented('createReport'),
+    setBlock: notImplemented('setBlock'),
+    listBlocked: notImplemented('listBlocked'),
+    listReports: notImplemented('listReports'),
+    resolveReport: notImplemented('resolveReport'),
 
     renewMembership: (input) =>
       respond(

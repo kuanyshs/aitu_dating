@@ -9,10 +9,12 @@ import {
   type QuestionKey,
 } from '@/catalogs';
 
+import { LIMITS } from './limits';
+
 import { Id, IsoDateTime } from './common';
 import { AvatarRef, CityKey, GenderKey } from './people';
 
-export const BIO_MAX = 160;
+export const BIO_MAX = LIMITS.bio;
 export const INTERESTS_MAX = 5;
 
 /** Profile step of onboarding: what the member writes about themself. */

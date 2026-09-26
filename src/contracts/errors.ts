@@ -10,6 +10,11 @@ export const ApiErrorCode = z.enum([
   'RATE_LIMITED',
   'NETWORK_ERROR',
   'UNKNOWN',
+  /**
+   * Mock only: the method is part of the frozen contract but its behaviour arrives in a
+   * later spec. A real backend never returns it.
+   */
+  'NOT_IMPLEMENTED',
 ]);
 export type ApiErrorCode = z.infer<typeof ApiErrorCode>;
 

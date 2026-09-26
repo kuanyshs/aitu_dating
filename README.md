@@ -54,7 +54,7 @@ pnpm start
 
 ## Демо-панель
 
-В приложении есть «Профиль → Настройки → Demo controls»: сбросить демо, вызвать одну ошибку сети, включить режим offline. Панель включена флагом `EXPO_PUBLIC_DEMO_TOOLS=1` в файле `.env`. В production-сборке флаг нужно выключить (`.env.production` с `EXPO_PUBLIC_DEMO_TOOLS=0`), тогда код панели не попадает в сборку.
+В приложении есть «Профиль → Настройки → Demo controls»: сменить личность Aitu Passport, истечь и восстановить membership, поставить и снять ограничение, включить роль модератора, вызвать одну ошибку сети, включить режим offline, сбросить демо. Панель включена флагом `EXPO_PUBLIC_DEMO_TOOLS=1` в файле `.env`. В production-сборке флаг нужно выключить (`.env.production` с `EXPO_PUBLIC_DEMO_TOOLS=0`), тогда код панели не попадает в сборку.
 
 Состояние демо и выбранная тема сохраняются между перезапусками (в браузере — в localStorage).
 
@@ -84,14 +84,23 @@ pnpm web
 ## Структура
 
 ```
+src/contracts/      Zod-контракт всего продукта, без зависимостей от React Native
+src/catalogs/       ключи справочников и русские подписи к ним
+src/clock/          внедряемые часы (seed-время, таймзона Asia/Almaty)
+src/storage/        хранилище с версиями ключей и миграциями
+src/repository/     mock-репозиторий: seed, урезание данных по ролям, демо-флаги
+src/data/           хуки TanStack Query поверх репозитория
 src/app/            маршруты Expo Router (5 вкладок в (tabs)/, модальные экраны рядом)
-src/ui/theme/       палитры светлой и тёмной темы, токены, ThemeProvider, проверка контраста
-src/ui/components/  базовые компоненты: Screen, AppText, кнопки
-src/ui/navigation/  плавающий tab bar
-src/ui/strings.ts   все русские тексты интерфейса
+src/features/       части экранов: access flow, ограничение
+src/ui/             токены тем, компоненты, tab bar, тексты (strings.ts)
+src/demo/           демо-панель (только при EXPO_PUBLIC_DEMO_TOOLS=1)
 e2e/                Playwright-тесты
 ```
 
-Следующие тикеты добавят `src/contracts` (Zod-контракт без зависимостей от React Native), `src/catalogs`, `src/clock`, `src/repository`, `src/storage` и `src/demo`.
+## Контракт
+
+Контракт заморожен до backend-интеграции. `src/contracts/repository.ts` — интерфейс `AituRepository`: все методы продукта. `src/contracts/registry.ts` — те же методы как данные: схема входа и ответа для каждого. Backend реализует ровно это; OpenAPI позже генерируется из реестра.
+
+Ошибки приходят в едином формате `ApiError` (`code`, `message`, `fieldErrors`, `requestId`). Методы, поведение которых появится в следующих спеках, mock уже содержит: они отвечают ошибкой `NOT_IMPLEMENTED`, а не молчат. Тест `src/repository/mock/registry.contract.test.ts` проверяет, что каждый метод отвечает либо данными по схеме, либо типизированной ошибкой.
 
 Правила кода: цвета только через токены темы (`src/ui/theme/palette.ts`), тексты интерфейса только из `src/ui/strings.ts`. Оба правила проверяет `pnpm lint`.

@@ -137,7 +137,7 @@ export function toFlowState(
 }
 
 /** Zod issues → `prefix.field` keys the client maps to a step and a field. */
-function fieldErrorsOf(error: z.ZodError, prefix: string): Record<string, string> {
+export function fieldErrorsOf(error: z.ZodError, prefix: string): Record<string, string> {
   const result: Record<string, string> = {};
   for (const issue of error.issues) {
     const field = String(issue.path[0] ?? 'form');

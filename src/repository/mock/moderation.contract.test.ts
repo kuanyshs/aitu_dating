@@ -175,3 +175,27 @@ describe('state migration', () => {
     expect(await repo.takeResetNotice()).toBeUndefined();
   });
 });
+
+describe('state migration to v7', () => {
+  it('adds member settings without a reset', async () => {
+    const v6 = {
+      version: 6,
+      data: {
+        demoFlags: { networkErrorOnce: false, offline: false, failedMessageOnce: false },
+        accessFlow: null,
+        payments: {},
+        members: [],
+        onboardings: {},
+        parkedFlows: {},
+        reactions: [],
+        renewals: {},
+        expiredMemberships: {},
+        restrictedSubjects: ['aitu-subject-almaty-102'],
+      },
+    };
+    const repo = repositoryOn(createMemoryStore({ [storageKeys.state]: JSON.stringify(v6) }));
+    await repo.switchCandidate('passport-1');
+    expect((await repo.getSession()).accessState).toBe('BLOCKED');
+    expect(await repo.takeResetNotice()).toBeUndefined();
+  });
+});

@@ -42,6 +42,21 @@ export default function MenuScreen() {
         onPress={() => go('/settings')}
         testID="menu-settings"
       />
+      <MenuRow label={strings.menu.safety} onPress={() => go('/safety')} testID="menu-safety" />
+      {isMember ? (
+        <>
+          <MenuRow
+            label={strings.menu.membership}
+            onPress={() => go('/membership')}
+            testID="menu-membership"
+          />
+          <MenuRow
+            label={strings.menu.notifications}
+            onPress={() => go('/notifications')}
+            testID="menu-notifications"
+          />
+        </>
+      ) : null}
       {isModerator ? (
         <MenuRow
           label={strings.menu.moderator}

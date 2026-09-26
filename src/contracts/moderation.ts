@@ -14,3 +14,15 @@ export const ModerationResult = z.strictObject({
   restricted: z.boolean(),
 });
 export type ModerationResult = z.infer<typeof ModerationResult>;
+
+export const ReportsQuery = z.strictObject({
+  status: z.enum(['created', 'reviewing', 'resolved']).optional(),
+  cursor: z.string().optional(),
+});
+export type ReportsQuery = z.infer<typeof ReportsQuery>;
+
+export const ResolveReportInput = z.strictObject({
+  reportId: Id,
+  resolution: z.enum(['dismissed', 'content_removed', 'member_restricted']),
+});
+export type ResolveReportInput = z.infer<typeof ResolveReportInput>;

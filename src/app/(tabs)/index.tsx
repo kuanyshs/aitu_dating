@@ -18,7 +18,7 @@ import { useClock } from '@/data/RepositoryProvider';
 import { IconAction, PrimaryButton } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
 import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
-import { PostRow, type PostAction } from '@/ui/components/PostRow';
+import { PostRow, type PostAction, type PostTarget } from '@/ui/components/PostRow';
 import { RenewBanner } from '@/ui/components/RenewBanner';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
@@ -84,9 +84,23 @@ export default function HomeScreen() {
     [isExpired, isMember, openAccess, router, setReaction, toast],
   );
 
+  const onOpen = useCallback(
+    (target: PostTarget) =>
+      router.push(
+        target.kind === 'post'
+          ? `/post/${target.id}`
+          : target.kind === 'plan'
+            ? `/plan/${target.id}`
+            : `/member/${target.id}`,
+      ),
+    [router],
+  );
+
   const renderItem = useCallback(
-    ({ item }: { item: PostView }) => <PostRow post={item} clock={clock} onAction={onAction} />,
-    [clock, onAction],
+    ({ item }: { item: PostView }) => (
+      <PostRow post={item} clock={clock} onAction={onAction} onOpen={onOpen} />
+    ),
+    [clock, onAction, onOpen],
   );
 
   const header = (
