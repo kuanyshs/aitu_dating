@@ -32,6 +32,18 @@ _Avoid_: subscription (reserved for **Подписка**), plan (reserved for **
 **Период** (`periodMonths`):
 The length of a **Membership**: 1, 3, 6 or 12 months; exactly one is chosen at a time.
 
+**Продление** (`Renewal`):
+Choosing a new **Период** (and paying, unless free-verified) for an expired **Membership**; never repeats the **Анкета**.
+_Avoid_: resubscribe, re-onboarding
+
+**Блокировка** (`Block`):
+One **Участник** hiding another: their content and chats disappear for both sides and no new chat or **Отклик** between them is possible.
+_Avoid_: ban, restriction
+
+**Ограничение** (`Restriction`):
+A moderation decision that puts a person into the blocked access state: they see only the restriction screen, rules and support, and their content is hidden from everyone.
+_Avoid_: block, ban
+
 ### Profile
 
 **Карточка** (`ProfileCard`):
@@ -59,6 +71,20 @@ _Avoid_: reply (that is **Ответ**)
 A response to a **Комментарий**; the second and last level of a thread.
 _Avoid_: nested comment, sub-reply
 
+**Упоминание** (`Mention`):
+An `@` reference to a **Участник** inside a **Пост** or **Комментарий**; shown to a **Гость** as «@участник». There are no usernames.
+_Avoid_: tag, @username
+
+### Relations and chats
+
+**Подписка** (`Follow`):
+One **Участник** following another; two opposite **Подписки** make a mutual follow.
+_Avoid_: subscription (as in **Membership**), friend
+
+**Контекстный чат** (`Chat`):
+The single conversation between two **Участники**, opened from a **Комментарий**, a mutual **Подписка** or an accepted **Отклик**; it keeps the context it started from.
+_Avoid_: DM, direct message
+
 ### Meetings
 
 **План** (`Plan`):
@@ -82,6 +108,8 @@ A **План** whose author accepted an **Отклик**; it gets a contextual c
 - A **Пост** of plan type is the feed face of exactly one **План**.
 - A **Комментарий** belongs to one **Пост**; an **Ответ** belongs to one **Комментарий**; nothing answers an **Ответ**.
 - A **План** has many **Отклики** and at most one accepted, which turns it into a **Встреча**.
+- Two **Участники** share at most one **Контекстный чат**; an accepted **Отклик** creates it if it does not exist.
+- A **Блокировка** is between two **Участники**; an **Ограничение** is between moderation and one person.
 
 ## Example dialogue
 
@@ -91,4 +119,5 @@ A **План** whose author accepted an **Отклик**; it gets a contextual c
 ## Flagged ambiguities
 
 - The documents used "intent" for both **Намерение** and **Цель встречи**; they are separate concepts with separate value sets.
+- "Blocked" meant both a member hiding someone and a moderation decision; resolved as **Блокировка** and **Ограничение**. A **Гость** can report but cannot block.
 - Seed data made Айдана, Тимур and Мадина both **Кандидаты Passport** and existing **Участники**; resolved: **Кандидаты Passport** are separate people without a **Карточка**.
