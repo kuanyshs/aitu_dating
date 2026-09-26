@@ -62,8 +62,13 @@ test.describe('onboarding', () => {
     await expect(page.getByTestId('home-join')).toHaveCount(0);
     await expect(page.getByTestId('home-messages')).toBeVisible();
 
-    const text = await page.locator('body').innerText();
-    expect(seed.members.some((m) => text.includes(m.name))).toBe(true);
+    // The member feed replaces the guest one after a refetch; wait for real names.
+    await expect
+      .poll(async () => {
+        const text = await page.locator('body').innerText();
+        return seed.members.some((m) => text.includes(m.name));
+      })
+      .toBe(true);
 
     await page.getByTestId('tab-profile').click();
     await expect(page.getByTestId('profile-name')).toHaveText('Мадина');

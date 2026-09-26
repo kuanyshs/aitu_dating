@@ -34,8 +34,21 @@ async function joinAsMadina(page: Page) {
 
 async function expectNoMemberNames(page: Page) {
   await expect(page.getByTestId('post-type').first()).toBeVisible();
-  const text = await page.locator('body').innerText();
-  expect(seed.members.some((m) => text.includes(m.name))).toBe(false);
+  await expect
+    .poll(async () => {
+      const text = await page.locator('body').innerText();
+      return seed.members.some((m) => text.includes(m.name));
+    })
+    .toBe(false);
+}
+
+async function expectMemberNames(page: Page) {
+  await expect
+    .poll(async () => {
+      const text = await page.locator('body').innerText();
+      return seed.members.some((m) => text.includes(m.name));
+    })
+    .toBe(true);
 }
 
 async function openDemoPanel(page: Page) {
@@ -69,7 +82,7 @@ test.describe('logout and login', () => {
     await page.reload();
     await page.getByRole('button', { name: 'Войти в зарегистрированный режим' }).click();
     await expect(page.getByTestId('home-messages')).toBeVisible();
-    await expect(page.getByTestId('author-name').first()).toBeVisible();
+    await expectMemberNames(page);
     await expect(page.getByTestId('access-questionnaire')).toHaveCount(0);
 
     await page.getByTestId('tab-profile').click();
