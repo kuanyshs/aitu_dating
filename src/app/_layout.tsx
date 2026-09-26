@@ -6,6 +6,7 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 import { QueryProvider } from '@/data/QueryProvider';
 import { RepositoryProvider } from '@/data/RepositoryProvider';
 import { hydrateSettings, useSettings } from '@/settings';
+import { SessionGate } from '@/features/restriction/SessionGate';
 import { AppStatus } from '@/ui/components/AppStatus';
 import { navigationTheme } from '@/ui/theme/navigationTheme';
 import { ThemeProvider, useTheme } from '@/ui/theme/ThemeProvider';
@@ -37,17 +38,20 @@ export default function RootLayout() {
       <QueryProvider>
         <ThemeProvider preference={themePreference}>
           <ThemedNavigation>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="ui-kit" />
-              <Stack.Screen name="access" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="about" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="chats" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="menu" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="renew" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="card-edit" options={{ presentation: 'modal' }} />
-            </Stack>
+            <SessionGate>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="ui-kit" />
+                <Stack.Screen name="access" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="about" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="chats" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="menu" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="renew" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="card-edit" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="moderator" options={{ presentation: 'modal' }} />
+              </Stack>
+            </SessionGate>
             <AppStatus />
           </ThemedNavigation>
         </ThemeProvider>

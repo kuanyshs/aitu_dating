@@ -8,6 +8,8 @@ import {
   useRestoreMembership,
   useSession,
   useSetDemoFlags,
+  useSetModeratorRole,
+  useSetRestricted,
   useSwitchCandidate,
 } from '@/data/hooks';
 import { SecondaryButton } from '@/ui/components/buttons';
@@ -29,6 +31,10 @@ export function DemoPanel() {
   const expire = useExpireMembership();
   const restore = useRestoreMembership();
   const accessState = session.data?.accessState;
+  const setRestricted = useSetRestricted();
+  const setModerator = useSetModeratorRole();
+  const blocked = accessState === 'BLOCKED';
+  const hasCandidate = !!session.data?.candidateId;
   const toast = useToast((s) => s.show);
   const t = strings.demo;
 
@@ -87,6 +93,32 @@ export function DemoPanel() {
           )}
         </View>
       ) : null}
+      <View style={{ gap: spacing.xs }}>
+        <AppText variant="bodyStrong">{t.moderation}</AppText>
+        <AppText variant="caption" tone="textMuted">
+          {hasCandidate ? t.restrictHint : t.restrictNeedsCandidate}
+        </AppText>
+        <SecondaryButton
+          label={blocked ? t.unrestrict : t.restrict}
+          disabled={!hasCandidate || !session.data}
+          loading={setRestricted.isPending}
+          onPress={() =>
+            setRestricted.mutate(!blocked, {
+              onSuccess: () => toast(blocked ? t.unrestricted : t.restricted),
+            })
+          }
+          testID={blocked ? 'demo-unrestrict' : 'demo-restrict'}
+        />
+        <ToggleRow
+          label={t.moderator}
+          hint={t.moderatorHint}
+          value={!!session.data?.roles.includes('moderator')}
+          // Until the session loads the switch would read «off» and a tap would mean «on».
+          disabled={setModerator.isPending || !session.data}
+          onChange={(enabled) => setModerator.mutate(enabled)}
+          testID="demo-moderator"
+        />
+      </View>
       <ToggleRow
         label={t.networkErrorOnce}
         hint={t.networkErrorOnceHint}

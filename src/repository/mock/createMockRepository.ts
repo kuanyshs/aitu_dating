@@ -6,6 +6,8 @@ import {
   MyProfile,
   FeedPage,
   FeedQuery,
+  ModerateMemberInput,
+  ModerationResult,
   PassportCandidate,
   ReactionState,
   RenewMembershipInput,
@@ -168,9 +170,26 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     };
   }
 
+  /** Ограничение comes from the seed or from a moderation decision during the demo. */
+  function isRestricted(record: MemberRecord): boolean {
+    return record.restricted || state.restrictedSubjects.includes(record.aituSubjectId);
+  }
+
   function isVisible(post: PostRecord): boolean {
     const author = member(post.authorId);
-    return !!author && !author.restricted;
+    return !!author && !isRestricted(author);
+  }
+
+  /** The Aitu subject behind the current session, member or not. */
+  function currentSubject(): string | undefined {
+    const record = session.userId ? member(session.userId) : undefined;
+    if (record) return record.aituSubjectId;
+    return passportCandidates.find((c) => c.id === session.candidateId)?.aituSubjectId;
+  }
+
+  async function setRestricted(subjectId: string, restricted: boolean) {
+    const others = state.restrictedSubjects.filter((id) => id !== subjectId);
+    await saveState({ ...state, restrictedSubjects: restricted ? [...others, subjectId] : others });
   }
 
   function flowResult(requestId: string, outcome: access.Outcome<MockState['accessFlow'] & {}>) {
@@ -217,6 +236,11 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
   /** A member's mode follows their membership dates, so it also expires on its own. */
   function effectiveSession(): Session {
+    // Ограничение wins over every other mode; the stored mode comes back when lifted.
+    const subject = currentSubject();
+    if (subject && state.restrictedSubjects.includes(subject)) {
+      return { ...session, accessState: 'BLOCKED' };
+    }
     const record = session.userId ? member(session.userId) : undefined;
     if (!record) return session;
     if (session.accessState !== 'ACTIVE_MEMBER' && session.accessState !== 'ACTIVE_MEMBER_EXPIRED')
@@ -295,6 +319,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         }
         const query = parsed.data;
         const viewer = viewerOf(effectiveSession());
+        if (viewer.accessState === 'BLOCKED') {
+          fail(requestId, { code: 'FORBIDDEN', message: 'Access is restricted.' });
+        }
         const isMember = viewer.accessState === 'ACTIVE_MEMBER';
 
         if (query.tab === 'following' && viewer.accessState === 'ACTIVE_MEMBER_EXPIRED') {
@@ -624,6 +651,22 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         });
       }),
 
+    moderateMember: (input) =>
+      respond('data', async (requestId) => {
+        const current = effectiveSession();
+        if (current.accessState === 'BLOCKED' || !current.roles.includes('moderator')) {
+          fail(requestId, { code: 'FORBIDDEN', message: 'Moderators only.' });
+        }
+        const parsed = ModerateMemberInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, { code: 'VALIDATION_ERROR', message: parsed.error.message });
+        }
+        const target = member(parsed.data.memberId);
+        if (!target) fail(requestId, { code: 'NOT_FOUND', message: 'Member not found.' });
+        await setRestricted(target.aituSubjectId, parsed.data.decision === 'restrict');
+        return ModerationResult.parse({ memberId: target.id, restricted: isRestricted(target) });
+      }),
+
     async getDemoFlags(): Promise<DemoFlags> {
       await ready;
       return { ...state.demoFlags };
@@ -702,6 +745,24 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         },
       );
       await setSession({ ...session, accessState: 'ACTIVE_MEMBER' });
+    },
+
+    async setCurrentRestricted(restricted) {
+      await ready;
+      const subject = currentSubject();
+      if (!subject) {
+        throw new RepositoryError({
+          code: 'CONFLICT',
+          message: 'Choose a Passport identity first.',
+        });
+      }
+      await setRestricted(subject, restricted);
+    },
+
+    async setModeratorRole(enabled) {
+      await ready;
+      const roles = session.roles.filter((r) => r !== 'moderator');
+      await setSession({ ...session, roles: enabled ? [...roles, 'moderator'] : roles });
     },
 
     async takeResetNotice() {

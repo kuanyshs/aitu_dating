@@ -6,6 +6,7 @@ import type {
 } from './access';
 import type { FeedPage, FeedQuery } from './feed';
 import type { RenewMembershipInput } from './membership';
+import type { ModerateMemberInput, ModerationResult } from './moderation';
 import type {
   CompleteOnboardingInput,
   MyProfile,
@@ -52,4 +53,7 @@ export interface AituRepository {
 
   // Social actions. Guests get UNAUTHENTICATED, expired members MEMBERSHIP_EXPIRED.
   setReaction(input: SetReactionInput): Promise<ReactionState>;
+
+  // Moderation. Only sessions with the `moderator` role; everyone else gets FORBIDDEN.
+  moderateMember(input: ModerateMemberInput): Promise<ModerationResult>;
 }

@@ -3,6 +3,7 @@ export * from './common';
 export * from './errors';
 export * from './feed';
 export * from './membership';
+export * from './moderation';
 export * from './onboarding';
 export * from './people';
 export * from './post';

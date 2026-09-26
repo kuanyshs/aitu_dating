@@ -60,10 +60,12 @@ export const MockState = z.strictObject({
   renewals: z.record(z.string(), z.string()),
   /** Membership end dates saved by «Истечь membership», so «Восстановить» brings them back. */
   expiredMemberships: z.record(z.string(), z.string()),
+  /** Aitu subject ids under Ограничение, decided by moderation. */
+  restrictedSubjects: z.array(z.string()),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 5;
+export const MOCK_STATE_VERSION = 6;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -74,6 +76,8 @@ export const mockStateMigrations = [
   (v3: unknown) => ({ ...(v3 as object), parkedFlows: {} }),
   // v5 adds reactions, renewals and demo-expired memberships.
   (v4: unknown) => ({ ...(v4 as object), reactions: [], renewals: {}, expiredMemberships: {} }),
+  // v6 adds moderation restrictions.
+  (v5: unknown) => ({ ...(v5 as object), restrictedSubjects: [] }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -86,6 +90,7 @@ export const defaultMockState = (): MockState => ({
   reactions: [],
   renewals: {},
   expiredMemberships: {},
+  restrictedSubjects: [],
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';
@@ -103,6 +108,13 @@ export interface DemoControls {
   expireMembership(): Promise<void>;
   /** Undoes «Истечь membership»: the saved end date, or a fresh period if it has passed. */
   restoreMembership(): Promise<void>;
+  /**
+   * Moderation decides on the current Passport identity (as a moderator elsewhere
+   * would): the session becomes BLOCKED until lifted, then returns to its own mode.
+   */
+  setCurrentRestricted(restricted: boolean): Promise<void>;
+  /** Grants or removes the `moderator` role on the current session. */
+  setModeratorRole(enabled: boolean): Promise<void>;
   /** Why persisted state was reset on startup, reported once so the UI can explain it. */
   takeResetNotice(): Promise<ResetNotice | undefined>;
 }

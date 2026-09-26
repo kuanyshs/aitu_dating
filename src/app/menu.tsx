@@ -19,6 +19,7 @@ export default function MenuScreen() {
   const logout = useLogout();
   const toast = useToast((s) => s.show);
   const isMember = session.data?.accessState !== 'GUEST_PREVIEW' && !!session.data?.userId;
+  const isModerator = !!session.data?.roles.includes('moderator');
 
   const go = (href: Href) => router.replace(href);
 
@@ -41,6 +42,13 @@ export default function MenuScreen() {
         onPress={() => go('/settings')}
         testID="menu-settings"
       />
+      {isModerator ? (
+        <MenuRow
+          label={strings.menu.moderator}
+          onPress={() => go('/moderator')}
+          testID="menu-moderator"
+        />
+      ) : null}
       {isMember ? (
         <MenuRow
           label={strings.session.logout}

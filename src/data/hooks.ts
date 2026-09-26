@@ -255,6 +255,28 @@ export function useSetReaction() {
   });
 }
 
+export function useSetRestricted() {
+  const demo = useDemoControls();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (restricted: boolean) => demo!.setCurrentRestricted(restricted),
+    onSuccess: async () => {
+      await client.resetQueries();
+    },
+  });
+}
+
+export function useSetModeratorRole() {
+  const demo = useDemoControls();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (enabled: boolean) => demo!.setModeratorRole(enabled),
+    onSuccess: async () => {
+      await client.resetQueries();
+    },
+  });
+}
+
 export function useExpireMembership() {
   const demo = useDemoControls();
   return useSessionSwitch(() => demo!.expireMembership());

@@ -116,4 +116,11 @@ test.describe('active member likes', () => {
     await page.reload();
     await expect(page.getByTestId('post-like').first()).toHaveAttribute('aria-pressed', 'true');
   });
+
+  test('the access flow is closed to members', async ({ page }) => {
+    await joinAsMadina(page);
+    await page.goto('/access/passport');
+    await expect(page.getByTestId('screen-home')).toBeVisible();
+    await expect(page.getByTestId('access-passport')).toHaveCount(0);
+  });
 });
