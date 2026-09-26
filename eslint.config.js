@@ -13,6 +13,11 @@ module.exports = defineConfig([
     ignores: ['dist/*', '.expo/*', '.claude/*', 'playwright-report/*', 'test-results/*'],
   },
   {
+    // Zod idiom: a schema and its inferred type share one name.
+    files: ['src/**/*.{ts,tsx}'],
+    rules: { '@typescript-eslint/no-redeclare': 'off' },
+  },
+  {
     files: ['src/**/*.{ts,tsx}'],
     ignores: [
       'src/ui/theme/palette.ts',
@@ -47,10 +52,10 @@ module.exports = defineConfig([
       'src/catalogs/**/*.ts',
       'src/clock/**/*.ts',
       'src/repository/**/*.ts',
+      'src/storage/**/*.ts',
     ],
+    ignores: ['src/storage/asyncStorage.ts'],
     rules: {
-      // Zod idiom: a schema and its inferred type share one name.
-      '@typescript-eslint/no-redeclare': 'off',
       'no-restricted-imports': [
         'error',
         {

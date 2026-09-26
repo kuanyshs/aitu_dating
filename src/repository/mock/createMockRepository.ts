@@ -8,6 +8,15 @@ import {
   type ApiError,
 } from '@/contracts';
 
+import { createMemoryStore, createSlot, storageKeys, type KeyValueStore } from '@/storage';
+
+import {
+  defaultMockState,
+  MockState,
+  type DemoControls,
+  type DemoFlags,
+  type ResetNotice,
+} from './demo';
 import { selectFeed } from './feed';
 import type { PostRecord, SeedData } from './records';
 import { loadSeed } from './seed';
@@ -18,17 +27,55 @@ export type MockRepositoryOptions = {
   /** Simulated network latency range in ms; `0` disables it (tests). */
   latency?: readonly [min: number, max: number] | 0;
   seed?: SeedData;
-  /** Starting session; later tickets move this behind the access flow and storage. */
+  /** Where the mock backend keeps its session and demo state; memory when omitted. */
+  store?: KeyValueStore;
+  /** Session to start from when nothing is stored yet (tests). */
   session?: Session;
 };
 
+export type MockRepository = AituRepository & DemoControls;
+
+const guestSession = (): Session => ({ accessState: 'GUEST_PREVIEW', roles: [] });
+
 const DEFAULT_PAGE_SIZE = 10;
 
-export function createMockRepository(options: MockRepositoryOptions): AituRepository {
+export function createMockRepository(options: MockRepositoryOptions): MockRepository {
   const { clock, latency = [300, 600] } = options;
   const data = options.seed ?? loadSeed();
-  const session: Session = options.session ?? { accessState: 'GUEST_PREVIEW', roles: [] };
+  const store = options.store ?? createMemoryStore();
   let requestCounter = 0;
+
+  const sessionSlot = createSlot({
+    store,
+    key: storageKeys.session,
+    schema: Session,
+    version: 1,
+    defaults: () => options.session ?? guestSession(),
+  });
+  const stateSlot = createSlot({
+    store,
+    key: storageKeys.state,
+    schema: MockState,
+    version: 1,
+    defaults: defaultMockState,
+  });
+
+  let session: Session = guestSession();
+  let state: MockState = defaultMockState();
+  let resetNotice: ResetNotice | undefined;
+
+  // Persisted state loads once, before the first request is answered.
+  const ready = (async () => {
+    const [loadedSession, loadedState] = await Promise.all([sessionSlot.load(), stateSlot.load()]);
+    session = loadedSession.data;
+    state = loadedState.data;
+    resetNotice = loadedSession.reset ?? loadedState.reset;
+  })();
+
+  async function saveState(next: MockState): Promise<void> {
+    state = next;
+    await stateSlot.save(next);
+  }
 
   const membersById = new Map(data.members.map((m) => [m.id, m]));
   const plansById = new Map(data.plans.map((p) => [p.id, p]));
@@ -43,11 +90,28 @@ export function createMockRepository(options: MockRepositoryOptions): AituReposi
     throw new RepositoryError({ ...error, requestId });
   }
 
-  async function respond<T>(work: (requestId: string) => T): Promise<T> {
+  async function delay(): Promise<void> {
+    if (latency === 0) return;
+    const [min, max] = latency;
+    await new Promise((resolve) => setTimeout(resolve, min + Math.random() * (max - min)));
+  }
+
+  /**
+   * Answers a request like a server would. `data` requests go "over the network" and
+   * honour the demo failure flags; the session and demo controls are local.
+   */
+  async function respond<T>(kind: 'data' | 'local', work: (requestId: string) => T): Promise<T> {
+    await ready;
     const requestId = nextRequestId();
-    if (latency !== 0) {
-      const [min, max] = latency;
-      await new Promise((resolve) => setTimeout(resolve, min + Math.random() * (max - min)));
+    await delay();
+    if (kind === 'data') {
+      if (state.demoFlags.offline) {
+        fail(requestId, { code: 'NETWORK_ERROR', message: 'Offline (demo).' });
+      }
+      if (state.demoFlags.networkErrorOnce) {
+        await saveState({ ...state, demoFlags: { ...state.demoFlags, networkErrorOnce: false } });
+        fail(requestId, { code: 'NETWORK_ERROR', message: 'Simulated network error (demo).' });
+      }
     }
     return work(requestId);
   }
@@ -70,10 +134,10 @@ export function createMockRepository(options: MockRepositoryOptions): AituReposi
   }
 
   return {
-    getSession: () => respond(() => Session.parse(session)),
+    getSession: () => respond('local', () => Session.parse(session)),
 
     getHomeFeed: (rawQuery) =>
-      respond((requestId) => {
+      respond('data', (requestId) => {
         const parsed = FeedQuery.safeParse(rawQuery);
         if (!parsed.success) {
           fail(requestId, { code: 'VALIDATION_ERROR', message: parsed.error.message });
@@ -144,5 +208,30 @@ export function createMockRepository(options: MockRepositoryOptions): AituReposi
           ...(hasMore ? { nextCursor: String(offset + limit) } : {}),
         });
       }),
+
+    async getDemoFlags(): Promise<DemoFlags> {
+      await ready;
+      return { ...state.demoFlags };
+    },
+
+    async setDemoFlags(patch) {
+      await ready;
+      await saveState({ ...state, demoFlags: { ...state.demoFlags, ...patch } });
+      return { ...state.demoFlags };
+    },
+
+    async resetDemo() {
+      await ready;
+      await Promise.all([sessionSlot.clear(), stateSlot.clear()]);
+      session = guestSession();
+      state = defaultMockState();
+    },
+
+    async takeResetNotice() {
+      await ready;
+      const notice = resetNotice;
+      resetNotice = undefined;
+      return notice;
+    },
   };
 }

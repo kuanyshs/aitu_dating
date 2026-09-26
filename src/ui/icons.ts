@@ -13,6 +13,9 @@ export { default as Quote } from 'lucide-react-native/icons/quote';
 export { default as Repeat2 } from 'lucide-react-native/icons/repeat-2';
 export { default as Search } from 'lucide-react-native/icons/search';
 export { default as UserRound } from 'lucide-react-native/icons/user-round';
+export { default as Settings } from 'lucide-react-native/icons/settings';
 export { default as Wallet } from 'lucide-react-native/icons/wallet';
+export { default as WifiOff } from 'lucide-react-native/icons/wifi-off';
+export { default as X } from 'lucide-react-native/icons/x';
 
 export type { LucideIcon as Icon } from 'lucide-react-native';

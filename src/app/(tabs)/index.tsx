@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cities, cityLabels, type City } from '@/catalogs';
 import { isRepositoryError, type FeedTab, type PostView } from '@/contracts';
-import { useHomeFeed, useSession } from '@/data/hooks';
+import { useDemoFlags, useHomeFeed, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { IconAction, PrimaryButton } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
@@ -40,6 +40,10 @@ export default function HomeScreen() {
   const [city, setCity] = useState<City>('almaty');
   const feed = useHomeFeed(tab, city);
   const posts = useMemo(() => feed.data?.pages.flatMap((p) => p.items) ?? [], [feed.data]);
+  // Offline keeps showing the last loaded feed under the global banner; any other
+  // failure (or offline with nothing cached) shows the error with a retry.
+  const { offline } = useDemoFlags();
+  const showError = feed.isError && (posts.length === 0 || !offline);
 
   const openAccess = useCallback(() => router.push('/access'), [router]);
   // Guests: every social action leads into the single access flow.
@@ -126,7 +130,7 @@ export default function HomeScreen() {
   let body: React.ReactNode = null;
   if (feed.isPending) {
     body = <FeedSkeleton />;
-  } else if (feed.isError) {
+  } else if (showError) {
     const network = isRepositoryError(feed.error) && feed.error.code === 'NETWORK_ERROR';
     body = (
       <ErrorState

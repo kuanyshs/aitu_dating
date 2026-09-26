@@ -5,6 +5,8 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 
 import { QueryProvider } from '@/data/QueryProvider';
 import { RepositoryProvider } from '@/data/RepositoryProvider';
+import { hydrateSettings, useSettings } from '@/settings';
+import { AppStatus } from '@/ui/components/AppStatus';
 import { navigationTheme } from '@/ui/theme/navigationTheme';
 import { ThemeProvider, useTheme } from '@/ui/theme/ThemeProvider';
 
@@ -25,17 +27,24 @@ function ThemedNavigation({ children }: { children: ReactNode }) {
 }
 
 export default function RootLayout() {
+  const themePreference = useSettings((s) => s.themePreference);
+  useEffect(() => {
+    void hydrateSettings();
+  }, []);
+
   return (
     <RepositoryProvider>
       <QueryProvider>
-        <ThemeProvider>
+        <ThemeProvider preference={themePreference}>
           <ThemedNavigation>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="ui-kit" />
               <Stack.Screen name="access" options={{ presentation: 'modal' }} />
               <Stack.Screen name="about" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
             </Stack>
+            <AppStatus />
           </ThemedNavigation>
         </ThemeProvider>
       </QueryProvider>

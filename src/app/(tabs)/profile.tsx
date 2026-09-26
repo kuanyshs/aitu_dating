@@ -10,6 +10,11 @@ export default function ProfileScreen() {
   return (
     <PlaceholderScreen title={title} text={text} testID="screen-profile">
       <TextButton
+        label={strings.settings.open}
+        onPress={() => router.push('/settings')}
+        testID="open-settings"
+      />
+      <TextButton
         label={strings.uiKit.open}
         onPress={() => router.push('/ui-kit')}
         testID="open-ui-kit"
