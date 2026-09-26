@@ -14,7 +14,13 @@ module.exports = defineConfig([
   },
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/ui/theme/palette.ts', 'src/ui/strings.ts', 'src/**/*.test.ts'],
+    ignores: [
+      'src/ui/theme/palette.ts',
+      'src/ui/strings.ts',
+      'src/catalogs/labels.ts',
+      'src/repository/mock/seed/**',
+      'src/**/*.test.ts',
+    ],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -29,6 +35,39 @@ module.exports = defineConfig([
         {
           selector: `JSXText[value=${CYRILLIC}]`,
           message: 'UI copy lives in src/ui/strings.ts.',
+        },
+      ],
+    },
+  },
+  {
+    // Pure modules stay free of React Native so they can move to a shared package
+    // and run in the Node test runner (ADR 0002).
+    files: [
+      'src/contracts/**/*.ts',
+      'src/catalogs/**/*.ts',
+      'src/clock/**/*.ts',
+      'src/repository/**/*.ts',
+    ],
+    rules: {
+      // Zod idiom: a schema and its inferred type share one name.
+      '@typescript-eslint/no-redeclare': 'off',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                'react',
+                'react-native',
+                'react-native-*',
+                'expo',
+                'expo-*',
+                '@/ui/*',
+                '@/app/*',
+              ],
+              message: 'Pure modules must not depend on React, Expo or UI code.',
+            },
+          ],
         },
       ],
     },

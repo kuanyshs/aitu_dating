@@ -64,3 +64,28 @@ export const darkColors: ColorTokens = {
 };
 
 export const palettes = { light: lightColors, dark: darkColors } as const;
+
+/**
+ * Background/foreground pairs for synthetic avatars and media. Chosen per theme so
+ * shapes stay soft on white and do not glow on the dark background.
+ */
+export type AvatarSwatch = { bg: string; fg: string };
+
+export const avatarSwatches: Record<'light' | 'dark', AvatarSwatch[]> = {
+  light: [
+    { bg: '#E9E4F5', fg: '#7A68B8' },
+    { bg: '#E2EEF0', fg: '#4F8C96' },
+    { bg: '#F4E6DC', fg: '#B57A52' },
+    { bg: '#E5EEDF', fg: '#6E9460' },
+    { bg: '#F3E1E6', fg: '#B0607A' },
+    { bg: '#E3E7F3', fg: '#5B6FA8' },
+  ],
+  dark: [
+    { bg: '#2B2638', fg: '#A796E0' },
+    { bg: '#1F3134', fg: '#7CB7C1' },
+    { bg: '#382A21', fg: '#D89C73' },
+    { bg: '#25301F', fg: '#98BD89' },
+    { bg: '#382329', fg: '#D98AA3' },
+    { bg: '#232838', fg: '#8B9FD6' },
+  ],
+};

@@ -3,6 +3,8 @@ import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useMemo, type ReactNode } from 'react';
 
+import { QueryProvider } from '@/data/QueryProvider';
+import { RepositoryProvider } from '@/data/RepositoryProvider';
 import { navigationTheme } from '@/ui/theme/navigationTheme';
 import { ThemeProvider, useTheme } from '@/ui/theme/ThemeProvider';
 
@@ -24,13 +26,19 @@ function ThemedNavigation({ children }: { children: ReactNode }) {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <ThemedNavigation>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="ui-kit" />
-        </Stack>
-      </ThemedNavigation>
-    </ThemeProvider>
+    <RepositoryProvider>
+      <QueryProvider>
+        <ThemeProvider>
+          <ThemedNavigation>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="ui-kit" />
+              <Stack.Screen name="access" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="about" options={{ presentation: 'modal' }} />
+            </Stack>
+          </ThemedNavigation>
+        </ThemeProvider>
+      </QueryProvider>
+    </RepositoryProvider>
   );
 }

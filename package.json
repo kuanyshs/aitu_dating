@@ -20,7 +20,11 @@
     "e2e:full": "pnpm build:web && playwright test"
   },
   "dependencies": {
+    "@date-fns/tz": "^1.5.0",
     "@expo/metro-runtime": "~57.0.16",
+    "@shopify/flash-list": "2.0.2",
+    "@tanstack/react-query": "^5.104.0",
+    "date-fns": "^4.4.0",
     "expo": "~57.0.25",
     "expo-constants": "~57.0.19",
     "expo-linking": "~57.0.11",
@@ -34,7 +38,8 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.2",
     "react-native-svg": "15.15.4",
-    "react-native-web": "~0.21.3"
+    "react-native-web": "~0.21.3",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",

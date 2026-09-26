@@ -4,12 +4,80 @@ export const strings = {
   app: {
     name: 'aitu dating',
   },
+  time: {
+    now: 'сейчас',
+    minutes: 'мин',
+    hours: 'ч',
+    days: 'д',
+  },
   tabs: {
     index: 'Главная',
     search: 'Поиск',
     create: 'Создать',
     activity: 'Активность',
     profile: 'Профиль',
+  },
+  home: {
+    brand: 'aitu dating',
+    descriptorGuest: 'preview сообщества',
+    descriptorMember: 'verified conversations',
+    join: 'Вступить',
+    about: 'О продукте',
+    filtersLabel: 'Фильтры ленты',
+    cityLabel: 'Город',
+    tabs: {
+      for_you: 'Для тебя',
+      popular: 'Популярное',
+      city: 'В городе',
+      plans: 'Планы',
+      following: 'Подписки',
+    },
+  },
+  feed: {
+    emptyTitle: 'Здесь пока тихо',
+    emptyCity: 'В этом городе пока нет публикаций. Посмотрите, о чём говорят в других городах.',
+    emptyDefault: 'Публикаций по этому фильтру пока нет.',
+    emptyAction: 'Показать ленту «Для тебя»',
+    errorTitle: 'Не удалось загрузить ленту',
+    errorNetwork: 'Проверьте подключение и попробуйте ещё раз.',
+    errorDefault: 'Что-то пошло не так. Попробуйте ещё раз.',
+    retry: 'Повторить',
+    loadingMore: 'Загружаем ещё',
+    endOfFeed: 'Вы всё посмотрели',
+  },
+  post: {
+    type: {
+      post: 'Пост',
+      question: 'Вопрос',
+      quote: 'Цитата',
+      plan: 'План встречи',
+    },
+    showMore: 'Показать полностью',
+    verified: 'verified',
+    media: 'Изображение к публикации',
+    authorSafe: (gender: string, age: number) => `${gender}, ${age}`,
+    actions: {
+      comment: (n: number) => `Комментарии: ${n}`,
+      reaction: (n: number) => `Нравится: ${n}`,
+      repost: (n: number) => `Репосты: ${n}`,
+      quote: 'Цитировать',
+    },
+  },
+  plan: {
+    minutes: (n: number) => `${n} мин`,
+    publicPlace: 'Публичное место',
+    matched: 'Уже есть пара',
+  },
+  stub: {
+    back: 'Назад',
+    access: {
+      title: 'Вступление',
+      text: 'Здесь появится вход через Aitu Passport, выбор membership и анкета.',
+    },
+    about: {
+      title: 'О продукте',
+      text: 'Aitu Dating — закрытое verified-сообщество, где знакомство начинается с разговора, вопроса или безопасного плана встречи, а не со свайпа.',
+    },
   },
   placeholder: {
     home: {
