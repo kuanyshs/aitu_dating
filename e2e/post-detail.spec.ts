@@ -79,4 +79,72 @@ test.describe('post screen', () => {
     await page.getByTestId('post-unavailable-back').click();
     await expect(page.getByTestId('screen-home')).toBeVisible();
   });
+
+  test('a member likes a reply, it persists and lifts it in «Популярные»', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'light', 'layout-independent rule');
+    await joinAsMadina(page);
+    await page.goto('/post/p01');
+    const like = page.getByTestId('comment-c-p01-4').getByTestId('comment-like').first();
+    await expect(like).toHaveAttribute('aria-pressed', 'false');
+    await like.click();
+    await expect(like).toHaveAttribute('aria-pressed', 'true');
+    await expect(like).toContainText('1');
+
+    // The heart is optimistic; let the mock backend (300–600 ms) store the like first.
+    await page.waitForTimeout(1000);
+    await page.reload();
+    const liked = page.getByTestId('comment-c-p01-4').getByTestId('comment-like').first();
+    await expect(liked).toHaveAttribute('aria-pressed', 'true');
+    const y = async (id: string) => (await page.getByTestId(id).boundingBox())?.y ?? Infinity;
+    await expect(page.getByTestId('comment-c-p01-12')).toBeVisible();
+    expect(await y('comment-c-p01-4')).toBeLessThan(await y('comment-c-p01-12'));
+  });
+
+  test('a like on the post screen shows in the feed', async ({ page }) => {
+    test.skip(test.info().project.name !== 'light', 'layout-independent rule');
+    await joinAsMadina(page);
+    await page.getByTestId('post-open').first().click();
+    const like = page.getByTestId('screen-post').getByTestId('post-like');
+    await expect(like).toHaveAttribute('aria-pressed', 'false');
+    await like.click();
+    await expect(like).toHaveAttribute('aria-pressed', 'true');
+    await page.getByTestId('post-back').click();
+    await expect(page.getByTestId('post-like').first()).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('a like that fails offline is rolled back with a message', async ({ page }) => {
+    test.skip(test.info().project.name !== 'light', 'layout-independent rule');
+    await joinAsMadina(page);
+    await page.getByTestId('post-open').first().click();
+    await expect(page.getByTestId('post-text')).toBeVisible();
+    await page.getByTestId('post-back').click();
+
+    await page.getByTestId('home-menu').click();
+    await page.getByTestId('menu-settings').click();
+    await page.getByTestId('demo-offline').click();
+    await page.getByTestId('settings-close').click();
+
+    await page.getByTestId('post-open').first().click();
+    const like = page.getByTestId('screen-post').getByTestId('post-like');
+    await like.click();
+    await expect(page.getByTestId('toast')).toContainText('Не удалось');
+    await expect(like).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('guests and expired members cannot like the post', async ({ page }) => {
+    test.skip(test.info().project.name !== 'light', 'layout-independent rule');
+    await page.goto('/post/p01');
+    await page.getByTestId('screen-post').getByTestId('post-like').click();
+    await expect(page.getByTestId('access-passport')).toBeVisible();
+
+    await joinAsMadina(page);
+    await openDemoPanel(page);
+    await page.getByTestId('demo-expire').click();
+    await expect(page.getByTestId('demo-restore')).toBeVisible();
+    await page.goto('/post/p01');
+    await page.getByTestId('screen-post').getByTestId('post-like').click();
+    await expect(page.getByTestId('renew-choose')).toBeVisible();
+  });
 });

@@ -35,14 +35,14 @@ export function useSocialGate() {
 export function usePostActions() {
   const router = useRouter();
   const toast = useToast((s) => s.show);
-  const setReaction = useSetReaction();
+  const { mutate: likePost } = useSetReaction();
   const { allow } = useSocialGate();
 
   const onAction = useCallback(
     (action: PostAction, post: PostView) => {
       if (!allow()) return;
       if (action !== 'reaction') return toast(strings.post.comingSoon);
-      setReaction.mutate(
+      likePost(
         { postId: post.id, active: !post.reactedByMe },
         {
           onError: (error) =>
@@ -52,7 +52,7 @@ export function usePostActions() {
         },
       );
     },
-    [allow, router, setReaction, toast],
+    [allow, likePost, router, toast],
   );
 
   const onOpen = useCallback(

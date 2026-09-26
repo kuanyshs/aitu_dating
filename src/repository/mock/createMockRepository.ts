@@ -3,6 +3,7 @@ import {
   AccessFlowState,
   CommentPage,
   CommentQuery,
+  CommentReactionState,
   CommentView,
   CompleteOnboardingInput,
   ConfirmPaymentInput,
@@ -24,6 +25,7 @@ import {
   RenewMembershipInput,
   RepositoryError,
   Session,
+  SetCommentReactionInput,
   SetReactionInput,
   UpdateSettingsInput,
   UserSettings,
@@ -967,6 +969,43 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           postId,
           reactions: reactionsOf(postId).length,
           reactedByMe: reactionsOf(postId).some(mine),
+        });
+      }),
+
+    setCommentReaction: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const { commentId, active } = parseOrFail(SetCommentReactionInput, input, requestId);
+        const comment = allComments().find((c) => c.id === commentId);
+        const post = comment ? postsById.get(comment.postId) : undefined;
+        const author = comment ? member(comment.authorId) : undefined;
+        if (
+          !comment ||
+          comment.deleted ||
+          !post ||
+          !isVisible(post) ||
+          !author ||
+          isRestricted(author)
+        ) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Comment not found.' });
+        }
+        const mine = (r: { userId: string; commentId: string }) =>
+          r.userId === me.id && r.commentId === commentId;
+        const has = commentReactionsOf(commentId).some(mine);
+        // Setting the same value twice is a no-op, so a retried request is safe.
+        if (active !== has) {
+          const others = state.commentReactions.filter((r) => !mine(r));
+          await saveState({
+            ...state,
+            commentReactions: active
+              ? [...others, { userId: me.id, commentId, createdAt: clock.now().toISOString() }]
+              : others,
+          });
+        }
+        return CommentReactionState.parse({
+          commentId,
+          reactions: commentReactionsOf(commentId).length,
+          reactedByMe: commentReactionsOf(commentId).some(mine),
         });
       }),
 

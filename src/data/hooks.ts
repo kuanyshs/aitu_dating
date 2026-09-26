@@ -4,12 +4,15 @@ import {
   useQuery,
   useQueryClient,
   type InfiniteData,
+  type QueryClient,
 } from '@tanstack/react-query';
 
 import type { City } from '@/catalogs';
 import type {
   AccessFlowState,
+  CommentPage,
   CommentSort,
+  CommentView,
   FeedTab,
   MembershipSelection,
   PartialAnswers,
@@ -231,33 +234,125 @@ export function useRenewMembership() {
 
 type FeedData = InfiniteData<{ items: PostView[] }>;
 
-/** Like / unlike with the new count written into every cached feed page. */
+type CommentsData = InfiniteData<CommentPage>;
+type PostPatch = Pick<PostView, 'reactions' | 'reactedByMe'>;
+
+/** Writes a post's new like state into every cached feed page and the post itself. */
+function patchPost(client: QueryClient, postId: string, patch: PostPatch) {
+  client.setQueriesData<FeedData>({ queryKey: ['feed'] }, (data) =>
+    data
+      ? {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            items: page.items.map((post) => (post.id === postId ? { ...post, ...patch } : post)),
+          })),
+        }
+      : data,
+  );
+  client.setQueryData<PostView>(queryKeys.post(postId), (post) =>
+    post ? { ...post, ...patch } : post,
+  );
+}
+
+function findPost(client: QueryClient, postId: string): PostView | undefined {
+  const cached = client.getQueryData<PostView>(queryKeys.post(postId));
+  if (cached) return cached;
+  for (const [, data] of client.getQueriesData<FeedData>({ queryKey: ['feed'] })) {
+    const found = data?.pages.flatMap((p) => p.items).find((p) => p.id === postId);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/** Like / unlike a post: shown at once everywhere, rolled back if the server refuses. */
 export function useSetReaction() {
   const repository = useRepository();
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: { postId: string; active: boolean }) =>
       repository.setReaction({ ...input, reaction: 'like' }),
-    onSuccess: (result) => {
-      client.setQueriesData<FeedData>({ queryKey: ['feed'] }, (data) =>
+    onMutate: async ({ postId, active }) => {
+      await client.cancelQueries({ queryKey: queryKeys.post(postId) });
+      const before = findPost(client, postId);
+      if (before && before.reactedByMe !== active) {
+        patchPost(client, postId, {
+          reactedByMe: active,
+          reactions: Math.max(0, before.reactions + (active ? 1 : -1)),
+        });
+      }
+      return { before };
+    },
+    onError: (_error, { postId }, context) => {
+      if (context?.before) {
+        const { reactions, reactedByMe } = context.before;
+        patchPost(client, postId, { reactions, reactedByMe });
+      }
+    },
+    onSuccess: (result) =>
+      patchPost(client, result.postId, {
+        reactions: result.reactions,
+        reactedByMe: result.reactedByMe,
+      }),
+  });
+}
+
+type CommentPatch = Pick<CommentView, 'reactions' | 'reactedByMe'>;
+
+function patchComment(
+  data: CommentsData,
+  commentId: string,
+  patch: (c: CommentView) => CommentPatch,
+) {
+  const apply = (c: CommentView) => (c.id === commentId ? { ...c, ...patch(c) } : c);
+  return {
+    ...data,
+    pages: data.pages.map((page) => ({
+      ...page,
+      items: page.items.map((t) => ({ comment: apply(t.comment), replies: t.replies.map(apply) })),
+    })),
+  };
+}
+
+/**
+ * Like / unlike a comment on a post screen. The heart changes at once in every sort; the
+ * «Популярные» order is refreshed on the next load, so rows never jump under a finger.
+ */
+export function useSetCommentReaction(postId: string) {
+  const repository = useRepository();
+  const client = useQueryClient();
+  const key = ['comments', postId];
+  return useMutation({
+    mutationFn: (input: { commentId: string; active: boolean }) =>
+      repository.setCommentReaction(input),
+    onMutate: async ({ commentId, active }) => {
+      await client.cancelQueries({ queryKey: key });
+      const snapshot = client.getQueriesData<CommentsData>({ queryKey: key });
+      client.setQueriesData<CommentsData>({ queryKey: key }, (data) =>
         data
-          ? {
-              ...data,
-              pages: data.pages.map((page) => ({
-                ...page,
-                items: page.items.map((post) =>
-                  post.id === result.postId
-                    ? { ...post, reactions: result.reactions, reactedByMe: result.reactedByMe }
-                    : post,
-                ),
-              })),
-            }
+          ? patchComment(data, commentId, (c) =>
+              c.reactedByMe === active
+                ? c
+                : { reactedByMe: active, reactions: Math.max(0, c.reactions + (active ? 1 : -1)) },
+            )
           : data,
       );
-      client.setQueryData<PostView>(queryKeys.post(result.postId), (post) =>
-        post ? { ...post, reactions: result.reactions, reactedByMe: result.reactedByMe } : post,
+      return { snapshot };
+    },
+    onError: (_error, _input, context) => {
+      for (const [queryKey, data] of context?.snapshot ?? []) client.setQueryData(queryKey, data);
+    },
+    onSuccess: (result) => {
+      client.setQueriesData<CommentsData>({ queryKey: key }, (data) =>
+        data
+          ? patchComment(data, result.commentId, () => ({
+              reactions: result.reactions,
+              reactedByMe: result.reactedByMe,
+            }))
+          : data,
       );
     },
+    onSettled: () => client.invalidateQueries({ queryKey: key, refetchType: 'none' }),
   });
 }
 

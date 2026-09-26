@@ -57,3 +57,14 @@ export type CreateCommentInput = z.infer<typeof CreateCommentInput>;
 
 export const CommentRef = z.strictObject({ commentId: Id });
 export type CommentRef = z.infer<typeof CommentRef>;
+
+/** Like or unlike a Комментарий or an Ответ; setting the same value again is a no-op. */
+export const SetCommentReactionInput = z.strictObject({ commentId: Id, active: z.boolean() });
+export type SetCommentReactionInput = z.infer<typeof SetCommentReactionInput>;
+
+export const CommentReactionState = z.strictObject({
+  commentId: Id,
+  reactions: z.number().int().min(0),
+  reactedByMe: z.boolean(),
+});
+export type CommentReactionState = z.infer<typeof CommentReactionState>;

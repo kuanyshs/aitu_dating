@@ -4,8 +4,13 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { isRepositoryError, type CommentSort, type CommentThread } from '@/contracts';
-import { usePost, usePostComments } from '@/data/hooks';
+import {
+  isRepositoryError,
+  type CommentSort,
+  type CommentThread,
+  type CommentView,
+} from '@/contracts';
+import { usePost, usePostComments, useSetCommentReaction } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import type { CommentAction } from '@/features/post/CommentRow';
 import { CommentThreadView } from '@/features/post/CommentThreadView';
@@ -52,12 +57,23 @@ export default function PostScreen() {
     [router],
   );
 
-  // Liking replies and answering arrive with their own tickets; the gate already works.
+  const { mutate: likeComment } = useSetCommentReaction(postId);
+  // Answering arrives with its own ticket; the gate for guests and expired members works.
   const onCommentAction = useCallback(
-    (_action: CommentAction) => {
-      if (allow()) toast(strings.post.comingSoon);
+    (action: CommentAction, comment: CommentView) => {
+      if (!allow()) return;
+      if (action === 'reply') return toast(strings.post.comingSoon);
+      likeComment(
+        { commentId: comment.id, active: !comment.reactedByMe },
+        {
+          onError: (error) =>
+            isRepositoryError(error) && error.code === 'MEMBERSHIP_EXPIRED'
+              ? router.push('/renew')
+              : toast(strings.post.reactionFailed),
+        },
+      );
     },
-    [allow, toast],
+    [allow, likeComment, router, toast],
   );
 
   const renderItem = useCallback(

@@ -20,8 +20,10 @@ import type {
   CommentPage,
   CommentQuery,
   CommentRef,
+  CommentReactionState,
   CommentView,
   CreateCommentInput,
+  SetCommentReactionInput,
 } from './comment';
 import type { FeedPage, FeedQuery } from './feed';
 import type { RenewMembershipInput } from './membership';
@@ -121,6 +123,7 @@ export interface AituRepository {
   /** Soft delete: «Комментарий удалён», replies stay. */
   deleteComment(input: CommentRef): Promise<CommentView>;
   setReaction(input: SetReactionInput): Promise<ReactionState>;
+  setCommentReaction(input: SetCommentReactionInput): Promise<CommentReactionState>;
   setRepost(input: SetRepostInput): Promise<RepostState>;
 
   // People.

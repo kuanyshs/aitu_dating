@@ -18,7 +18,15 @@ import {
   MessageView,
   SendMessageInput,
 } from './chat';
-import { CommentPage, CommentQuery, CommentRef, CommentView, CreateCommentInput } from './comment';
+import {
+  CommentPage,
+  CommentQuery,
+  CommentReactionState,
+  CommentRef,
+  CommentView,
+  CreateCommentInput,
+  SetCommentReactionInput,
+} from './comment';
 import { Id } from './common';
 import { FeedPage, FeedQuery } from './feed';
 import { RenewMembershipInput } from './membership';
@@ -97,6 +105,7 @@ export const repositoryContract = {
   createComment: { input: CreateCommentInput, output: CommentView },
   deleteComment: { input: CommentRef, output: CommentView },
   setReaction: { input: SetReactionInput, output: ReactionState },
+  setCommentReaction: { input: SetCommentReactionInput, output: CommentReactionState },
   setRepost: { input: SetRepostInput, output: RepostState },
 
   getProfile: { input: MemberRef, output: ProfileView },

@@ -113,6 +113,8 @@ test.describe('active member likes', () => {
     await expect(like).toHaveAttribute('aria-pressed', 'false');
     await like.click();
     await expect(like).toHaveAttribute('aria-pressed', 'true');
+    // The heart is optimistic; let the mock backend (300–600 ms) store the like first.
+    await page.waitForTimeout(1000);
     await page.reload();
     await expect(page.getByTestId('post-like').first()).toHaveAttribute('aria-pressed', 'true');
   });
