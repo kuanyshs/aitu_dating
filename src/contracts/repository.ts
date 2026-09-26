@@ -5,6 +5,12 @@ import type {
   PassportCandidate,
 } from './access';
 import type { FeedPage, FeedQuery } from './feed';
+import type {
+  CompleteOnboardingInput,
+  MyProfile,
+  ProfileStepInput,
+  SaveAnswerInput,
+} from './onboarding';
 import type { Session } from './session';
 
 /**
@@ -26,4 +32,12 @@ export interface AituRepository {
   selectMembership(input: MembershipSelection): Promise<AccessFlowState>;
   /** Mock checkout; a repeated call with the same key returns the same receipt. */
   confirmPayment(input: ConfirmPaymentInput): Promise<AccessFlowState>;
+
+  // Onboarding. Field errors use `profile.<field>` and `answers.<question>` keys so the
+  // client can send the person to the exact step and field.
+  saveProfileStep(input: ProfileStepInput): Promise<AccessFlowState>;
+  saveAnswer(input: SaveAnswerInput): Promise<AccessFlowState>;
+  /** Publishes the Карточка together with the last answer, all or nothing. */
+  completeOnboarding(input: CompleteOnboardingInput): Promise<MyProfile>;
+  getMyProfile(): Promise<MyProfile>;
 }

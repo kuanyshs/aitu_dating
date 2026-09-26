@@ -1,7 +1,13 @@
-import { membershipOffers } from '@/catalogs';
+import type { z } from 'zod';
+
+import { membershipOffers, questionKeys } from '@/catalogs';
 import {
   CLUB_RULES_VERSION,
   MembershipSelection,
+  PartialAnswers,
+  ProfileStepInput,
+  QuestionnaireAnswers,
+  SaveAnswerInput,
   type AccessFlowState,
   type AccessFlowStep,
   type ApiError,
@@ -125,5 +131,82 @@ export function toFlowState(
     ...(flow.rulesAcceptedVersion ? { rulesAcceptedVersion: flow.rulesAcceptedVersion } : {}),
     ...(flow.membership ? { membership: flow.membership } : {}),
     ...(flow.payment ? { payment: flow.payment } : {}),
+    ...(flow.profile ? { profile: flow.profile } : {}),
+    ...(flow.answers ? { answers: flow.answers } : {}),
   };
+}
+
+/** Zod issues → `prefix.field` keys the client maps to a step and a field. */
+function fieldErrorsOf(error: z.ZodError, prefix: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const field = String(issue.path[0] ?? 'form');
+    result[`${prefix}.${field}`] ??= issue.message;
+  }
+  return result;
+}
+
+function onboardingOpen(flow: AccessFlowRecord | null): flow is AccessFlowRecord {
+  return !!flow && (flow.step === 'profile' || flow.step === 'questionnaire');
+}
+
+export function saveProfileStep(
+  flow: AccessFlowRecord | null,
+  input: unknown,
+): Outcome<AccessFlowRecord> {
+  if (!onboardingOpen(flow)) return conflict('Confirm membership before filling the profile.');
+  const parsed = ProfileStepInput.safeParse(input);
+  if (!parsed.success) {
+    return invalid('Check the profile fields.', fieldErrorsOf(parsed.error, 'profile'));
+  }
+  return ok({ ...flow, step: 'questionnaire', profile: parsed.data });
+}
+
+export function saveAnswer(
+  flow: AccessFlowRecord | null,
+  input: unknown,
+): Outcome<AccessFlowRecord> {
+  if (flow?.step !== 'questionnaire') return conflict('Fill the profile step first.');
+  const parsed = SaveAnswerInput.safeParse(input);
+  if (!parsed.success) return invalid('Unknown question.', { question: 'unknown' });
+  const { question, answer } = parsed.data;
+  const answers = PartialAnswers.safeParse({ ...flow.answers, [question]: answer });
+  if (!answers.success) return invalid('Unknown answer.', { [`answers.${question}`]: 'unknown' });
+  return ok({ ...flow, answers: answers.data });
+}
+
+export type OnboardingResult = {
+  profile: ProfileStepInput;
+  answers: QuestionnaireAnswers;
+};
+
+/**
+ * Validates the whole card at once, with the final answers merged in. Nothing is
+ * written unless everything is valid, so publication is atomic with the last answer.
+ */
+export function validateOnboarding(
+  flow: AccessFlowRecord | null,
+  submitted: unknown,
+): Outcome<OnboardingResult> {
+  if (flow?.step !== 'questionnaire') return conflict('Fill the profile step first.');
+  const profile = ProfileStepInput.safeParse(flow.profile);
+  if (!profile.success) {
+    return invalid('Check the profile fields.', fieldErrorsOf(profile.error, 'profile'));
+  }
+  const merged = { ...flow.answers, ...(submitted as object) };
+  const errors: Record<string, string> = {};
+  for (const key of questionKeys) {
+    if (!(key in merged)) errors[`answers.${key}`] = 'required';
+  }
+  const answers = QuestionnaireAnswers.safeParse(merged);
+  if (!answers.success) {
+    // A missing answer stays `required`; other issues keep the schema's message.
+    for (const [key, message] of Object.entries(fieldErrorsOf(answers.error, 'answers'))) {
+      errors[key] ??= message;
+    }
+  }
+  if (Object.keys(errors).length > 0 || !answers.success) {
+    return invalid('Answer every question.', errors);
+  }
+  return ok({ profile: profile.data, answers: answers.data });
 }

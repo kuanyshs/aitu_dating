@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { membershipTiers } from '@/catalogs';
 
 import { Id, IsoDateTime } from './common';
+import { PartialAnswers, ProfileStepInput } from './onboarding';
 import { CityKey, GenderKey } from './people';
 
 /** A mock Aitu Passport identity the demo user can enter as. Shown only to its owner. */
@@ -55,6 +56,9 @@ export const AccessFlowState = z.strictObject({
   rulesAcceptedVersion: z.string().optional(),
   membership: MembershipSelection.optional(),
   payment: PaymentReceipt.optional(),
+  /** Onboarding draft: survives closing the flow and restarting the app. */
+  profile: ProfileStepInput.optional(),
+  answers: PartialAnswers.optional(),
 });
 export type AccessFlowState = z.infer<typeof AccessFlowState>;
 

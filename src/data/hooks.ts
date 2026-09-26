@@ -1,7 +1,14 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { City } from '@/catalogs';
-import type { AccessFlowState, FeedTab, MembershipSelection } from '@/contracts';
+import type {
+  AccessFlowState,
+  FeedTab,
+  MembershipSelection,
+  PartialAnswers,
+  ProfileStepInput,
+  SaveAnswerInput,
+} from '@/contracts';
 import type { DemoFlags } from '@/repository/mock';
 
 import { useDemoControls, useRepository } from './RepositoryProvider';
@@ -12,6 +19,7 @@ export const queryKeys = {
   demoFlags: ['demo', 'flags'] as const,
   accessFlow: ['access', 'flow'] as const,
   candidates: ['access', 'candidates'] as const,
+  myProfile: ['me', 'profile'] as const,
 };
 
 export function useSession() {
@@ -120,4 +128,37 @@ export function useSelectMembership() {
 export function useConfirmPayment() {
   const repository = useRepository();
   return useFlowMutation((idempotencyKey: string) => repository.confirmPayment({ idempotencyKey }));
+}
+
+export function useSaveProfileStep() {
+  const repository = useRepository();
+  return useFlowMutation((input: ProfileStepInput) => repository.saveProfileStep(input));
+}
+
+export function useSaveAnswer() {
+  const repository = useRepository();
+  return useFlowMutation((input: SaveAnswerInput) => repository.saveAnswer(input));
+}
+
+/** Publishes the card; afterwards every cached response belongs to the guest and is reset. */
+export function useCompleteOnboarding() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { answers: PartialAnswers; idempotencyKey: string }) =>
+      repository.completeOnboarding(input),
+    onSuccess: async (me) => {
+      await client.resetQueries();
+      client.setQueryData(queryKeys.myProfile, me);
+    },
+  });
+}
+
+export function useMyProfile(enabled = true) {
+  const repository = useRepository();
+  return useQuery({
+    queryKey: queryKeys.myProfile,
+    queryFn: () => repository.getMyProfile(),
+    enabled,
+  });
 }

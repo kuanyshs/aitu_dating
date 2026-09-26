@@ -1,10 +1,10 @@
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
-import { useSession } from '@/data/hooks';
+import { useMyProfile, useSession } from '@/data/hooks';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { TextButton } from '@/ui/components/buttons';
-import { PlaceholderScreen } from '@/ui/components/PlaceholderScreen';
+import { ProfileCardView } from '@/ui/components/ProfileCardView';
 import { Screen } from '@/ui/components/Screen';
 import { strings } from '@/ui/strings';
 import { spacing } from '@/ui/theme/tokens';
@@ -29,8 +29,9 @@ function ProfileLinks() {
 
 export default function ProfileScreen() {
   const session = useSession();
-  const { title, text } = strings.placeholder.profile;
-  if (session.data?.accessState !== 'ACTIVE_MEMBER') {
+  const isMember = session.data?.accessState === 'ACTIVE_MEMBER';
+  const me = useMyProfile(isMember);
+  if (!isMember) {
     // Guests keep Settings: appearance and the demo panel must stay reachable.
     return (
       <Screen testID="screen-profile">
@@ -41,8 +42,9 @@ export default function ProfileScreen() {
     );
   }
   return (
-    <PlaceholderScreen title={title} text={text} testID="screen-profile">
+    <Screen testID="screen-profile">
+      {me.data ? <ProfileCardView me={me.data} /> : null}
       <ProfileLinks />
-    </PlaceholderScreen>
+    </Screen>
   );
 }

@@ -1,6 +1,14 @@
 import { z } from 'zod';
 
-import { AccessFlowStep, MembershipSelection, PaymentReceipt } from '@/contracts';
+import {
+  AccessFlowStep,
+  MembershipSelection,
+  PartialAnswers,
+  PaymentReceipt,
+  ProfileStepInput,
+} from '@/contracts';
+
+import { MemberRecord } from './records';
 
 /**
  * Mock-only switches for demos and QA. They live next to the mock backend, not in the
@@ -29,6 +37,8 @@ export const AccessFlowRecord = z.strictObject({
   rulesAcceptedVersion: z.string().optional(),
   membership: MembershipSelection.optional(),
   payment: PaymentReceipt.optional(),
+  profile: ProfileStepInput.optional(),
+  answers: PartialAnswers.optional(),
 });
 export type AccessFlowRecord = z.infer<typeof AccessFlowRecord>;
 
@@ -38,20 +48,28 @@ export const MockState = z.strictObject({
   accessFlow: AccessFlowRecord.nullable(),
   /** Completed mock checkouts by idempotency key, so a retried request is not charged twice. */
   payments: z.record(z.string(), PaymentReceipt),
+  /** Members who joined during the demo (the seed community is read-only). */
+  members: z.array(MemberRecord),
+  /** Completed onboardings by idempotency key → member id, so a retry publishes once. */
+  onboardings: z.record(z.string(), z.string()),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 2;
+export const MOCK_STATE_VERSION = 3;
 
-/** v1 held only demo flags; v2 adds the access flow and mock payments. */
 export const mockStateMigrations = [
+  // v1 held only demo flags; v2 adds the access flow and mock payments.
   (v1: unknown) => ({ ...(v1 as object), accessFlow: null, payments: {} }),
+  // v3 adds members created by onboarding.
+  (v2: unknown) => ({ ...(v2 as object), members: [], onboardings: {} }),
 ];
 
 export const defaultMockState = (): MockState => ({
   demoFlags: defaultDemoFlags(),
   accessFlow: null,
   payments: {},
+  members: [],
+  onboardings: {},
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';

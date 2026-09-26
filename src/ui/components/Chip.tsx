@@ -8,16 +8,21 @@ type Props = {
   selected: boolean;
   onPress: () => void;
   testID?: string;
+  /** `checkbox` for multi-select groups; `radio` (default) for single choice. */
+  role?: 'radio' | 'checkbox';
+  disabled?: boolean;
 };
 
-/** Pill filter; selection is shown by fill and weight, and exposed as a radio state. */
-export function Chip({ label, selected, onPress, testID }: Props) {
+/** Pill filter or tag; selection is shown by fill and weight, and exposed as a checked state. */
+export function Chip({ label, selected, onPress, testID, role = 'radio', disabled }: Props) {
   const styles = useStyles();
   return (
     <Pressable
-      role="radio"
+      role={role}
       aria-checked={selected}
       aria-label={label}
+      aria-disabled={disabled}
+      disabled={disabled}
       onPress={onPress}
       testID={testID}
       hitSlop={{ top: 6, bottom: 6 }}
@@ -25,6 +30,7 @@ export function Chip({ label, selected, onPress, testID }: Props) {
         styles.chip,
         selected ? styles.selected : styles.idle,
         pressed && !selected && styles.pressed,
+        disabled && styles.disabled,
       ]}
     >
       <Text style={[styles.label, selected ? styles.labelSelected : styles.labelIdle]}>
@@ -46,6 +52,7 @@ const useStyles = createStyles((colors) => ({
   idle: { backgroundColor: colors.bg, borderColor: colors.line },
   selected: { backgroundColor: colors.primary, borderColor: colors.primary },
   pressed: { backgroundColor: colors.surfacePressed },
+  disabled: { opacity: 0.45 },
   label: { ...typography.body },
   labelIdle: { color: colors.text },
   labelSelected: { color: colors.onPrimary, fontWeight: '600' },

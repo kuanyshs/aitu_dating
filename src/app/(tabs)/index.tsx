@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cities, cityLabels, type City } from '@/catalogs';
 import { isRepositoryError, type FeedTab, type PostView } from '@/contracts';
-import { useDemoFlags, useHomeFeed, useSession } from '@/data/hooks';
+import { useDemoFlags, useHomeFeed, useMyProfile, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { IconAction, PrimaryButton } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
@@ -14,9 +14,10 @@ import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
 import { PostRow, type PostAction } from '@/ui/components/PostRow';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
-import { Info } from '@/ui/icons';
+import { Info, MessageCircle } from '@/ui/icons';
 import { useTabBarInset } from '@/ui/navigation/tabBarInset';
 import { strings } from '@/ui/strings';
+import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
@@ -36,8 +37,13 @@ export default function HomeScreen() {
   const isMember = session.data?.accessState === 'ACTIVE_MEMBER';
   const tabs = isMember ? memberTabs : guestTabs;
 
+  const me = useMyProfile(isMember);
+  const toast = useToast((s) => s.show);
+
   const [tab, setTab] = useState<FeedTab>('for_you');
-  const [city, setCity] = useState<City>('almaty');
+  // «В городе» starts at the member's Passport city (Алматы for guests) until changed.
+  const [chosenCity, setCity] = useState<City | undefined>(undefined);
+  const city: City = chosenCity ?? (isMember ? me.data?.city : undefined) ?? 'almaty';
   const feed = useHomeFeed(tab, city);
   const posts = useMemo(() => feed.data?.pages.flatMap((p) => p.items) ?? [], [feed.data]);
   // Offline keeps showing the last loaded feed under the global banner; any other
@@ -46,10 +52,12 @@ export default function HomeScreen() {
   const showError = feed.isError && (posts.length === 0 || !offline);
 
   const openAccess = useCallback(() => router.push('/access'), [router]);
-  // Guests: every social action leads into the single access flow.
+  // Guests: every social action leads into the single access flow. Members get honest
+  // feedback until reactions, comments and reposts land in their own tickets.
   const onAction = useCallback(
-    (_action: PostAction, _post: PostView) => openAccess(),
-    [openAccess],
+    (_action: PostAction, _post: PostView) =>
+      isMember ? toast(strings.post.comingSoon) : openAccess(),
+    [isMember, openAccess, toast],
   );
 
   const renderItem = useCallback(
@@ -75,7 +83,12 @@ export default function HomeScreen() {
           </AppText>
         </View>
         {isMember ? (
-          <View style={styles.headerSide} />
+          <IconAction
+            icon={MessageCircle}
+            accessibilityLabel={strings.home.messages}
+            onPress={() => router.push('/chats')}
+            testID="home-messages"
+          />
         ) : (
           <PrimaryButton
             label={strings.home.join}
@@ -209,7 +222,6 @@ const useStyles = createStyles((colors) => ({
     gap: spacing.sm,
   },
   brand: { flex: 1, alignItems: 'center' },
-  headerSide: { width: 44 },
   join: { minHeight: 40, paddingHorizontal: spacing.lg },
   chips: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
   divider: { height: 1, backgroundColor: colors.line },

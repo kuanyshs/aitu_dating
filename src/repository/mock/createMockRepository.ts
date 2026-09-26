@@ -1,7 +1,9 @@
 import type { Clock } from '@/clock';
 import {
   AccessFlowState,
+  CompleteOnboardingInput,
   ConfirmPaymentInput,
+  MyProfile,
   FeedPage,
   FeedQuery,
   PassportCandidate,
@@ -24,7 +26,7 @@ import {
   type ResetNotice,
 } from './demo';
 import { selectFeed } from './feed';
-import type { PostRecord, SeedData } from './records';
+import type { MemberRecord, PostRecord, SeedData } from './records';
 import { loadSeed } from './seed';
 import { passportCandidates } from './seed/candidates';
 import { toPostView, type PostCounters, type ShapingContext, type Viewer } from './shaping';
@@ -85,7 +87,11 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     await stateSlot.save(next);
   }
 
-  const membersById = new Map(data.members.map((m) => [m.id, m]));
+  const seedMembersById = new Map(data.members.map((m) => [m.id, m]));
+  /** Seed community plus members who joined during the demo. */
+  function member(id: string): MemberRecord | undefined {
+    return seedMembersById.get(id) ?? state.members.find((m) => m.id === id);
+  }
   const plansById = new Map(data.plans.map((p) => [p.id, p]));
   const postsById = new Map(data.posts.map((p) => [p.id, p]));
 
@@ -138,7 +144,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   }
 
   function isVisible(post: PostRecord): boolean {
-    const author = membersById.get(post.authorId);
+    const author = member(post.authorId);
     return !!author && !author.restricted;
   }
 
@@ -150,6 +156,32 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   async function saveFlow(flow: NonNullable<MockState['accessFlow']>): Promise<AccessFlowState> {
     await saveState({ ...state, accessFlow: flow });
     return AccessFlowState.parse(access.toFlowState(flow, passportCandidates));
+  }
+
+  function toMyProfile(record: MemberRecord): MyProfile {
+    const expired = new Date(record.membership.endsAt) <= clock.now();
+    return MyProfile.parse({
+      id: record.id,
+      name: record.name,
+      age: record.age,
+      gender: record.gender,
+      city: record.city,
+      verified: record.verified,
+      avatar: { kind: 'synthetic', key: record.photoKey },
+      card: record.card,
+      membership: {
+        tier: record.membership.tier,
+        periodMonths: record.membership.periodMonths,
+        status: expired ? 'expired' : 'active',
+        endsAt: record.membership.endsAt,
+      },
+    });
+  }
+
+  function addMonths(iso: string, months: number): string {
+    const date = new Date(iso);
+    date.setUTCMonth(date.getUTCMonth() + months);
+    return date.toISOString();
   }
 
   function viewerOf(current: Session): Viewer {
@@ -183,7 +215,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           });
         }
 
-        const viewerRecord = viewer.userId ? membersById.get(viewer.userId) : undefined;
+        const viewerRecord = viewer.userId ? member(viewer.userId) : undefined;
         const followingIds = new Set(
           isMember
             ? data.follows.filter((f) => f.followerId === viewer.userId).map((f) => f.followingId)
@@ -200,7 +232,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           viewerTopics,
           followingIds,
           counters,
-          authorCity: (post) => membersById.get(post.authorId)?.city,
+          authorCity: (post) => member(post.authorId)?.city,
           plan: (id) => plansById.get(id),
         });
 
@@ -218,7 +250,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
         const ctx: ShapingContext = {
           viewer,
-          member: (id) => membersById.get(id),
+          member: (id) => member(id),
           plan: (id) => plansById.get(id),
           post: (id) => postsById.get(id),
           counters,
@@ -305,6 +337,87 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         },
         1500,
       ),
+
+    saveProfileStep: (input) =>
+      respond('data', (requestId) =>
+        saveFlow(flowResult(requestId, access.saveProfileStep(state.accessFlow, input))),
+      ),
+
+    saveAnswer: (input) =>
+      respond('data', (requestId) =>
+        saveFlow(flowResult(requestId, access.saveAnswer(state.accessFlow, input))),
+      ),
+
+    completeOnboarding: (input) =>
+      respond('data', async (requestId) => {
+        const parsed = CompleteOnboardingInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Answers and an idempotency key are required.',
+            fieldErrors: { idempotencyKey: 'required' },
+          });
+        }
+        const { answers, idempotencyKey } = parsed.data;
+
+        // A retry of a request that already published returns the same card.
+        const publishedId = state.onboardings[idempotencyKey];
+        const published = publishedId ? member(publishedId) : undefined;
+        if (published) return toMyProfile(published);
+
+        const flow = state.accessFlow;
+        const outcome = access.validateOnboarding(flow, answers);
+        if (!outcome.ok) fail(requestId, outcome.error);
+        const candidate = passportCandidates.find((c) => c.id === flow?.candidateId);
+        if (!flow?.membership || !flow.payment || !candidate) {
+          fail(requestId, { code: 'CONFLICT', message: 'Membership is not confirmed.' });
+        }
+
+        const now = clock.now().toISOString();
+        const record: MemberRecord = {
+          id: `me-${candidate.id}`,
+          aituSubjectId: candidate.aituSubjectId,
+          name: candidate.name,
+          gender: candidate.gender,
+          age: candidate.age,
+          city: candidate.city,
+          photoKey: `avatar-${candidate.id}`,
+          verified: true,
+          card: {
+            ...outcome.value.profile,
+            intent: outcome.value.answers.intent,
+            questionnaire: outcome.value.answers,
+            publishedAt: now,
+          },
+          membership: {
+            tier: flow.membership.tier,
+            periodMonths: flow.membership.periodMonths,
+            startsAt: flow.payment.paidAt,
+            endsAt: addMonths(flow.payment.paidAt, flow.membership.periodMonths),
+          },
+          restricted: false,
+        };
+
+        // One write: card, cleared flow and idempotency record land together.
+        await saveState({
+          ...state,
+          accessFlow: null,
+          members: [...state.members.filter((m) => m.id !== record.id), record],
+          onboardings: { ...state.onboardings, [idempotencyKey]: record.id },
+        });
+        session = { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: record.id };
+        await sessionSlot.save(session);
+        return toMyProfile(record);
+      }),
+
+    getMyProfile: () =>
+      respond('local', (requestId) => {
+        const record = session.userId ? member(session.userId) : undefined;
+        if (!record) {
+          fail(requestId, { code: 'UNAUTHENTICATED', message: 'No published card.' });
+        }
+        return toMyProfile(record);
+      }),
 
     async getDemoFlags(): Promise<DemoFlags> {
       await ready;

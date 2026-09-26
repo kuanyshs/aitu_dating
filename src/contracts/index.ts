@@ -2,6 +2,7 @@ export * from './access';
 export * from './common';
 export * from './errors';
 export * from './feed';
+export * from './onboarding';
 export * from './people';
 export * from './post';
 export * from './repository';
