@@ -64,12 +64,20 @@ _Avoid_: intent (unqualified), goal
 A feed entry: a post, a question, a quote of another **Пост**, or the feed face of a **План**.
 
 **Комментарий** (`RootComment`):
-A first-level response to a **Пост**.
+A first-level response to a **Пост**. Only its author can delete it; a deleted **Комментарий** that has **Ответы** stays in the thread as «Комментарий удалён».
 _Avoid_: reply (that is **Ответ**)
 
 **Ответ** (`Reply`):
 A response to a **Комментарий**; the second and last level of a thread.
 _Avoid_: nested comment, sub-reply
+
+**Репост** (`Repost`):
+An **Участник** sharing someone else's **Пост** as it is, without their own text; it can be undone. Nobody reposts their own **Пост**.
+_Avoid_: share, retweet
+
+**Цитата** (`Quote`):
+A new **Пост** with its author's own text that points to another **Пост**.
+_Avoid_: repost with comment
 
 **Упоминание** (`Mention`):
 An `@` reference to a **Участник** inside a **Пост** or **Комментарий**; shown to a **Гость** as «@участник». There are no usernames.
@@ -107,6 +115,7 @@ A **План** whose author accepted an **Отклик**; it gets a contextual c
 - A **Кандидат Passport** becomes a **Участник** by passing rules, **Membership** and the **Анкета**.
 - A **Пост** of plan type is the feed face of exactly one **План**.
 - A **Комментарий** belongs to one **Пост**; an **Ответ** belongs to one **Комментарий**; nothing answers an **Ответ**.
+- A **Репост** adds nothing to the original **Пост** but its count; a **Цитата** is a separate **Пост** of its own.
 - A **План** has many **Отклики** and at most one accepted, which turns it into a **Встреча**.
 - Two **Участники** share at most one **Контекстный чат**; an accepted **Отклик** creates it if it does not exist.
 - A **Блокировка** is between two **Участники**; an **Ограничение** is between moderation and one person.
