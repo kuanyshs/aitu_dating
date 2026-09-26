@@ -9,7 +9,13 @@ import {
   ProfileStepInput,
 } from '@/contracts';
 
-import { MemberRecord, ReactionRecord } from './records';
+import {
+  CommentReactionRecord,
+  CommentRecord,
+  MemberRecord,
+  ReactionRecord,
+  RepostRecord,
+} from './records';
 
 /**
  * Mock-only switches for demos and QA. They live next to the mock backend, not in the
@@ -65,10 +71,17 @@ export const MockState = z.strictObject({
   restrictedSubjects: z.array(z.string()),
   /** Server-side settings per member. */
   settings: z.record(z.string(), UserSettings),
+  /** Comments and replies written during the demo. */
+  comments: z.array(CommentRecord),
+  /** Soft deletions by their authors, on top of the seed. */
+  deletedCommentIds: z.array(z.string()),
+  deletedPostIds: z.array(z.string()),
+  commentReactions: z.array(CommentReactionRecord),
+  reposts: z.array(RepostRecord),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 7;
+export const MOCK_STATE_VERSION = 8;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -83,6 +96,15 @@ export const mockStateMigrations = [
   (v5: unknown) => ({ ...(v5 as object), restrictedSubjects: [] }),
   // v7 adds member settings.
   (v6: unknown) => ({ ...(v6 as object), settings: {} }),
+  // v8 adds what the post screen writes: comments, deletions, comment likes, reposts.
+  (v7: unknown) => ({
+    ...(v7 as object),
+    comments: [],
+    deletedCommentIds: [],
+    deletedPostIds: [],
+    commentReactions: [],
+    reposts: [],
+  }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -97,6 +119,11 @@ export const defaultMockState = (): MockState => ({
   expiredMemberships: {},
   restrictedSubjects: [],
   settings: {},
+  comments: [],
+  deletedCommentIds: [],
+  deletedPostIds: [],
+  commentReactions: [],
+  reposts: [],
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';

@@ -6,19 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cities, cityLabels, type City } from '@/catalogs';
 import { isRepositoryError, type FeedTab, type PostView } from '@/contracts';
-import {
-  useDemoFlags,
-  useHomeFeed,
-  useLogin,
-  useMyProfile,
-  useSession,
-  useSetReaction,
-} from '@/data/hooks';
+import { useDemoFlags, useHomeFeed, useLogin, useMyProfile, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
+import { usePostActions } from '@/features/post/usePostActions';
 import { IconAction, PrimaryButton } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
 import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
-import { PostRow, type PostAction, type PostTarget } from '@/ui/components/PostRow';
+import { PostRow } from '@/ui/components/PostRow';
 import { RenewBanner } from '@/ui/components/RenewBanner';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
@@ -49,7 +43,6 @@ export default function HomeScreen() {
   const canLogin = !!session.data?.canLogin;
   const me = useMyProfile(isMember || isExpired);
   const login = useLogin();
-  const setReaction = useSetReaction();
   const toast = useToast((s) => s.show);
 
   const [tab, setTab] = useState<FeedTab>('for_you');
@@ -64,37 +57,7 @@ export default function HomeScreen() {
   const showError = feed.isError && (posts.length === 0 || !offline);
 
   const openAccess = useCallback(() => router.push('/access'), [router]);
-  // Guests: every social action leads into the single access flow; expired members into
-  // Продление. Members like for real and get honest feedback on what is still to come.
-  const onAction = useCallback(
-    (action: PostAction, post: PostView) => {
-      if (isExpired) return router.push('/renew');
-      if (!isMember) return openAccess();
-      if (action !== 'reaction') return toast(strings.post.comingSoon);
-      setReaction.mutate(
-        { postId: post.id, active: !post.reactedByMe },
-        {
-          onError: (error) =>
-            isRepositoryError(error) && error.code === 'MEMBERSHIP_EXPIRED'
-              ? router.push('/renew')
-              : toast(strings.post.reactionFailed),
-        },
-      );
-    },
-    [isExpired, isMember, openAccess, router, setReaction, toast],
-  );
-
-  const onOpen = useCallback(
-    (target: PostTarget) =>
-      router.push(
-        target.kind === 'post'
-          ? `/post/${target.id}`
-          : target.kind === 'plan'
-            ? `/plan/${target.id}`
-            : `/member/${target.id}`,
-      ),
-    [router],
-  );
+  const { onAction, onOpen } = usePostActions();
 
   const renderItem = useCallback(
     ({ item }: { item: PostView }) => (

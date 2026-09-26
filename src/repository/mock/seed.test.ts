@@ -64,6 +64,33 @@ describe('seed data', () => {
     }
   });
 
+  it('likes comments that exist, once per member, never their own', () => {
+    const commentsById = new Map(seed.comments.map((c) => [c.id, c]));
+    const memberIds = new Set(seed.members.map((m) => m.id));
+    const keys = seed.commentReactions.map((r) => `${r.userId}:${r.commentId}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    for (const r of seed.commentReactions) {
+      const comment = commentsById.get(r.commentId);
+      expect(comment).toBeDefined();
+      expect(memberIds.has(r.userId)).toBe(true);
+      expect(r.userId).not.toBe(comment?.authorId);
+    }
+  });
+
+  it('has deleted comments with and without replies', () => {
+    const deleted = seed.comments.filter((c) => c.deleted);
+    const hasReplies = (id: string) => seed.comments.some((c) => c.parentCommentId === id);
+    expect(deleted.some((c) => !c.parentCommentId && hasReplies(c.id))).toBe(true);
+    expect(deleted.some((c) => !c.parentCommentId && !hasReplies(c.id))).toBe(true);
+    expect(deleted.some((c) => c.parentCommentId)).toBe(true);
+  });
+
+  it('dates every comment and comment like at or before the seed clock', () => {
+    for (const c of [...seed.comments, ...seed.commentReactions]) {
+      expect(c.createdAt <= new Date(SEED_NOW).toISOString()).toBe(true);
+    }
+  });
+
   it('schedules every plan after the seed clock', () => {
     for (const plan of seed.plans) expect(plan.date > SEED_NOW.slice(0, 10)).toBe(true);
   });

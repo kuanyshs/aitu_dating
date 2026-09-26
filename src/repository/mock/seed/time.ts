@@ -13,6 +13,12 @@ export function hoursAfter(iso: string, hours: number): string {
   return new Date(new Date(iso).getTime() + hours * HOUR).toISOString();
 }
 
+/** ISO timestamp at `fraction` (0–1) of the way from `iso` to the seed clock. */
+export function between(iso: string, fraction: number): string {
+  const from = new Date(iso).getTime();
+  return new Date(from + (seedNow - from) * fraction).toISOString();
+}
+
 /** Deterministic PRNG (mulberry32) so generated relations are identical on every run. */
 export function seededRandom(seed: number): () => number {
   let a = seed >>> 0;

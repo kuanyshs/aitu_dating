@@ -4,7 +4,6 @@ import { joinAsMadina } from './helpers';
 
 /** Every surface on the screen map that is not built yet: a named stub with «Назад». */
 const stubs = [
-  { path: '/post/p01', testID: 'screen-post', title: 'Пост' },
   { path: '/member/m01', testID: 'screen-member', title: 'Профиль участника' },
   { path: '/plan/plan1', testID: 'screen-plan', title: 'План встречи' },
   { path: '/chats', testID: 'screen-chats', title: 'Сообщения' },
@@ -37,8 +36,8 @@ test.describe('route stubs', () => {
   test('the feed opens a post and a plan, and «Назад» returns to it', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('post-open').first().click();
-    await expect(page.getByTestId('screen-post')).toBeVisible();
-    await page.getByTestId('screen-post').getByTestId('stub-back').click();
+    await expect(page.getByTestId('post-text')).toBeVisible();
+    await page.getByTestId('post-back').click();
     await expect(page.getByTestId('screen-home')).toBeVisible();
 
     await page.getByTestId('feed-tab-plans').click();

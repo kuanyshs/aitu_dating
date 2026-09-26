@@ -19,6 +19,8 @@ export const CommentView = z.strictObject({
   deleted: z.boolean(),
   /** Present for active members: their own comment can be deleted. */
   mine: z.boolean().optional(),
+  /** Present for active members: whether the viewer has liked this comment. */
+  reactedByMe: z.boolean().optional(),
 });
 export type CommentView = z.infer<typeof CommentView>;
 

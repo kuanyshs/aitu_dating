@@ -196,7 +196,9 @@ describe('feed tabs', () => {
     const posts = await allPages(guestRepository(), { tab: 'for_you' });
     const post = posts.find((p) => p.id === 'p01');
     expect(post?.reactions).toBe(seed.reactions.filter((r) => r.postId === 'p01').length);
-    expect(post?.commentsCount).toBe(seed.comments.filter((c) => c.postId === 'p01').length);
+    expect(post?.commentsCount).toBe(
+      seed.comments.filter((c) => c.postId === 'p01' && !c.deleted).length,
+    );
   });
 });
 

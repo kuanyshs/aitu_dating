@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type {
+  CommentReactionRecord,
   CommentRecord,
   FollowRecord,
   ReactionRecord,
@@ -9,7 +10,7 @@ import type {
 } from '../records';
 import { members } from './members';
 import { postSpecs } from './posts';
-import { hoursAfter, hoursAgo, seededRandom, shuffled } from './time';
+import { between, hoursAfter, hoursAgo, seededRandom, shuffled } from './time';
 
 type Follow = z.infer<typeof FollowRecord>;
 type Reaction = z.infer<typeof ReactionRecord>;
@@ -88,17 +89,24 @@ const replyTexts = [
 
 type ThreadSpec = [postId: string, roots: number, repliesPerRoot: number[]];
 
-// 22 root comments + 33 replies = 55. Replies always answer a root comment.
+// 28 root comments + 27 replies = 55. Replies always answer a root comment. p01 has
+// more than one page of root comments (10 per page) so paging can be seen.
 const threads: ThreadSpec[] = [
-  ['p01', 4, [3, 2, 1, 1]],
+  ['p01', 12, [3, 2, 1, 1]],
   ['p02', 4, [2, 2, 1, 1]],
   ['p04', 3, [2, 1, 1]],
   ['p06', 3, [2, 2, 0]],
-  ['p09', 3, [3, 2, 1]],
+  ['p09', 1, [1]],
   ['p-plan2', 2, [2, 1]],
   ['p12', 2, [1, 1]],
-  ['p13', 1, [1]],
+  ['p13', 1, [0]],
 ];
+
+/**
+ * Soft-deleted by their authors: a root with replies (stays as «Комментарий удалён»),
+ * a root without replies and a reply (both disappear from the thread).
+ */
+const deletedCommentIds = new Set(['c-p01-2', 'c-p06-3', 'c-p02-1-r2']);
 
 export const comments: CommentRecord[] = (() => {
   const random = seededRandom(42);
@@ -116,26 +124,29 @@ export const comments: CommentRecord[] = (() => {
 
     for (let r = 0; r < rootCount; r += 1) {
       const rootId = `c-${postId}-${r + 1}`;
-      const rootAt = hoursAfter(post.createdAt, 1 + r);
+      // Everything happens between the post and the seed clock, so nothing is «in the
+      // future»: roots spread over the first 70% of that time, replies after their root.
+      const rootAt = between(post.createdAt, (0.7 * (r + 1)) / (rootCount + 1));
       result.push({
         id: rootId,
         postId,
         authorId: authors[r % authors.length] as string,
         text: rootTexts[rootIndex % rootTexts.length] as string,
         createdAt: rootAt,
-        deleted: false,
+        deleted: deletedCommentIds.has(rootId),
       });
       rootIndex += 1;
 
       for (let k = 0; k < (repliesPerRoot[r] ?? 0); k += 1) {
+        const replyId = `${rootId}-r${k + 1}`;
         result.push({
-          id: `${rootId}-r${k + 1}`,
+          id: replyId,
           postId,
           authorId: authors[(r + k + 1) % authors.length] as string,
           parentCommentId: rootId,
           text: replyTexts[replyIndex % replyTexts.length] as string,
-          createdAt: hoursAfter(rootAt, 0.5 + k * 0.5),
-          deleted: false,
+          createdAt: between(rootAt, (0.5 * (k + 1)) / ((repliesPerRoot[r] ?? 0) + 1)),
+          deleted: deletedCommentIds.has(replyId),
         });
         replyIndex += 1;
       }
@@ -143,6 +154,32 @@ export const comments: CommentRecord[] = (() => {
   }
   return result;
 })();
+
+// Likes on comments, so «Популярные» and «Новые» order threads differently. Counts are
+// per comment id; likers are other members, picked deterministically.
+const commentLikes: Record<string, number> = {
+  'c-p01-5': 6,
+  'c-p01-9': 4,
+  'c-p01-3': 3,
+  'c-p01-1-r1': 2,
+  'c-p01-11': 1,
+  'c-p02-2': 3,
+  'c-p02-1': 1,
+  'c-p04-3': 2,
+  'c-p06-2': 1,
+};
+
+export const commentReactions: CommentReactionRecord[] = Object.entries(commentLikes).flatMap(
+  ([commentId, count]) => {
+    const comment = comments.find((c) => c.id === commentId);
+    if (!comment) throw new Error(`Unknown comment ${commentId}`);
+    return pickUsers(commentId, comment.authorId, count, 3).map((userId, i) => ({
+      userId,
+      commentId,
+      createdAt: between(comment.createdAt, (0.9 * (i + 1)) / (count + 1)),
+    }));
+  },
+);
 
 export const reports: Report[] = [
   {

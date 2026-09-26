@@ -43,16 +43,18 @@ type Props = {
   clock: Clock;
   onAction: (action: PostAction, post: PostView) => void;
   onOpen: (target: PostTarget) => void;
+  /** The post screen shows the whole text and does not open itself again. */
+  full?: boolean;
 };
 
 const COLLAPSE_AFTER = 320;
 const PREVIEW_LENGTH = 260;
 
 /** A feed entry in the Threads rhythm: avatar column, then author, type, text and actions. */
-export const PostRow = memo(function PostRow({ post, clock, onAction, onOpen }: Props) {
+export const PostRow = memo(function PostRow({ post, clock, onAction, onOpen, full }: Props) {
   const styles = useStyles();
   const [expanded, setExpanded] = useState(false);
-  const collapsible = post.text.length > COLLAPSE_AFTER;
+  const collapsible = !full && post.text.length > COLLAPSE_AFTER;
   const text =
     collapsible && !expanded ? `${post.text.slice(0, PREVIEW_LENGTH).trimEnd()}…` : post.text;
 
@@ -80,14 +82,18 @@ export const PostRow = memo(function PostRow({ post, clock, onAction, onOpen }: 
             {strings.post.type[post.type]}
           </AppText>
         ) : null}
-        <Pressable
-          role="link"
-          aria-label={strings.post.open}
-          onPress={() => onOpen({ kind: 'post', id: post.id })}
-          testID="post-open"
-        >
-          <AppText>{text}</AppText>
-        </Pressable>
+        {full ? (
+          <AppText testID="post-text">{text}</AppText>
+        ) : (
+          <Pressable
+            role="link"
+            aria-label={strings.post.open}
+            onPress={() => onOpen({ kind: 'post', id: post.id })}
+            testID="post-open"
+          >
+            <AppText>{text}</AppText>
+          </Pressable>
+        )}
         {collapsible && !expanded ? (
           <Pressable role="button" onPress={() => setExpanded(true)} hitSlop={8}>
             <AppText variant="bodyStrong">{strings.post.showMore}</AppText>
@@ -108,10 +114,16 @@ export const PostRow = memo(function PostRow({ post, clock, onAction, onOpen }: 
           </Pressable>
         ) : null}
         {post.quoted ? (
-          <View style={styles.quoted} testID="quoted-post">
+          <Pressable
+            role="link"
+            aria-label={strings.post.open}
+            onPress={() => post.quoted && onOpen({ kind: 'post', id: post.quoted.id })}
+            style={styles.quoted}
+            testID="quoted-post"
+          >
             <AuthorRow author={post.quoted.author} />
             <AppText numberOfLines={3}>{post.quoted.text}</AppText>
-          </View>
+          </Pressable>
         ) : null}
         {post.media ? (
           <SyntheticMedia mediaKey={post.media.key} accessibilityLabel={strings.post.media} />

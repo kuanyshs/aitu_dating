@@ -47,7 +47,7 @@ import {
 } from './demo';
 import { buildThreads } from './comments';
 import { selectFeed } from './feed';
-import type { MemberRecord, PostRecord, SeedData } from './records';
+import type { CommentRecord, MemberRecord, PostRecord, SeedData } from './records';
 import { loadSeed } from './seed';
 import { passportCandidates } from './seed/candidates';
 import {
@@ -182,6 +182,20 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return work(requestId);
   }
 
+  /** Seed and demo comments with the authors' soft deletions applied. */
+  function allComments(): CommentRecord[] {
+    const deleted = new Set(state.deletedCommentIds);
+    return [...data.comments, ...state.comments].map((c) =>
+      deleted.has(c.id) ? { ...c, deleted: true } : c,
+    );
+  }
+
+  function commentReactionsOf(commentId: string) {
+    return [...data.commentReactions, ...state.commentReactions].filter(
+      (r) => r.commentId === commentId,
+    );
+  }
+
   function reactionsOf(postId: string) {
     return [...data.reactions, ...state.reactions].filter((r) => r.postId === postId);
   }
@@ -189,8 +203,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   function counters(postId: string): PostCounters {
     return {
       reactions: reactionsOf(postId).length,
-      reposts: data.reposts.filter((r) => r.postId === postId).length,
-      commentsCount: data.comments.filter((c) => c.postId === postId && !c.deleted).length,
+      reposts: [...data.reposts, ...state.reposts].filter((r) => r.postId === postId).length,
+      commentsCount: allComments().filter((c) => c.postId === postId && !c.deleted).length,
     };
   }
 
@@ -201,7 +215,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
   function isVisible(post: PostRecord): boolean {
     const author = member(post.authorId);
-    return !!author && !isRestricted(author);
+    return !!author && !isRestricted(author) && !state.deletedPostIds.includes(post.id);
   }
 
   /** The Aitu subject behind the current session, member or not. */
@@ -686,22 +700,36 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         if (!post || !isVisible(post)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
         }
-        // Comments of restricted people are hidden like their posts.
-        const visible = data.comments.filter((c) => {
+        // Comments of restricted people are hidden like their posts; a deleted reply is
+        // gone, a deleted root stays only while it still has replies to hold together.
+        const visible = allComments().filter((c) => {
           const author = member(c.authorId);
-          return c.postId === postId && !!author && !isRestricted(author);
+          return (
+            c.postId === postId &&
+            !!author &&
+            !isRestricted(author) &&
+            !(c.deleted && c.parentCommentId)
+          );
         });
-        const threads = buildThreads(visible, sort, () => 0);
-        const toView = (c: (typeof visible)[number]): CommentView => ({
+        const threads = buildThreads(visible, sort, (id) => commentReactionsOf(id).length).filter(
+          (t) => !t.root.deleted || t.replies.length > 0,
+        );
+        const full = seesFullView(viewer);
+        const toView = (c: CommentRecord): CommentView => ({
           id: c.id,
           postId: c.postId,
           ...(c.parentCommentId ? { parentId: c.parentCommentId } : {}),
           author: toAuthorView(member(c.authorId)!, viewer),
           text: c.deleted ? '' : c.text,
           createdAt: c.createdAt,
-          reactions: 0,
+          reactions: commentReactionsOf(c.id).length,
           deleted: c.deleted,
-          ...(seesFullView(viewer) ? { mine: c.authorId === viewer.userId } : {}),
+          ...(full
+            ? {
+                mine: c.authorId === viewer.userId,
+                reactedByMe: commentReactionsOf(c.id).some((r) => r.userId === viewer.userId),
+              }
+            : {}),
         });
         return CommentPage.parse(
           page(

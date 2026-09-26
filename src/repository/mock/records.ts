@@ -126,6 +126,14 @@ export const ReactionRecord = z.strictObject({
   createdAt: IsoDateTime,
 });
 
+/** A like on a Комментарий or an Ответ. */
+export const CommentReactionRecord = z.strictObject({
+  userId: Id,
+  commentId: Id,
+  createdAt: IsoDateTime,
+});
+export type CommentReactionRecord = z.infer<typeof CommentReactionRecord>;
+
 export const RepostRecord = z.strictObject({
   userId: Id,
   postId: Id,
@@ -150,6 +158,7 @@ export const SeedData = z.strictObject({
   comments: z.array(CommentRecord),
   follows: z.array(FollowRecord),
   reactions: z.array(ReactionRecord),
+  commentReactions: z.array(CommentReactionRecord),
   reposts: z.array(RepostRecord),
   reports: z.array(ReportRecord),
 });

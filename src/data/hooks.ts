@@ -9,6 +9,7 @@ import {
 import type { City } from '@/catalogs';
 import type {
   AccessFlowState,
+  CommentSort,
   FeedTab,
   MembershipSelection,
   PartialAnswers,
@@ -29,6 +30,8 @@ export const queryKeys = {
   candidates: ['access', 'candidates'] as const,
   myProfile: ['me', 'profile'] as const,
   candidateStatus: ['demo', 'candidates'] as const,
+  post: (postId: string) => ['post', postId] as const,
+  comments: (postId: string, sort: CommentSort) => ['comments', postId, sort] as const,
 };
 
 export function useSession() {
@@ -251,6 +254,9 @@ export function useSetReaction() {
             }
           : data,
       );
+      client.setQueryData<PostView>(queryKeys.post(result.postId), (post) =>
+        post ? { ...post, reactions: result.reactions, reactedByMe: result.reactedByMe } : post,
+      );
     },
   });
 }
@@ -285,4 +291,33 @@ export function useExpireMembership() {
 export function useRestoreMembership() {
   const demo = useDemoControls();
   return useSessionSwitch(() => demo!.restoreMembership());
+}
+
+/** A post by id; starts from the copy already in a cached feed page, so offline shows it. */
+export function usePost(postId: string) {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useQuery({
+    queryKey: queryKeys.post(postId),
+    queryFn: () => repository.getPost({ postId }),
+    initialData: () => {
+      for (const [, data] of client.getQueriesData<FeedData>({ queryKey: ['feed'] })) {
+        const found = data?.pages.flatMap((p) => p.items).find((p) => p.id === postId);
+        if (found) return found;
+      }
+      return undefined;
+    },
+    initialDataUpdatedAt: 0,
+  });
+}
+
+/** Comment threads of a post, ten root threads per page. */
+export function usePostComments(postId: string, sort: CommentSort) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: queryKeys.comments(postId, sort),
+    queryFn: ({ pageParam }) => repository.listComments({ postId, sort, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+  });
 }
