@@ -1,0 +1,3 @@
+# Rewrite instead of continuing the Manus prototype
+
+The earlier Manus prototype (`aitu-dating-prototype`, checkpoint `b822aa01`) builds and passes its tests, but it models group meetings with capacity, uses a different questionnaire, keeps all state and mutations in one React context with no repository layer, and drives every surface through a single `modal` state instead of routes. Fixing that would replace almost all of its product code, so we start a new project and treat the prototype only as a reference for visuals, Russian copy and the few rules that match the spec (guest author view, two-level replies, hiding blocked authors). The prototype's code is not committed to this repository.
