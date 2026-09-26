@@ -462,3 +462,48 @@ export function useCachedComment(postId: string, commentId: string | undefined) 
   }
   return undefined;
 }
+
+/** Deletes an own comment; the thread reloads and every copy of the post counts one less. */
+export function useDeleteComment(postId: string) {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (commentId: string) => repository.deleteComment({ commentId }),
+    onSuccess: async () => {
+      const drop = (post: PostView) =>
+        post.id === postId ? { ...post, commentsCount: Math.max(0, post.commentsCount - 1) } : post;
+      client.setQueriesData<FeedData>({ queryKey: ['feed'] }, (data) =>
+        data
+          ? { ...data, pages: data.pages.map((p) => ({ ...p, items: p.items.map(drop) })) }
+          : data,
+      );
+      client.setQueryData<PostView>(queryKeys.post(postId), (post) => (post ? drop(post) : post));
+      await client.invalidateQueries({ queryKey: ['comments', postId] });
+    },
+  });
+}
+
+/** Deletes an own post and removes it from every cached feed page at once. */
+export function useDeletePost() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (postId: string) => repository.deletePost({ postId }),
+    onSuccess: (_result, postId) => {
+      client.setQueriesData<FeedData>({ queryKey: ['feed'] }, (data) =>
+        data
+          ? {
+              ...data,
+              pages: data.pages.map((p) => ({
+                ...p,
+                items: p.items.filter((post) => post.id !== postId),
+              })),
+            }
+          : data,
+      );
+      // The open screen is leaving; a later visit reloads and finds it unavailable.
+      void client.invalidateQueries({ queryKey: queryKeys.post(postId), refetchType: 'none' });
+      void client.invalidateQueries({ queryKey: ['comments', postId], refetchType: 'none' });
+    },
+  });
+}

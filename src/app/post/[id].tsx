@@ -10,12 +10,19 @@ import {
   type CommentThread,
   type CommentView,
 } from '@/contracts';
-import { usePost, usePostComments, useSetCommentReaction } from '@/data/hooks';
+import {
+  useDeleteComment,
+  useDeletePost,
+  usePost,
+  usePostComments,
+  useSetCommentReaction,
+} from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import type { CommentAction } from '@/features/post/CommentRow';
 import { CommentThreadView } from '@/features/post/CommentThreadView';
 import { PostFooter } from '@/features/post/PostFooter';
 import { usePostActions, useSocialGate } from '@/features/post/usePostActions';
+import { ActionSheet, type SheetAction } from '@/ui/components/ActionSheet';
 import { IconAction } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
 import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
@@ -80,9 +87,19 @@ export default function PostScreen() {
   );
 
   const { mutate: likeComment } = useSetCommentReaction(postId);
+  const deleteComment = useDeleteComment(postId);
+  const deletePost = useDeletePost();
+  // «•••» opens a menu; «Удалить» in it asks for confirmation in a second sheet.
+  type Sheet =
+    | { step: 'menu' | 'confirm'; target: 'post' }
+    | { step: 'menu' | 'confirm'; target: 'comment'; comment: CommentView };
+  const [sheet, setSheet] = useState<Sheet | null>(null);
+  const closeSheet = useCallback(() => setSheet(null), []);
   // Answering arrives with its own ticket; the gate for guests and expired members works.
   const onCommentAction = useCallback(
     (action: CommentAction, comment: CommentView) => {
+      // Managing one's own comment is always allowed, also with an expired membership.
+      if (action === 'menu') return setSheet({ step: 'menu', target: 'comment', comment });
       if (!allow()) return;
       if (action === 'reply') return openReply(comment.id);
       likeComment(
@@ -122,7 +139,7 @@ export default function PostScreen() {
         <IconAction
           icon={Ellipsis}
           accessibilityLabel={t.menu}
-          onPress={() => router.push('/report')}
+          onPress={() => setSheet({ step: 'menu', target: 'post' })}
           testID="post-menu"
         />
       ) : (
@@ -185,6 +202,65 @@ export default function PostScreen() {
     </View>
   );
 
+  const confirmDelete = () => {
+    if (!sheet) return;
+    const onError = () => toast(strings.deletion.failed);
+    if (sheet.target === 'comment') {
+      deleteComment.mutate(sheet.comment.id, {
+        onSuccess: () => toast(strings.deletion.commentDone),
+        onError,
+      });
+    } else {
+      deletePost.mutate(postId, {
+        onSuccess: () => {
+          toast(strings.deletion.postDone);
+          leave();
+        },
+        onError,
+      });
+    }
+    closeSheet();
+  };
+
+  const sheetActions: SheetAction[] = !sheet
+    ? []
+    : sheet.step === 'confirm'
+      ? [
+          {
+            label: strings.deletion.delete,
+            danger: true,
+            onPress: confirmDelete,
+            testID: 'sheet-confirm-delete',
+          },
+        ]
+      : sheet.target === 'comment' || post.data.mine
+        ? [
+            {
+              label: strings.deletion.delete,
+              danger: true,
+              onPress: () => setSheet({ ...sheet, step: 'confirm' }),
+              testID: 'sheet-delete',
+            },
+          ]
+        : [
+            {
+              label: t.report,
+              onPress: () => {
+                closeSheet();
+                router.push('/report');
+              },
+              testID: 'sheet-report',
+            },
+          ];
+  const confirmTitle =
+    sheet?.target === 'comment' ? strings.deletion.commentTitle : strings.deletion.postTitle;
+  const confirmText =
+    sheet?.target === 'comment'
+      ? sheet.comment.parentId
+        ? strings.deletion.replyText
+        : strings.deletion.commentText
+      : strings.deletion.postText;
+
   let body: React.ReactNode = null;
   if (comments.isPending) body = <FeedSkeleton rows={3} />;
   else if (comments.isError && threads.length === 0)
@@ -231,6 +307,14 @@ export default function PostScreen() {
         )}
       </View>
       <PostFooter onCompose={() => openReply()} />
+      <ActionSheet
+        visible={!!sheet}
+        title={sheet?.step === 'confirm' ? confirmTitle : undefined}
+        message={sheet?.step === 'confirm' ? confirmText : undefined}
+        actions={sheetActions}
+        onClose={closeSheet}
+        testID="post-sheet"
+      />
     </SafeAreaView>
   );
 }

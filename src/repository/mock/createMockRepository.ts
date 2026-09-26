@@ -4,6 +4,7 @@ import {
   CommentPage,
   CommentQuery,
   CommentReactionState,
+  CommentRef,
   CommentView,
   CompleteOnboardingInput,
   CreateCommentInput,
@@ -54,6 +55,7 @@ import type { CommentRecord, MemberRecord, PostRecord, SeedData } from './record
 import { loadSeed } from './seed';
 import { passportCandidates } from './seed/candidates';
 import {
+  isMemberViewer,
   seesFullView,
   toAuthorView,
   toPlanSummary,
@@ -727,11 +729,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           createdAt: c.createdAt,
           reactions: commentReactionsOf(c.id).length,
           deleted: c.deleted,
+          ...(isMemberViewer(viewer) ? { mine: c.authorId === viewer.userId } : {}),
           ...(full
-            ? {
-                mine: c.authorId === viewer.userId,
-                reactedByMe: commentReactionsOf(c.id).some((r) => r.userId === viewer.userId),
-              }
+            ? { reactedByMe: commentReactionsOf(c.id).some((r) => r.userId === viewer.userId) }
             : {}),
         });
         return CommentPage.parse(
@@ -855,8 +855,6 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       }),
 
     createPost: notImplemented('createPost'),
-    deletePost: notImplemented('deletePost'),
-    deleteComment: notImplemented('deleteComment'),
     setRepost: notImplemented('setRepost'),
     setFollow: notImplemented('setFollow'),
     search: notImplemented('search'),
@@ -1043,6 +1041,52 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           commentKeys: { ...state.commentKeys, [idempotencyKey]: record.id },
         });
         return CommentView.parse(toView(record));
+      }),
+
+    deleteComment: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { commentId } = parseOrFail(CommentRef, input, requestId);
+        const comment = allComments().find((c) => c.id === commentId);
+        const post = comment ? postsById.get(comment.postId) : undefined;
+        if (!comment || comment.deleted || !post || !isVisible(post)) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Comment not found.' });
+        }
+        if (comment.authorId !== me.id) {
+          fail(requestId, { code: 'FORBIDDEN', message: 'Only the author can delete a comment.' });
+        }
+        // Soft delete: a root keeps its place while its replies are there.
+        await saveState({ ...state, deletedCommentIds: [...state.deletedCommentIds, commentId] });
+        const viewer = viewerOf(effectiveSession());
+        return CommentView.parse({
+          id: comment.id,
+          postId: comment.postId,
+          ...(comment.parentCommentId ? { parentId: comment.parentCommentId } : {}),
+          author: toAuthorView(me, viewer),
+          text: '',
+          createdAt: comment.createdAt,
+          reactions: commentReactionsOf(comment.id).length,
+          deleted: true,
+          mine: true,
+        });
+      }),
+
+    deletePost: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { postId } = parseOrFail(PostRef, input, requestId);
+        const post = postsById.get(postId);
+        if (!post || !isVisible(post)) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
+        }
+        if (post.authorId !== me.id) {
+          fail(requestId, { code: 'FORBIDDEN', message: 'Only the author can delete a post.' });
+        }
+        // A plan's post goes with the plan (cancelled in the plans spec), never on its own.
+        if (post.planId) {
+          fail(requestId, { code: 'CONFLICT', message: 'Cancel the plan instead.' });
+        }
+        await saveState({ ...state, deletedPostIds: [...state.deletedPostIds, postId] });
       }),
 
     setCommentReaction: (input) =>

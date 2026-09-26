@@ -121,6 +121,8 @@ const implemented = new Set<RepositoryMethod>([
   'setReaction',
   'setCommentReaction',
   'createComment',
+  'deleteComment',
+  'deletePost',
   'getProfile',
   'listProfilePosts',
   'getPlan',

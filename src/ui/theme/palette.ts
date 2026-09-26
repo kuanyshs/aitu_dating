@@ -4,6 +4,10 @@ export type ColorTokens = {
   bg: string;
   surface: string;
   surfacePressed: string;
+  /** Sheets and dialogs above the page. */
+  surfaceRaised: string;
+  /** Dims the page behind a sheet. */
+  scrim: string;
   text: string;
   textMuted: string;
   line: string;
@@ -25,6 +29,8 @@ export const lightColors: ColorTokens = {
   bg: '#FFFFFF',
   surface: '#F5F5F5',
   surfacePressed: '#EBEBEB',
+  surfaceRaised: '#FFFFFF',
+  scrim: 'rgba(0, 0, 0, 0.4)',
   text: '#0A0A0A',
   textMuted: '#666666',
   line: '#E5E5E5',
@@ -46,6 +52,8 @@ export const darkColors: ColorTokens = {
   bg: '#101010',
   surface: '#181818',
   surfacePressed: '#202020',
+  surfaceRaised: '#181818',
+  scrim: 'rgba(0, 0, 0, 0.6)',
   text: '#F3F3F3',
   textMuted: '#8A8A8A',
   line: '#2A2A2A',

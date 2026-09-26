@@ -65,7 +65,8 @@ describe('comment threads', () => {
         for (const c of [thread.comment, ...thread.replies]) {
           expect(Object.keys(c.author).sort()).toEqual(safeKeys);
           expect(c.reactedByMe).toBeUndefined();
-          expect(c.mine).toBeUndefined();
+          // Guests own nothing; an expired member still learns what is theirs.
+          expect(c.mine).toBe(repo === expired ? false : undefined);
         }
       }
     }

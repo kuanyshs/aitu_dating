@@ -7,13 +7,13 @@ import { Avatar } from '@/ui/components/Avatar';
 import { AuthorRow } from '@/ui/components/AuthorRow';
 import { AppText } from '@/ui/components/Text';
 import { formatRelative } from '@/ui/format';
-import { Heart } from '@/ui/icons';
+import { Ellipsis, Heart } from '@/ui/icons';
 import { strings } from '@/ui/strings';
 import { useTheme } from '@/ui/theme/ThemeProvider';
 import { iconStroke, minTouch, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
 
-export type CommentAction = 'like' | 'reply';
+export type CommentAction = 'like' | 'reply' | 'menu';
 
 type Props = {
   comment: CommentView;
@@ -47,7 +47,22 @@ export const CommentRow = memo(function CommentRow({ comment, clock, onAction, c
     <View style={styles.row} testID={`comment-${comment.id}`} role="article">
       <Avatar avatar={comment.author.avatar} size={32} />
       <View style={styles.content}>
-        <AuthorRow author={comment.author} time={formatRelative(comment.createdAt, clock)} />
+        <View style={styles.headerRow}>
+          <View style={styles.author}>
+            <AuthorRow author={comment.author} time={formatRelative(comment.createdAt, clock)} />
+          </View>
+          {comment.mine ? (
+            <Pressable
+              role="button"
+              aria-label={strings.deletion.commentMenu}
+              onPress={() => onAction('menu', comment)}
+              style={({ pressed }) => [styles.menu, pressed && styles.pressed]}
+              testID="comment-menu"
+            >
+              <Ellipsis size={18} color={colors.textMuted} strokeWidth={iconStroke.default} />
+            </Pressable>
+          ) : null}
+        </View>
         <AppText testID="comment-text">{comment.text}</AppText>
         <View style={styles.actions}>
           <Pressable
@@ -93,6 +108,17 @@ const useStyles = createStyles((colors) => ({
   row: { flexDirection: 'row', gap: spacing.md, paddingTop: spacing.sm },
   avatarGap: { width: 32 },
   content: { flex: 1, gap: 2 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  author: { flex: 1, paddingTop: spacing.xs },
+  menu: {
+    width: minTouch,
+    height: minTouch,
+    marginTop: -spacing.sm,
+    marginRight: -spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+  },
   deleted: { fontStyle: 'italic', paddingVertical: spacing.xs },
   actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginLeft: -spacing.sm },
   action: {

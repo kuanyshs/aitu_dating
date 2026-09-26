@@ -17,7 +17,7 @@ export const CommentView = z.strictObject({
   createdAt: IsoDateTime,
   reactions: z.number().int().min(0),
   deleted: z.boolean(),
-  /** Present for active members: their own comment can be deleted. */
+  /** Present for members, expired ones too: their own comment can be deleted. */
   mine: z.boolean().optional(),
   /** Present for active members: whether the viewer has liked this comment. */
   reactedByMe: z.boolean().optional(),

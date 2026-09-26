@@ -15,7 +15,7 @@ const TEXT = 4.5;
 const UI = 3;
 
 const textColors: ColorKey[] = ['text', 'textMuted', 'danger'];
-const textBackgrounds: ColorKey[] = ['bg', 'surface', 'surfacePressed', 'tabBar'];
+const textBackgrounds: ColorKey[] = ['bg', 'surface', 'surfacePressed', 'surfaceRaised', 'tabBar'];
 
 const buttonPairs: ContrastPair[] = Object.values(buttonVariants).flatMap((states) =>
   // Disabled controls are exempt from WCAG 1.4.3; transparent buttons sit on `bg`.

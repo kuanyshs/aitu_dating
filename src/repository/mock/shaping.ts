@@ -12,6 +12,14 @@ export function seesFullView(viewer: Viewer): boolean {
   return viewer.accessState === 'ACTIVE_MEMBER';
 }
 
+/** Active or expired: someone with a card of their own, who may manage their own content. */
+export function isMemberViewer(viewer: Viewer): boolean {
+  return (
+    !!viewer.userId &&
+    (viewer.accessState === 'ACTIVE_MEMBER' || viewer.accessState === 'ACTIVE_MEMBER_EXPIRED')
+  );
+}
+
 /**
  * The single place a person record becomes a DTO. Guests and expired members get
  * the safe view with the shared neutral avatar; nothing identifying leaves here.
@@ -86,6 +94,7 @@ export function toPostView(post: PostRecord, ctx: ShapingContext): PostView {
     ...(seesFullView(ctx.viewer) && ctx.reactedByMe
       ? { reactedByMe: ctx.reactedByMe(post.id) }
       : {}),
+    ...(isMemberViewer(ctx.viewer) ? { mine: post.authorId === ctx.viewer.userId } : {}),
     ...(post.mediaKey ? { media: { kind: 'synthetic' as const, key: post.mediaKey } } : {}),
     ...(plan ? { plan: toPlanSummary(plan) } : {}),
     ...(quotedRecord && quotedAuthor && ctx.isVisible(quotedRecord)
