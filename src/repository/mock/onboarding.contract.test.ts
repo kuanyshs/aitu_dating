@@ -151,6 +151,7 @@ describe('completeOnboarding', () => {
       accessState: 'ACTIVE_MEMBER',
       roles: ['member'],
       userId: me.id,
+      candidateId: 'passport-3',
     });
     expect(await repo.getMyProfile()).toEqual(me);
     expect(await repo.getAccessFlow()).toBeNull();

@@ -52,16 +52,20 @@ export const MockState = z.strictObject({
   members: z.array(MemberRecord),
   /** Completed onboardings by idempotency key → member id, so a retry publishes once. */
   onboardings: z.record(z.string(), z.string()),
+  /** Unfinished access flows of other Passport identities, kept while switching. */
+  parkedFlows: z.record(z.string(), AccessFlowRecord),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 3;
+export const MOCK_STATE_VERSION = 4;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
   (v1: unknown) => ({ ...(v1 as object), accessFlow: null, payments: {} }),
   // v3 adds members created by onboarding.
   (v2: unknown) => ({ ...(v2 as object), members: [], onboardings: {} }),
+  // v4 keeps unfinished flows per Passport identity.
+  (v3: unknown) => ({ ...(v3 as object), parkedFlows: {} }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -70,6 +74,7 @@ export const defaultMockState = (): MockState => ({
   payments: {},
   members: [],
   onboardings: {},
+  parkedFlows: {},
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';
@@ -79,6 +84,10 @@ export interface DemoControls {
   setDemoFlags(patch: Partial<DemoFlags>): Promise<DemoFlags>;
   /** Back to GUEST_PREVIEW and pristine seed data; clears everything the demo created. */
   resetDemo(): Promise<void>;
+  /** Makes another Passport identity current, in guest mode; nobody's data is touched. */
+  switchCandidate(candidateId: string): Promise<void>;
+  /** Which Passport identities already have a published card. */
+  listCandidateStatus(): Promise<{ candidateId: string; name: string; hasCard: boolean }[]>;
   /** Why persisted state was reset on startup, reported once so the UI can explain it. */
   takeResetNotice(): Promise<ResetNotice | undefined>;
 }

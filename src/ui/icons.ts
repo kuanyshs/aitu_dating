@@ -7,6 +7,7 @@ export { default as Clock } from 'lucide-react-native/icons/clock';
 export { default as Heart } from 'lucide-react-native/icons/heart';
 export { default as House } from 'lucide-react-native/icons/house';
 export { default as Info } from 'lucide-react-native/icons/info';
+export { default as Menu } from 'lucide-react-native/icons/menu';
 export { default as MapPin } from 'lucide-react-native/icons/map-pin';
 export { default as MessageCircle } from 'lucide-react-native/icons/message-circle';
 export { default as Plus } from 'lucide-react-native/icons/plus';

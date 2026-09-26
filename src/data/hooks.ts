@@ -20,6 +20,7 @@ export const queryKeys = {
   accessFlow: ['access', 'flow'] as const,
   candidates: ['access', 'candidates'] as const,
   myProfile: ['me', 'profile'] as const,
+  candidateStatus: ['demo', 'candidates'] as const,
 };
 
 export function useSession() {
@@ -160,5 +161,46 @@ export function useMyProfile(enabled = true) {
     queryKey: queryKeys.myProfile,
     queryFn: () => repository.getMyProfile(),
     enabled,
+  });
+}
+
+/** Session switches change what every screen may see, so all cached data is dropped. */
+function useSessionSwitch(run: () => Promise<unknown>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: run,
+    onSuccess: async () => {
+      await client.resetQueries();
+    },
+  });
+}
+
+export function useLogout() {
+  const repository = useRepository();
+  return useSessionSwitch(() => repository.logout());
+}
+
+export function useLogin() {
+  const repository = useRepository();
+  return useSessionSwitch(() => repository.login());
+}
+
+export function useSwitchCandidate() {
+  const demo = useDemoControls();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (candidateId: string) => demo!.switchCandidate(candidateId),
+    onSuccess: async () => {
+      await client.resetQueries();
+    },
+  });
+}
+
+export function useCandidateStatus() {
+  const demo = useDemoControls();
+  return useQuery({
+    queryKey: queryKeys.candidateStatus,
+    queryFn: () => demo!.listCandidateStatus(),
+    enabled: !!demo,
   });
 }

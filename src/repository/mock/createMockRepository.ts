@@ -178,6 +178,24 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     });
   }
 
+  const memberIdOf = (candidateId: string) => `me-${candidateId}`;
+
+  function hasCard(candidateId: string | undefined): boolean {
+    return !!candidateId && !!member(memberIdOf(candidateId));
+  }
+
+  async function setSession(next: Session): Promise<Session> {
+    session = next;
+    await sessionSlot.save(next);
+    return publicSession();
+  }
+
+  /** The stored session plus what the client may derive from it. */
+  function publicSession(): Session {
+    const canLogin = session.accessState === 'GUEST_PREVIEW' && hasCard(session.candidateId);
+    return Session.parse({ ...session, ...(canLogin ? { canLogin: true } : {}) });
+  }
+
   function addMonths(iso: string, months: number): string {
     const date = new Date(iso);
     date.setUTCMonth(date.getUTCMonth() + months);
@@ -189,7 +207,32 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   }
 
   return {
-    getSession: () => respond('local', () => Session.parse(session)),
+    getSession: () => respond('local', () => publicSession()),
+
+    logout: () =>
+      respond('local', () =>
+        setSession({
+          accessState: 'GUEST_PREVIEW',
+          roles: [],
+          ...(session.candidateId ? { candidateId: session.candidateId } : {}),
+        }),
+      ),
+
+    login: () =>
+      respond('local', (requestId) => {
+        const candidateId = session.candidateId;
+        const record = candidateId ? member(memberIdOf(candidateId)) : undefined;
+        if (!candidateId || !record) {
+          fail(requestId, { code: 'CONFLICT', message: 'This identity has no published card.' });
+        }
+        const expired = new Date(record.membership.endsAt) <= clock.now();
+        return setSession({
+          accessState: expired ? 'ACTIVE_MEMBER_EXPIRED' : 'ACTIVE_MEMBER',
+          roles: ['member'],
+          userId: record.id,
+          candidateId,
+        });
+      }),
 
     getHomeFeed: (rawQuery) =>
       respond('data', (requestId) => {
@@ -277,14 +320,21 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     startAccess: () => respond('local', () => saveFlow(access.start(state.accessFlow))),
 
     selectPassport: ({ candidateId }) =>
-      respond('data', (requestId) =>
-        saveFlow(
-          flowResult(
-            requestId,
-            access.selectPassport(state.accessFlow, candidateId, passportCandidates),
-          ),
-        ),
-      ),
+      respond('data', async (requestId) => {
+        if (hasCard(candidateId)) {
+          fail(requestId, {
+            code: 'CONFLICT',
+            message: 'This identity is already a member; use login.',
+            fieldErrors: { candidateId: 'already_member' },
+          });
+        }
+        const flow = flowResult(
+          requestId,
+          access.selectPassport(state.accessFlow, candidateId, passportCandidates),
+        );
+        await setSession({ ...session, candidateId });
+        return saveFlow(flow);
+      }),
 
     acceptRules: ({ rulesVersion }) =>
       respond('data', (requestId) =>
@@ -375,7 +425,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
         const now = clock.now().toISOString();
         const record: MemberRecord = {
-          id: `me-${candidate.id}`,
+          id: memberIdOf(candidate.id),
           aituSubjectId: candidate.aituSubjectId,
           name: candidate.name,
           gender: candidate.gender,
@@ -405,8 +455,12 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           members: [...state.members.filter((m) => m.id !== record.id), record],
           onboardings: { ...state.onboardings, [idempotencyKey]: record.id },
         });
-        session = { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: record.id };
-        await sessionSlot.save(session);
+        await setSession({
+          accessState: 'ACTIVE_MEMBER',
+          roles: ['member'],
+          userId: record.id,
+          candidateId: candidate.id,
+        });
         return toMyProfile(record);
       }),
 
@@ -435,6 +489,30 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       await Promise.all([sessionSlot.clear(), stateSlot.clear()]);
       session = guestSession();
       state = defaultMockState();
+    },
+
+    async switchCandidate(candidateId) {
+      await ready;
+      if (!passportCandidates.some((c) => c.id === candidateId)) {
+        throw new RepositoryError({ code: 'VALIDATION_ERROR', message: 'Unknown candidate.' });
+      }
+      // Park the current identity's unfinished flow and bring back the target's own.
+      const parked = { ...state.parkedFlows };
+      const currentFlow = state.accessFlow;
+      if (currentFlow?.candidateId) parked[currentFlow.candidateId] = currentFlow;
+      const restored = parked[candidateId] ?? null;
+      delete parked[candidateId];
+      await saveState({ ...state, accessFlow: restored, parkedFlows: parked });
+      await setSession({ accessState: 'GUEST_PREVIEW', roles: [], candidateId });
+    },
+
+    async listCandidateStatus() {
+      await ready;
+      return passportCandidates.map((c) => ({
+        candidateId: c.id,
+        name: c.name,
+        hasCard: hasCard(c.id),
+      }));
     },
 
     async takeResetNotice() {

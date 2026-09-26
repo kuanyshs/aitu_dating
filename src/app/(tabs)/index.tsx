@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cities, cityLabels, type City } from '@/catalogs';
 import { isRepositoryError, type FeedTab, type PostView } from '@/contracts';
-import { useDemoFlags, useHomeFeed, useMyProfile, useSession } from '@/data/hooks';
+import { useDemoFlags, useHomeFeed, useLogin, useMyProfile, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { IconAction, PrimaryButton } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
@@ -14,7 +14,7 @@ import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
 import { PostRow, type PostAction } from '@/ui/components/PostRow';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
-import { Info, MessageCircle } from '@/ui/icons';
+import { Menu, MessageCircle } from '@/ui/icons';
 import { useTabBarInset } from '@/ui/navigation/tabBarInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -37,7 +37,9 @@ export default function HomeScreen() {
   const isMember = session.data?.accessState === 'ACTIVE_MEMBER';
   const tabs = isMember ? memberTabs : guestTabs;
 
+  const canLogin = !!session.data?.canLogin;
   const me = useMyProfile(isMember);
+  const login = useLogin();
   const toast = useToast((s) => s.show);
 
   const [tab, setTab] = useState<FeedTab>('for_you');
@@ -69,10 +71,10 @@ export default function HomeScreen() {
     <View>
       <View style={styles.header}>
         <IconAction
-          icon={Info}
-          accessibilityLabel={strings.home.about}
-          onPress={() => router.push('/about')}
-          testID="home-about"
+          icon={Menu}
+          accessibilityLabel={strings.menu.open}
+          onPress={() => router.push('/menu')}
+          testID="home-menu"
         />
         <View style={styles.brand}>
           <AppText variant="title" role="heading">
@@ -88,6 +90,20 @@ export default function HomeScreen() {
             accessibilityLabel={strings.home.messages}
             onPress={() => router.push('/chats')}
             testID="home-messages"
+          />
+        ) : canLogin ? (
+          <PrimaryButton
+            label={strings.session.login}
+            accessibilityLabel={strings.session.loginLabel}
+            loading={login.isPending}
+            onPress={() =>
+              login.mutate(undefined, {
+                onSuccess: () => toast(strings.session.loggedIn),
+                onError: () => toast(strings.session.failed),
+              })
+            }
+            testID="home-login"
+            style={styles.join}
           />
         ) : (
           <PrimaryButton

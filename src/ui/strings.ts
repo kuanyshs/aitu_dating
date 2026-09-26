@@ -17,14 +17,27 @@ export const strings = {
     activity: 'Активность',
     profile: 'Профиль',
   },
+  session: {
+    login: 'Войти',
+    loginLabel: 'Войти в зарегистрированный режим',
+    logout: 'Выйти',
+    logoutLabel: 'Выйти в preview',
+    loggedOut: 'Вы в режиме preview. Карточка сохранена.',
+    loggedIn: 'Вы снова в сообществе.',
+    failed: 'Не получилось. Попробуйте ещё раз.',
+  },
+  menu: {
+    title: 'Меню',
+    open: 'Открыть меню',
+    about: 'О продукте',
+    settings: 'Настройки',
+  },
   home: {
     brand: 'aitu dating',
     messages: 'Сообщения',
-    menu: 'Меню',
     descriptorGuest: 'preview сообщества',
     descriptorMember: 'verified conversations',
     join: 'Вступить',
-    about: 'О продукте',
     filtersLabel: 'Фильтры ленты',
     cityLabel: 'Город',
     tabs: {
@@ -86,6 +99,12 @@ export const strings = {
   demo: {
     title: 'Demo controls',
     hint: 'Только в демо-сборке. Помогают проверить ошибки и пустые состояния.',
+    candidate: 'Текущая личность Passport',
+    candidateHint:
+      'Смена личности переводит в режим preview. Данные остальных личностей сохраняются.',
+    candidateStatus: (name: string, member: boolean) =>
+      `${name} · ${member ? 'есть карточка' : 'без карточки'}`,
+    candidateSwitched: (name: string) => `Текущая личность: ${name}`,
     reset: 'Сбросить демо',
     resetDone: 'Демо сброшено: вы снова в режиме preview.',
     networkErrorOnce: 'Ошибка сети один раз',
@@ -111,6 +130,8 @@ export const strings = {
       activity: 'Ответы, реакции и события появятся после вступления.',
       profile: 'Вступите через Aitu Passport, чтобы создать свою карточку.',
       action: 'Вступить',
+      loginTitle: 'С возвращением',
+      loginText: 'Ваша карточка сохранена. Войдите, чтобы вернуться в сообщество.',
     },
     passport: {
       title: 'Вход через Aitu Passport',

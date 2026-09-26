@@ -19,5 +19,9 @@ export const Session = z.object({
   roles: z.array(Role),
   userId: Id.optional(),
   expiresAt: IsoDateTime.optional(),
+  /** The Passport identity this device last used; kept across «Выйти». */
+  candidateId: Id.optional(),
+  /** A guest whose identity already has a published card can «Войти» without the Анкета. */
+  canLogin: z.boolean().optional(),
 });
 export type Session = z.infer<typeof Session>;

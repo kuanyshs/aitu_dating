@@ -20,6 +20,10 @@ import type { Session } from './session';
  */
 export interface AituRepository {
   getSession(): Promise<Session>;
+  /** «Выйти в preview»: guest mode; card, membership and posts stay. */
+  logout(): Promise<Session>;
+  /** «Войти»: back to the identity's own mode (active or expired) without the Анкета. */
+  login(): Promise<Session>;
   getHomeFeed(query: FeedQuery): Promise<FeedPage>;
 
   // Access flow. Each step checks its prerequisites and rejects with CONFLICT when a

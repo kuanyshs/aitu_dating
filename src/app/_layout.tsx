@@ -44,6 +44,7 @@ export default function RootLayout() {
               <Stack.Screen name="about" options={{ presentation: 'modal' }} />
               <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
               <Stack.Screen name="chats" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="menu" options={{ presentation: 'modal' }} />
             </Stack>
             <AppStatus />
           </ThemedNavigation>

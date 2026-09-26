@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
-import { useMyProfile, useSession } from '@/data/hooks';
+import { useLogout, useMyProfile, useSession } from '@/data/hooks';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { TextButton } from '@/ui/components/buttons';
 import { ProfileCardView } from '@/ui/components/ProfileCardView';
 import { Screen } from '@/ui/components/Screen';
 import { strings } from '@/ui/strings';
+import { useToast } from '@/ui/toast';
 import { spacing } from '@/ui/theme/tokens';
 
 function ProfileLinks() {
@@ -31,6 +32,8 @@ export default function ProfileScreen() {
   const session = useSession();
   const isMember = session.data?.accessState === 'ACTIVE_MEMBER';
   const me = useMyProfile(isMember);
+  const logout = useLogout();
+  const toast = useToast((s) => s.show);
   if (!isMember) {
     // Guests keep Settings: appearance and the demo panel must stay reachable.
     return (
@@ -45,6 +48,17 @@ export default function ProfileScreen() {
     <Screen testID="screen-profile">
       {me.data ? <ProfileCardView me={me.data} /> : null}
       <ProfileLinks />
+      <TextButton
+        label={strings.session.logout}
+        accessibilityLabel={strings.session.logoutLabel}
+        onPress={() =>
+          logout.mutate(undefined, {
+            onSuccess: () => toast(strings.session.loggedOut),
+            onError: () => toast(strings.session.failed),
+          })
+        }
+        testID="profile-logout"
+      />
     </Screen>
   );
 }

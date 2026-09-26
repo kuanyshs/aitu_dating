@@ -1,7 +1,15 @@
 import { View } from 'react-native';
 
-import { useDemoFlags, useResetDemo, useSetDemoFlags } from '@/data/hooks';
+import {
+  useCandidateStatus,
+  useDemoFlags,
+  useResetDemo,
+  useSession,
+  useSetDemoFlags,
+  useSwitchCandidate,
+} from '@/data/hooks';
 import { SecondaryButton } from '@/ui/components/buttons';
+import { RadioGroup } from '@/ui/components/RadioGroup';
 import { AppText } from '@/ui/components/Text';
 import { ToggleRow } from '@/ui/components/ToggleRow';
 import { strings } from '@/ui/strings';
@@ -13,6 +21,9 @@ export function DemoPanel() {
   const flags = useDemoFlags();
   const setFlags = useSetDemoFlags();
   const reset = useResetDemo();
+  const session = useSession();
+  const candidates = useCandidateStatus();
+  const switchCandidate = useSwitchCandidate();
   const toast = useToast((s) => s.show);
   const t = strings.demo;
 
@@ -24,6 +35,30 @@ export function DemoPanel() {
       <AppText variant="caption" tone="textMuted">
         {t.hint}
       </AppText>
+      {candidates.data ? (
+        <View style={{ gap: spacing.xs }}>
+          <AppText variant="bodyStrong">{t.candidate}</AppText>
+          <AppText variant="caption" tone="textMuted">
+            {t.candidateHint}
+          </AppText>
+          <RadioGroup
+            label={t.candidate}
+            options={candidates.data.map((c) => ({
+              value: c.candidateId,
+              label: t.candidateStatus(c.name, c.hasCard),
+            }))}
+            value={session.data?.candidateId ?? ''}
+            onChange={(candidateId) => {
+              if (switchCandidate.isPending || candidateId === session.data?.candidateId) return;
+              const name = candidates.data.find((c) => c.candidateId === candidateId)?.name ?? '';
+              switchCandidate.mutate(candidateId, {
+                onSuccess: () => toast(t.candidateSwitched(name)),
+              });
+            }}
+            testID="demo-candidate"
+          />
+        </View>
+      ) : null}
       <ToggleRow
         label={t.networkErrorOnce}
         hint={t.networkErrorOnceHint}
