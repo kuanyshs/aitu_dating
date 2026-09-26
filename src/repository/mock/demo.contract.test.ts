@@ -4,6 +4,7 @@ import { fixedClock } from '@/clock';
 import { createMemoryStore, storageKeys } from '@/storage';
 
 import { createMockRepository } from './createMockRepository';
+import { MOCK_STATE_VERSION } from './demo';
 
 const clock = fixedClock();
 
@@ -24,7 +25,21 @@ describe('persistence', () => {
     const { store, repo } = repositoryOn();
     await repo.setDemoFlags({ networkErrorOnce: true });
     const snapshot = store.snapshot();
-    expect(JSON.parse(snapshot[storageKeys.state] ?? '{}')).toMatchObject({ version: 1 });
+    expect(JSON.parse(snapshot[storageKeys.state] ?? '{}')).toMatchObject({
+      version: MOCK_STATE_VERSION,
+    });
+  });
+
+  it('migrates v1 state (demo flags only) without losing the flags', async () => {
+    const v1 = {
+      version: 1,
+      data: { demoFlags: { networkErrorOnce: false, offline: true, failedMessageOnce: false } },
+    };
+    const store = createMemoryStore({ [storageKeys.state]: JSON.stringify(v1) });
+    const repo = createMockRepository({ clock, latency: 0, store });
+    expect(await repo.getDemoFlags()).toMatchObject({ offline: true });
+    expect(await repo.getAccessFlow()).toBeNull();
+    expect(await repo.takeResetNotice()).toBeUndefined();
   });
 
   it('resets unreadable stored state and reports it once', async () => {

@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { City } from '@/catalogs';
-import type { FeedTab } from '@/contracts';
+import type { AccessFlowState, FeedTab, MembershipSelection } from '@/contracts';
 import type { DemoFlags } from '@/repository/mock';
 
 import { useDemoControls, useRepository } from './RepositoryProvider';
@@ -10,6 +10,8 @@ export const queryKeys = {
   session: ['session'] as const,
   feed: (tab: FeedTab, city: City | undefined) => ['feed', tab, city ?? null] as const,
   demoFlags: ['demo', 'flags'] as const,
+  accessFlow: ['access', 'flow'] as const,
+  candidates: ['access', 'candidates'] as const,
 };
 
 export function useSession() {
@@ -60,8 +62,62 @@ export function useResetDemo() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => demo!.resetDemo(),
+    // Everything cached belongs to the old demo, including the access flow.
     onSuccess: async () => {
       await client.resetQueries();
     },
   });
+}
+
+export function useAccessFlow() {
+  const repository = useRepository();
+  return useQuery({ queryKey: queryKeys.accessFlow, queryFn: () => repository.getAccessFlow() });
+}
+
+export function usePassportCandidates() {
+  const repository = useRepository();
+  return useQuery({
+    queryKey: queryKeys.candidates,
+    queryFn: () => repository.listPassportCandidates(),
+    staleTime: Infinity,
+  });
+}
+
+/** Wraps an access-flow step: the server's answer becomes the cached flow state. */
+function useFlowMutation<TInput>(run: (input: TInput) => Promise<AccessFlowState>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: run,
+    onSuccess: (flow) => {
+      client.setQueryData(queryKeys.accessFlow, flow);
+      void client.invalidateQueries({ queryKey: queryKeys.session });
+    },
+  });
+}
+
+export function useStartAccess() {
+  const repository = useRepository();
+  return useFlowMutation((_: void) => repository.startAccess());
+}
+
+export function useSelectPassport() {
+  const repository = useRepository();
+  return useFlowMutation((candidateId: string) => repository.selectPassport({ candidateId }));
+}
+
+export function useAcceptRules() {
+  const repository = useRepository();
+  return useFlowMutation((rulesVersion: string) => repository.acceptRules({ rulesVersion }));
+}
+
+export function useSelectMembership() {
+  const repository = useRepository();
+  return useFlowMutation((selection: MembershipSelection) =>
+    repository.selectMembership(selection),
+  );
+}
+
+export function useConfirmPayment() {
+  const repository = useRepository();
+  return useFlowMutation((idempotencyKey: string) => repository.confirmPayment({ idempotencyKey }));
 }

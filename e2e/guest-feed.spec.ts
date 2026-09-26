@@ -29,15 +29,16 @@ test.describe('guest feed', () => {
   test('join and social actions lead to the access flow', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('home-join').click();
-    await expect(page.getByTestId('screen-access')).toBeVisible();
-    await page.getByTestId('stub-back').click();
+    await expect(page.getByTestId('access-passport')).toBeVisible();
+    await page.getByTestId('access-close').click();
+    await expect(page.getByTestId('screen-home')).toBeVisible();
 
     await page
       .getByRole('article')
       .first()
       .getByRole('button', { name: /Нравится/ })
       .click();
-    await expect(page.getByTestId('screen-access')).toBeVisible();
+    await expect(page.getByTestId('access-passport')).toBeVisible();
   });
 
   test('plans filter shows only plan posts', async ({ page }) => {

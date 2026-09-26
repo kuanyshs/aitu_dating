@@ -1,7 +1,10 @@
 import type { Clock } from '@/clock';
 import {
+  AccessFlowState,
+  ConfirmPaymentInput,
   FeedPage,
   FeedQuery,
+  PassportCandidate,
   RepositoryError,
   Session,
   type AituRepository,
@@ -10,9 +13,12 @@ import {
 
 import { createMemoryStore, createSlot, storageKeys, type KeyValueStore } from '@/storage';
 
+import * as access from './access';
 import {
   defaultMockState,
+  MOCK_STATE_VERSION,
   MockState,
+  mockStateMigrations,
   type DemoControls,
   type DemoFlags,
   type ResetNotice,
@@ -20,6 +26,7 @@ import {
 import { selectFeed } from './feed';
 import type { PostRecord, SeedData } from './records';
 import { loadSeed } from './seed';
+import { passportCandidates } from './seed/candidates';
 import { toPostView, type PostCounters, type ShapingContext, type Viewer } from './shaping';
 
 export type MockRepositoryOptions = {
@@ -56,7 +63,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     store,
     key: storageKeys.state,
     schema: MockState,
-    version: 1,
+    version: MOCK_STATE_VERSION,
+    migrations: mockStateMigrations,
     defaults: defaultMockState,
   });
 
@@ -90,20 +98,25 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     throw new RepositoryError({ ...error, requestId });
   }
 
-  async function delay(): Promise<void> {
+  async function delay(extraMs = 0): Promise<void> {
     if (latency === 0) return;
     const [min, max] = latency;
-    await new Promise((resolve) => setTimeout(resolve, min + Math.random() * (max - min)));
+    const ms = min + Math.random() * (max - min) + extraMs;
+    await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
    * Answers a request like a server would. `data` requests go "over the network" and
    * honour the demo failure flags; the session and demo controls are local.
    */
-  async function respond<T>(kind: 'data' | 'local', work: (requestId: string) => T): Promise<T> {
+  async function respond<T>(
+    kind: 'data' | 'local',
+    work: (requestId: string) => T | Promise<T>,
+    extraLatencyMs = 0,
+  ): Promise<T> {
     await ready;
     const requestId = nextRequestId();
-    await delay();
+    await delay(extraLatencyMs);
     if (kind === 'data') {
       if (state.demoFlags.offline) {
         fail(requestId, { code: 'NETWORK_ERROR', message: 'Offline (demo).' });
@@ -127,6 +140,16 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   function isVisible(post: PostRecord): boolean {
     const author = membersById.get(post.authorId);
     return !!author && !author.restricted;
+  }
+
+  function flowResult(requestId: string, outcome: access.Outcome<MockState['accessFlow'] & {}>) {
+    if (!outcome.ok) fail(requestId, outcome.error);
+    return outcome.value;
+  }
+
+  async function saveFlow(flow: NonNullable<MockState['accessFlow']>): Promise<AccessFlowState> {
+    await saveState({ ...state, accessFlow: flow });
+    return AccessFlowState.parse(access.toFlowState(flow, passportCandidates));
   }
 
   function viewerOf(current: Session): Viewer {
@@ -208,6 +231,80 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           ...(hasMore ? { nextCursor: String(offset + limit) } : {}),
         });
       }),
+
+    listPassportCandidates: () =>
+      respond('data', () => passportCandidates.map((c) => PassportCandidate.parse(c))),
+
+    getAccessFlow: () =>
+      respond('local', () =>
+        state.accessFlow
+          ? AccessFlowState.parse(access.toFlowState(state.accessFlow, passportCandidates))
+          : null,
+      ),
+
+    startAccess: () => respond('local', () => saveFlow(access.start(state.accessFlow))),
+
+    selectPassport: ({ candidateId }) =>
+      respond('data', (requestId) =>
+        saveFlow(
+          flowResult(
+            requestId,
+            access.selectPassport(state.accessFlow, candidateId, passportCandidates),
+          ),
+        ),
+      ),
+
+    acceptRules: ({ rulesVersion }) =>
+      respond('data', (requestId) =>
+        saveFlow(flowResult(requestId, access.acceptRules(state.accessFlow, rulesVersion))),
+      ),
+
+    selectMembership: (selection) =>
+      respond('data', (requestId) =>
+        saveFlow(
+          flowResult(
+            requestId,
+            access.selectMembership(state.accessFlow, selection, clock.now().toISOString()),
+          ),
+        ),
+      ),
+
+    confirmPayment: (input) =>
+      respond(
+        'data',
+        async (requestId) => {
+          const parsed = ConfirmPaymentInput.safeParse(input);
+          if (!parsed.success) {
+            fail(requestId, {
+              code: 'VALIDATION_ERROR',
+              message: 'An idempotency key is required.',
+              fieldErrors: { idempotencyKey: 'required' },
+            });
+          }
+          const { idempotencyKey } = parsed.data;
+          const flow = state.accessFlow;
+          const previous = state.payments[idempotencyKey];
+          // A retried request with the same key returns the original result, never a second charge.
+          if (previous && flow?.payment?.reference === previous.reference) {
+            return AccessFlowState.parse(access.toFlowState(flow, passportCandidates));
+          }
+          if (!flow?.membership) {
+            fail(requestId, { code: 'CONFLICT', message: 'Choose a membership period first.' });
+          }
+          const receipt = {
+            reference: `mock-pay-${Object.keys(state.payments).length + 1}`,
+            amountKzt: access.priceOf(flow.membership),
+            paidAt: clock.now().toISOString(),
+          };
+          const next = flowResult(requestId, access.confirmPayment(flow, receipt));
+          await saveState({
+            ...state,
+            payments: { ...state.payments, [idempotencyKey]: receipt },
+          });
+          return saveFlow(next);
+        },
+        1500,
+      ),
 
     async getDemoFlags(): Promise<DemoFlags> {
       await ready;

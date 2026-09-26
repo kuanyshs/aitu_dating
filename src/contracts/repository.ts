@@ -1,3 +1,9 @@
+import type {
+  AccessFlowState,
+  ConfirmPaymentInput,
+  MembershipSelection,
+  PassportCandidate,
+} from './access';
 import type { FeedPage, FeedQuery } from './feed';
 import type { Session } from './session';
 
@@ -9,4 +15,15 @@ import type { Session } from './session';
 export interface AituRepository {
   getSession(): Promise<Session>;
   getHomeFeed(query: FeedQuery): Promise<FeedPage>;
+
+  // Access flow. Each step checks its prerequisites and rejects with CONFLICT when a
+  // step is skipped; the server, not the client, decides the resulting state.
+  listPassportCandidates(): Promise<PassportCandidate[]>;
+  getAccessFlow(): Promise<AccessFlowState | null>;
+  startAccess(): Promise<AccessFlowState>;
+  selectPassport(input: { candidateId: string }): Promise<AccessFlowState>;
+  acceptRules(input: { rulesVersion: string }): Promise<AccessFlowState>;
+  selectMembership(input: MembershipSelection): Promise<AccessFlowState>;
+  /** Mock checkout; a repeated call with the same key returns the same receipt. */
+  confirmPayment(input: ConfirmPaymentInput): Promise<AccessFlowState>;
 }

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { AccessFlowStep, MembershipSelection, PaymentReceipt } from '@/contracts';
+
 /**
  * Mock-only switches for demos and QA. They live next to the mock backend, not in the
  * product contract: a real backend has no «fail the next request» button.
@@ -20,13 +22,37 @@ export const defaultDemoFlags = (): DemoFlags => ({
   failedMessageOnce: false,
 });
 
+/** Server-side record of the visitor's progress through the access flow. */
+export const AccessFlowRecord = z.strictObject({
+  step: AccessFlowStep,
+  candidateId: z.string().optional(),
+  rulesAcceptedVersion: z.string().optional(),
+  membership: MembershipSelection.optional(),
+  payment: PaymentReceipt.optional(),
+});
+export type AccessFlowRecord = z.infer<typeof AccessFlowRecord>;
+
 /** Persisted mutable state of the mock backend. Later tickets add created records here. */
 export const MockState = z.strictObject({
   demoFlags: DemoFlags,
+  accessFlow: AccessFlowRecord.nullable(),
+  /** Completed mock checkouts by idempotency key, so a retried request is not charged twice. */
+  payments: z.record(z.string(), PaymentReceipt),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const defaultMockState = (): MockState => ({ demoFlags: defaultDemoFlags() });
+export const MOCK_STATE_VERSION = 2;
+
+/** v1 held only demo flags; v2 adds the access flow and mock payments. */
+export const mockStateMigrations = [
+  (v1: unknown) => ({ ...(v1 as object), accessFlow: null, payments: {} }),
+];
+
+export const defaultMockState = (): MockState => ({
+  demoFlags: defaultDemoFlags(),
+  accessFlow: null,
+  payments: {},
+});
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';
 
