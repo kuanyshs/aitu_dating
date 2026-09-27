@@ -8,6 +8,7 @@ import {
   CommentView,
   CompleteOnboardingInput,
   CreateCommentInput,
+  CreatePostInput,
   ConfirmPaymentInput,
   MyProfile,
   FeedPage,
@@ -53,7 +54,7 @@ import {
 } from './demo';
 import { buildThreads } from './comments';
 import { selectFeed } from './feed';
-import type { CommentRecord, MemberRecord, PostRecord, SeedData } from './records';
+import { PostRecord, type CommentRecord, type MemberRecord, type SeedData } from './records';
 import { loadSeed } from './seed';
 import { passportCandidates } from './seed/candidates';
 import {
@@ -147,7 +148,16 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   const isExpired = (record: MemberRecord) =>
     record.id in state.expiredMemberships || new Date(record.membership.endsAt) <= clock.now();
   const plansById = new Map(data.plans.map((p) => [p.id, p]));
-  const postsById = new Map(data.posts.map((p) => [p.id, p]));
+  const seedPostsById = new Map(data.posts.map((p) => [p.id, p]));
+
+  /** Seed posts and those published during the demo. */
+  function allPosts(): PostRecord[] {
+    return [...data.posts, ...state.posts];
+  }
+
+  function postById(id: string): PostRecord | undefined {
+    return seedPostsById.get(id) ?? state.posts.find((p) => p.id === id);
+  }
 
   function nextRequestId(): string {
     requestCounter += 1;
@@ -338,7 +348,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       viewer,
       member: (id) => member(id),
       plan: (id) => plansById.get(id),
-      post: (id) => postsById.get(id),
+      post: (id) => postById(id),
       counters,
       reactedByMe: (postId) => reactionsOf(postId).some((r) => r.userId === viewer.userId),
       repostedByMe: (postId) => repostsOf(postId).some((r) => r.userId === viewer.userId),
@@ -477,11 +487,14 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         );
         const viewerTopics = new Set<string>(
           isMember && viewerRecord
-            ? data.posts.filter((p) => p.authorId === viewerRecord.id).flatMap((p) => p.topics)
+            ? allPosts()
+                .filter((p) => p.authorId === viewerRecord.id)
+                .flatMap((p) => p.topics)
             : [],
         );
 
-        const ordered = selectFeed(data.posts.filter(isVisible), query, {
+        const ordered = selectFeed(allPosts().filter(isVisible), query, {
+          viewerId: isMember ? viewer.userId : undefined,
           now: clock.now(),
           viewerTopics,
           followingIds,
@@ -697,7 +710,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       respond('data', (requestId) => {
         const viewer = requireReader(requestId);
         const { postId } = parseOrFail(PostRef, input, requestId);
-        const post = postsById.get(postId);
+        const post = postById(postId);
         if (!post || !isVisible(post)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
         }
@@ -708,7 +721,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       respond('data', (requestId) => {
         const viewer = requireReader(requestId);
         const { postId, sort, cursor, limit } = parseOrFail(CommentQuery, query, requestId);
-        const post = postsById.get(postId);
+        const post = postById(postId);
         if (!post || !isVisible(post)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
         }
@@ -776,7 +789,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
               }
             : {}),
           stats: {
-            posts: data.posts.filter((p) => p.authorId === record.id).length,
+            posts: allPosts().filter((p) => p.authorId === record.id && isVisible(p)).length,
             followers: data.follows.filter((f) => f.followingId === record.id).length,
             following: data.follows.filter((f) => f.followerId === record.id).length,
           },
@@ -807,8 +820,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         if (!record || isRestricted(record)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Member not found.' });
         }
-        const posts = data.posts
-          .filter((p) => p.authorId === memberId)
+        const posts = allPosts()
+          .filter((p) => p.authorId === memberId && isVisible(p))
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         const ctx = shapingContext(viewer);
         return FeedPage.parse(
@@ -827,7 +840,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const { planId } = parseOrFail(PlanRef, input, requestId);
         const plan = plansById.get(planId);
         const author = plan ? member(plan.authorId) : undefined;
-        const post = data.posts.find((p) => p.planId === planId);
+        const post = allPosts().find((p) => p.planId === planId);
         if (!plan || !author || isRestricted(author) || !post) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Plan not found.' });
         }
@@ -861,12 +874,52 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         return next;
       }),
 
-    createPost: notImplemented('createPost'),
+    createPost: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const parsed = CreatePostInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the post.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const { type, text, topics, quotedPostId, idempotencyKey } = parsed.data;
+        const toView = (post: PostRecord) =>
+          PostView.parse(toPostView(post, shapingContext(viewerOf(effectiveSession()))));
+
+        // A retry of a request that already went through returns the same post.
+        const existing = postById(state.postKeys[idempotencyKey] ?? '');
+        if (existing) return toView(existing);
+
+        if (quotedPostId) {
+          const quoted = postById(quotedPostId);
+          if (!quoted || !isVisible(quoted)) {
+            fail(requestId, { code: 'NOT_FOUND', message: 'The quoted post is gone.' });
+          }
+        }
+        const record = PostRecord.parse({
+          id: `post-${state.posts.length + 1}`,
+          authorId: me.id,
+          type,
+          text,
+          topics: [...new Set(topics)],
+          createdAt: clock.now().toISOString(),
+          ...(quotedPostId ? { quotedPostId } : {}),
+        });
+        await saveState({
+          ...state,
+          posts: [...state.posts, record],
+          postKeys: { ...state.postKeys, [idempotencyKey]: record.id },
+        });
+        return toView(record);
+      }),
     setRepost: (input) =>
       respond('data', async (requestId) => {
         const me = requireActiveMember(requestId);
         const { postId, active } = parseOrFail(SetRepostInput, input, requestId);
-        const post = postsById.get(postId);
+        const post = postById(postId);
         if (!post || !isVisible(post)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
         }
@@ -981,7 +1034,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           fail(requestId, { code: 'VALIDATION_ERROR', message: parsed.error.message });
         }
         const { postId, active } = parsed.data;
-        const post = postsById.get(postId);
+        const post = postById(postId);
         if (!post || !isVisible(post)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
         }
@@ -1036,7 +1089,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const existing = existingId ? allComments().find((c) => c.id === existingId) : undefined;
         if (existing) return CommentView.parse(toView(existing));
 
-        const post = postsById.get(postId);
+        const post = postById(postId);
         if (!post || !isVisible(post)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
         }
@@ -1083,7 +1136,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const me = requireOwnCard(requestId);
         const { commentId } = parseOrFail(CommentRef, input, requestId);
         const comment = allComments().find((c) => c.id === commentId);
-        const post = comment ? postsById.get(comment.postId) : undefined;
+        const post = comment ? postById(comment.postId) : undefined;
         if (!comment || comment.deleted || !post || !isVisible(post)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Comment not found.' });
         }
@@ -1110,7 +1163,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       respond('data', async (requestId) => {
         const me = requireOwnCard(requestId);
         const { postId } = parseOrFail(PostRef, input, requestId);
-        const post = postsById.get(postId);
+        const post = postById(postId);
         if (!post || !isVisible(post)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
         }
@@ -1129,7 +1182,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const me = requireActiveMember(requestId);
         const { commentId, active } = parseOrFail(SetCommentReactionInput, input, requestId);
         const comment = allComments().find((c) => c.id === commentId);
-        const post = comment ? postsById.get(comment.postId) : undefined;
+        const post = comment ? postById(comment.postId) : undefined;
         const author = comment ? member(comment.authorId) : undefined;
         if (
           !comment ||

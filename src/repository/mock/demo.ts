@@ -13,6 +13,7 @@ import {
   CommentReactionRecord,
   CommentRecord,
   MemberRecord,
+  PostRecord,
   ReactionRecord,
   RepostRecord,
 } from './records';
@@ -80,10 +81,14 @@ export const MockState = z.strictObject({
   reposts: z.array(RepostRecord),
   /** Created comments by idempotency key → comment id, so a retry publishes once. */
   commentKeys: z.record(z.string(), z.string()),
+  /** Posts published during the demo, on top of the seed. */
+  posts: z.array(PostRecord),
+  /** Created posts by idempotency key → post id, so a retry publishes once. */
+  postKeys: z.record(z.string(), z.string()),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 9;
+export const MOCK_STATE_VERSION = 10;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -109,6 +114,8 @@ export const mockStateMigrations = [
   }),
   // v9 remembers comment idempotency keys.
   (v8: unknown) => ({ ...(v8 as object), commentKeys: {} }),
+  // v10 adds posts published in the editor and their idempotency keys.
+  (v9: unknown) => ({ ...(v9 as object), posts: [], postKeys: {} }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -129,6 +136,8 @@ export const defaultMockState = (): MockState => ({
   commentReactions: [],
   reposts: [],
   commentKeys: {},
+  posts: [],
+  postKeys: {},
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';

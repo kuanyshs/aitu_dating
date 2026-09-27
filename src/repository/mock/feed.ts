@@ -5,6 +5,8 @@ import type { PostCounters } from './shaping';
 
 export type FeedContext = {
   now: Date;
+  /** The member asking; their own fresh posts lead «Для вас». Absent for a guest. */
+  viewerId?: string;
   /** Topics the viewer cares about; empty for a guest. */
   viewerTopics: ReadonlySet<string>;
   followingIds: ReadonlySet<string>;
@@ -35,11 +37,19 @@ function forYouScore(post: PostRecord, ctx: FeedContext): number {
 /** Orders and filters visible posts for a tab. Access checks happen before this. */
 export function selectFeed(posts: PostRecord[], query: FeedQuery, ctx: FeedContext): PostRecord[] {
   switch (query.tab) {
-    case 'for_you':
-      return posts
+    case 'for_you': {
+      // An author finds what they just published at the top for a day; others see it ranked.
+      const fresh = (post: PostRecord) =>
+        post.authorId === ctx.viewerId &&
+        ctx.now.getTime() - new Date(post.createdAt).getTime() < DAY_MS;
+      const own = posts.filter(fresh).sort(newestFirst);
+      const ranked = posts
+        .filter((post) => !fresh(post))
         .map((post) => ({ post, score: forYouScore(post, ctx) }))
         .sort((a, b) => b.score - a.score || newestFirst(a.post, b.post))
         .map(({ post }) => post);
+      return [...own, ...ranked];
+    }
 
     case 'popular':
       return [...posts].sort(

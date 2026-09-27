@@ -1,6 +1,6 @@
 import { FlashList } from '@shopify/flash-list';
-import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -46,6 +46,16 @@ export default function HomeScreen() {
   const toast = useToast((s) => s.show);
 
   const [tab, setTab] = useState<FeedTab>('for_you');
+  // After publishing, the editor sends the author back to «Для вас», where the post leads.
+  const { feed: requestedTab } = useLocalSearchParams<{ feed?: string }>();
+  const [seenRequest, setSeenRequest] = useState(requestedTab);
+  if (requestedTab !== seenRequest) {
+    setSeenRequest(requestedTab);
+    if (requestedTab === 'for_you') setTab('for_you');
+  }
+  useEffect(() => {
+    if (requestedTab) router.setParams({ feed: undefined });
+  }, [requestedTab, router]);
   // «В городе» starts at the member's Passport city (Алматы for guests) until changed.
   const [chosenCity, setCity] = useState<City | undefined>(undefined);
   const city: City = chosenCity ?? (isMember || isExpired ? me.data?.city : undefined) ?? 'almaty';

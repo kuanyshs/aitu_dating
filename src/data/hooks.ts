@@ -13,6 +13,7 @@ import type {
   CommentPage,
   CommentSort,
   CommentView,
+  CreatePostInput,
   FeedTab,
   MembershipSelection,
   PartialAnswers,
@@ -35,6 +36,7 @@ export const queryKeys = {
   candidateStatus: ['demo', 'candidates'] as const,
   post: (postId: string) => ['post', postId] as const,
   comments: (postId: string, sort: CommentSort) => ['comments', postId, sort] as const,
+  profilePosts: (memberId: string) => ['profile-posts', memberId] as const,
 };
 
 export function useSession() {
@@ -469,6 +471,22 @@ export function useCreateComment(postId: string) {
       );
       client.setQueryData<PostView>(queryKeys.post(postId), (post) => (post ? bump(post) : post));
       await client.invalidateQueries({ queryKey: ['comments', postId] });
+    },
+  });
+}
+
+/** Publishes a Пост, Вопрос or Цитата; the feed and the author's posts load it afresh. */
+export function useCreatePost() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreatePostInput) => repository.createPost(input),
+    onSuccess: async (post) => {
+      client.setQueryData(queryKeys.post(post.id), post);
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['feed'] }),
+        client.invalidateQueries({ queryKey: ['profile-posts'] }),
+      ]);
     },
   });
 }
