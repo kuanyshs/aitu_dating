@@ -153,4 +153,57 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('reply-avatar')).toBeVisible();
     await snap(page, 'reply-surface');
   });
+
+  test('Создание: the empty editor', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await page.getByTestId('tab-create').click();
+    await expect(page.getByTestId('compose-avatar')).toBeVisible();
+    await expect(page.getByTestId('compose-submit')).toHaveAttribute('aria-disabled', 'true');
+    await snap(page, 'compose-empty');
+  });
+
+  test('Создание: a quote with a failed send', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    // The quoted post comes from what the feed loaded; offline then fails the send.
+    await page.getByTestId('post-p02').getByTestId('post-open').click();
+    await expect(page.getByTestId('reply-composer')).toBeVisible();
+    await page.getByTestId('post-back').click();
+    await page.getByTestId('tab-profile').click();
+    await page.getByTestId('open-settings').click();
+    await page.getByTestId('demo-offline').click();
+    await expect(page.getByTestId('offline-banner')).toBeVisible();
+    await page.getByTestId('settings-close').click();
+    await page.getByTestId('tab-index').click();
+    await page.getByTestId('post-p02').getByTestId('post-quote').click();
+    await expect(page.getByTestId('compose-quoted-p02')).toBeVisible();
+    await page.getByTestId('compose-input').fill('Мне ближе импровизация, но с запасным планом.');
+    await page.getByTestId('compose-submit').click();
+    await expect(page.getByTestId('compose-error')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('compose-avatar')).toBeVisible();
+    await snap(page, 'compose-quote-error');
+  });
+
+  test('Создание: «Мои публикации» in the profile', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    for (const [kind, text] of [
+      ['post', 'Первый пост Мадины'],
+      ['question', 'Где в Алматы тихо поговорить?'],
+    ] as const) {
+      await expect(page.getByTestId('home-messages')).toBeVisible();
+      await page.getByTestId('tab-create').click();
+      await page.getByTestId(`compose-type-${kind}`).click();
+      await page.getByTestId('compose-input').fill(text);
+      await page.getByTestId('compose-submit').click();
+      await expect(page.getByTestId('screen-compose')).toHaveCount(0);
+    }
+    await page.getByTestId('tab-profile').click();
+    const section = page.getByTestId('my-posts');
+    await expect(section.getByRole('article')).toHaveCount(2);
+    await section.getByRole('heading').scrollIntoViewIfNeeded();
+    await snap(page, 'my-posts');
+  });
 });

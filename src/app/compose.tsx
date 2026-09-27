@@ -19,6 +19,7 @@ import { Chip } from '@/ui/components/Chip';
 import { Screen } from '@/ui/components/Screen';
 import { AppText } from '@/ui/components/Text';
 import { formatRelative } from '@/ui/format';
+import { useReportFooter } from '@/ui/navigation/statusInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
@@ -79,6 +80,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   const create = useCreatePost();
 
   const client = useQueryClient();
+  const reportFooter = useReportFooter();
   const opening = draftOnOpen(stored, { quotedPostId });
   const initial = opening === 'restore' ? stored : undefined;
   const [kind, setKind] = useState<Kind>(initial?.type === 'question' ? 'question' : 'post');
@@ -202,7 +204,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
 
           <View style={styles.compose}>
             {/* The slot is kept while the card loads, so the text never jumps sideways. */}
-            <View style={styles.avatar}>
+            <View style={styles.avatar} testID={me.data ? 'compose-avatar' : undefined}>
               {me.data ? <Avatar avatar={me.data.avatar} size={36} /> : null}
             </View>
             <TextInput
@@ -254,7 +256,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={styles.footer} onLayout={reportFooter}>
           {errorText ? (
             <AppText tone="danger" role="alert" testID="compose-error">
               {errorText}

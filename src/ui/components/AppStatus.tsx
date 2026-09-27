@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { useDemoFlags } from '@/data/hooks';
 import { useDemoControls } from '@/data/RepositoryProvider';
 import { WifiOff } from '@/ui/icons';
-import { useTabBarInset } from '@/ui/navigation/tabBarInset';
+import { useStatusBottom } from '@/ui/navigation/statusInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
@@ -16,8 +16,9 @@ import { AppText } from './Text';
 const TOAST_MS = 2600;
 
 /**
- * App-wide status above the floating tab bar: the offline banner, and the toast
- * stacked over it, so neither covers header actions.
+ * App-wide status above the floating tab bar (or a full-screen surface's own bottom
+ * bar): the offline banner, and the toast stacked over it, so neither covers header
+ * actions or the surface's button.
  */
 export function AppStatus() {
   return (
@@ -32,7 +33,7 @@ export function AppStatus() {
 function OfflineBanner() {
   const styles = useStyles();
   const { colors } = useTheme();
-  const bottom = useTabBarInset() - spacing.sm;
+  const bottom = useStatusBottom();
   const { offline } = useDemoFlags();
   if (!offline) return null;
   return (
@@ -52,7 +53,7 @@ function OfflineBanner() {
 
 function ToastHost() {
   const styles = useStyles();
-  const bottom = useTabBarInset() + 44;
+  const bottom = useStatusBottom() + 52;
   const { message, id, hide } = useToast();
 
   useEffect(() => {

@@ -13,6 +13,7 @@ import { AuthorRow } from '@/ui/components/AuthorRow';
 import { PrimaryButton, SecondaryButton, TextButton } from '@/ui/components/buttons';
 import { AppText } from '@/ui/components/Text';
 import { formatRelative } from '@/ui/format';
+import { useReportFooter } from '@/ui/navigation/statusInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
@@ -44,6 +45,7 @@ export default function ReplyScreen() {
   const parent = useCachedComment(postId, parentId);
   const me = useMyProfile();
   const create = useCreateComment(postId);
+  const reportFooter = useReportFooter();
   const [text, setText] = useState('');
   const [idempotencyKey, setKey] = useState(newIdempotencyKey);
 
@@ -128,7 +130,7 @@ export default function ReplyScreen() {
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={styles.footer} onLayout={reportFooter}>
           {errorText ? (
             <AppText tone="danger" role="alert" testID="reply-error">
               {errorText}
