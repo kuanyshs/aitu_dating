@@ -123,8 +123,10 @@ test.describe('visual baselines @visual', () => {
     const likes = page.getByTestId('comment-like');
     await expect(likes).toHaveCount(2);
     for (const like of await likes.all()) await like.click();
-    await page.getByTestId('post-like').click();
-    await expect(page.getByTestId('post-like')).toHaveAttribute('aria-pressed', 'true');
+    // The feed stays mounted under the post screen: its like button has the same test id.
+    const postLike = page.getByTestId('screen-post').getByTestId('post-like');
+    await postLike.click();
+    await expect(postLike).toHaveAttribute('aria-pressed', 'true');
     await expect(likes.nth(1)).toHaveAttribute('aria-pressed', 'true');
     await snap(page, 'post-member');
   });

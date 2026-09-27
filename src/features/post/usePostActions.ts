@@ -7,24 +7,24 @@ import type { PostAction, PostTarget } from '@/ui/components/PostRow';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 
+import { socialGate } from './socialGate';
+
 /** Where a social action leads for someone who cannot take it yet. */
 export function useSocialGate() {
   const router = useRouter();
   const state = useSession().data?.accessState;
   const isMember = state === 'ACTIVE_MEMBER';
   const isExpired = state === 'ACTIVE_MEMBER_EXPIRED';
-  /** Guests go to the single access flow, expired members to Продление. Returns false then. */
+  /**
+   * Guests go to the single access flow, expired members to Продление; a tap while the
+   * session is still loading does nothing. Returns true only when the action may go on.
+   */
   const allow = useCallback(() => {
-    if (isExpired) {
-      router.push('/renew');
-      return false;
-    }
-    if (!isMember) {
-      router.push('/access');
-      return false;
-    }
-    return true;
-  }, [isExpired, isMember, router]);
+    const gate = socialGate(state);
+    if (gate === 'renew') router.push('/renew');
+    if (gate === 'access') router.push('/access');
+    return gate === 'allow';
+  }, [state, router]);
   return { isMember, isExpired, allow };
 }
 
