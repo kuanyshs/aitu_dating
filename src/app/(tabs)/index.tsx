@@ -1,6 +1,6 @@
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -53,8 +53,12 @@ export default function HomeScreen() {
     setSeenRequest(requestedTab);
     if (requestedTab === 'for_you') setTab('for_you');
   }
+  // The new post leads the feed: show the top, not where the reader had scrolled to.
+  const list = useRef<FlashListRef<PostView>>(null);
   useEffect(() => {
-    if (requestedTab) router.setParams({ feed: undefined });
+    if (!requestedTab) return;
+    list.current?.scrollToOffset({ offset: 0, animated: false });
+    router.setParams({ feed: undefined });
   }, [requestedTab, router]);
   // «В городе» starts at the member's Passport city (Алматы for guests) until changed.
   const [chosenCity, setCity] = useState<City | undefined>(undefined);
@@ -220,7 +224,11 @@ export default function HomeScreen() {
         </ScrollView>
       ) : (
         <FlashList
+          ref={list}
           data={posts}
+          // A post that arrives on top (one's own, just published) must be seen, not
+          // pushed above the fold to keep the current row in place.
+          maintainVisibleContentPosition={{ disabled: true }}
           keyExtractor={(post) => post.id}
           renderItem={renderItem}
           ListHeaderComponent={header}

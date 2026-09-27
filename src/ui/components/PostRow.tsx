@@ -124,6 +124,10 @@ export const PostRow = memo(function PostRow({ post, clock, onAction, onOpen, fu
             <AuthorRow author={post.quoted.author} />
             <AppText numberOfLines={3}>{post.quoted.text}</AppText>
           </Pressable>
+        ) : post.quotedUnavailable ? (
+          <View style={styles.quoted} testID="quoted-unavailable">
+            <AppText tone="textMuted">{strings.post.quoteUnavailable}</AppText>
+          </View>
         ) : null}
         {post.media ? (
           <SyntheticMedia mediaKey={post.media.key} accessibilityLabel={strings.post.media} />

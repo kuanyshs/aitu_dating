@@ -422,10 +422,11 @@ export function useRestoreMembership() {
 }
 
 /** A post by id; starts from the copy already in a cached feed page, so offline shows it. */
-export function usePost(postId: string) {
+export function usePost(postId: string, { enabled = true }: { enabled?: boolean } = {}) {
   const repository = useRepository();
   const client = useQueryClient();
   return useQuery({
+    enabled,
     queryKey: queryKeys.post(postId),
     queryFn: () => repository.getPost({ postId }),
     initialData: () => {

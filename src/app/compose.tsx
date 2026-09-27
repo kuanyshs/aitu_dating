@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { topicLabels, topics as topicKeys, type Topic } from '@/catalogs';
 import { isRepositoryError, LIMITS } from '@/contracts';
-import { useCachedPost, useCreatePost, useMyProfile, useSession } from '@/data/hooks';
+import { useCachedPost, useCreatePost, useMyProfile, usePost, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { newIdempotencyKey } from '@/features/access/steps';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
@@ -52,7 +52,15 @@ function Editor() {
   const t = strings.compose;
   const params = useLocalSearchParams<{ quote?: string }>();
   const quotedPostId = params.quote ? String(params.quote) : undefined;
-  const quoted = useCachedPost(quotedPostId ?? '');
+  // The card comes from what the feed or the post screen already loaded; a direct link
+  // fetches it. A quoted post that is gone cannot be quoted.
+  const cachedQuote = useCachedPost(quotedPostId ?? '');
+  const fetchedQuote = usePost(quotedPostId ?? '', { enabled: !!quotedPostId && !cachedQuote });
+  const quoted = cachedQuote ?? fetchedQuote.data;
+  const quoteGone =
+    !!quotedPostId &&
+    isRepositoryError(fetchedQuote.error) &&
+    fetchedQuote.error.code === 'NOT_FOUND';
   const me = useMyProfile();
   const create = useCreatePost();
 
@@ -64,7 +72,8 @@ function Editor() {
 
   const leave = () => (router.canGoBack() ? router.back() : router.replace('/'));
   const trimmed = text.trim();
-  const canSend = trimmed.length > 0 && text.length <= LIMITS.postText && !create.isPending;
+  const canSend =
+    trimmed.length > 0 && text.length <= LIMITS.postText && !create.isPending && !quoteGone;
 
   // Any change after a failure is a new attempt at a different post.
   const edit = () => {
@@ -90,13 +99,14 @@ function Editor() {
       {
         onSuccess: () => {
           toast(t.done);
-          router.dismissAll();
-          router.navigate({ pathname: '/', params: { feed: 'for_you' } });
+          // Back to Home, closing whatever the editor was opened over (a post screen too).
+          router.dismissTo({ pathname: '/', params: { feed: 'for_you' } });
         },
       },
     );
 
   const errorText = (() => {
+    if (quoteGone) return t.errors.gone;
     if (!create.isError) return undefined;
     const error = create.error;
     if (isRepositoryError(error)) {
@@ -176,6 +186,10 @@ function Editor() {
             >
               <AuthorRow author={quoted.author} time={formatRelative(quoted.createdAt, clock)} />
               <AppText numberOfLines={3}>{quoted.text}</AppText>
+            </View>
+          ) : quoteGone ? (
+            <View style={styles.quoted} testID="compose-quoted-unavailable">
+              <AppText tone="textMuted">{strings.post.quoteUnavailable}</AppText>
             </View>
           ) : null}
 

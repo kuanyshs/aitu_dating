@@ -73,3 +73,20 @@ export async function signInAsSeedAuthor(page: Page) {
     ),
   );
 }
+
+/**
+ * The article shown at the top of Home. The feed list recycles its cells, so after a
+ * refresh the DOM order no longer matches the order on screen: compare positions.
+ */
+export async function topFeedArticle(page: Page) {
+  const articles = page.getByTestId('screen-home').getByRole('article');
+  await expect(articles.first()).toBeVisible();
+  const boxes = await articles.evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      top: node.getBoundingClientRect().top,
+      text: (node as HTMLElement).innerText,
+      id: node.getAttribute('data-testid'),
+    })),
+  );
+  return boxes.sort((a, b) => a.top - b.top)[0];
+}

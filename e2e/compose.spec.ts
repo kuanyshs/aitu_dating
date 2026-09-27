@@ -1,8 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina } from './helpers';
+import { joinAsMadina, topFeedArticle } from './helpers';
 
-const firstPost = (page: Page) => page.getByTestId('screen-home').getByRole('article').first();
+/** The article on top of Home, by position: the feed list recycles its cells. */
+const topText = async (page: Page) => (await topFeedArticle(page))?.text ?? '';
+const byText = (page: Page, text: string) =>
+  page.getByTestId('screen-home').getByRole('article').filter({ hasText: text });
 
 async function openEditor(page: Page) {
   // The member footer of Home shows the session has loaded before the tab is tapped.
@@ -37,15 +40,17 @@ test.describe('Создание: a post or a question', () => {
     await expect(page.getByTestId('screen-compose')).toHaveCount(0);
     await expect(page.getByTestId('toast')).toContainText('Опубликовано');
     await expect(page.getByTestId('feed-tab-for_you')).toHaveAttribute('aria-checked', 'true');
-    await expect(firstPost(page)).toContainText('Где в Алматы тихо поговорить после работы?');
-    await expect(firstPost(page).getByTestId('post-type')).toHaveText('Вопрос');
-    await expect(firstPost(page)).toContainText('#встречи');
-    await expect(firstPost(page)).toContainText('Мадина');
+    const question = 'Где в Алматы тихо поговорить после работы?';
+    await expect.poll(() => topText(page)).toContain(question);
+    await expect(byText(page, question)).toBeInViewport({ ratio: 0.9 });
+    await expect(byText(page, question).getByTestId('post-type')).toHaveText('Вопрос');
+    await expect(byText(page, question)).toContainText('#встречи');
+    await expect(byText(page, question)).toContainText('Мадина');
 
     // It survives a restart.
     await page.waitForTimeout(1000);
     await page.reload();
-    await expect(firstPost(page)).toContainText('Где в Алматы тихо поговорить после работы?');
+    await expect.poll(() => topText(page)).toContain(question);
   });
 
   test('topics stop at four and only real text can be published', async ({ page }) => {
@@ -85,7 +90,7 @@ test.describe('Создание: a post or a question', () => {
     await expect(page.getByTestId('compose-input')).toHaveValue('Пост после сбоя сети');
     await page.getByTestId('compose-retry').click();
     await expect(page.getByTestId('toast')).toContainText('Опубликовано');
-    await expect(firstPost(page)).toContainText('Пост после сбоя сети');
+    await expect.poll(() => topText(page)).toContain('Пост после сбоя сети');
     await expect(
       page
         .getByTestId('screen-home')

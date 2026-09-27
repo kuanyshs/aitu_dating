@@ -195,6 +195,7 @@ export const strings = {
     comingSoon: 'Скоро: это действие появится в следующем обновлении.',
     reactionFailed: 'Не удалось поставить реакцию. Попробуйте ещё раз.',
     repostFailed: 'Не удалось сделать репост. Попробуйте ещё раз.',
+    quoteUnavailable: 'Публикация недоступна',
     open: 'Открыть пост',
     openAuthor: (name: string) => `Открыть профиль: ${name}`,
     verified: 'verified',

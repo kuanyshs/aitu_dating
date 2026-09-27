@@ -68,6 +68,8 @@ export const PostView = z.strictObject({
   media: MediaRef.optional(),
   plan: PlanSummary.optional(),
   quoted: QuotedPost.optional(),
+  /** A Цитата whose quoted Пост was deleted or hidden: shown as «Публикация недоступна». */
+  quotedUnavailable: z.literal(true).optional(),
 });
 export type PostView = z.infer<typeof PostView>;
 

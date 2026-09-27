@@ -109,6 +109,9 @@ export function toPostView(post: PostRecord, ctx: ShapingContext): PostView {
             author: toAuthorView(quotedAuthor, ctx.viewer),
           },
         }
-      : {}),
+      : post.quotedPostId
+        ? // The quote stays; only its original is gone.
+          { quotedUnavailable: true as const }
+        : {}),
   };
 }
