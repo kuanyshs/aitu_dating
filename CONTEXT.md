@@ -79,6 +79,18 @@ _Avoid_: share, retweet
 A new **Пост** with its author's own text that points to another **Пост**.
 _Avoid_: repost with comment
 
+**Вопрос** (`Question`):
+A **Пост** in which its author asks the community something. It differs from a plain post only by its label and prompt; it need not end with «?».
+_Avoid_: poll
+
+**Тема** (`Topic`):
+One of the catalog subjects a **Пост** can carry, up to four; the feed shows it as `#тема`.
+_Avoid_: tag, hashtag
+
+**Черновик** (`Draft`):
+An unpublished text from the post editor: its type, text, **Темы** and quoted **Пост**. One per **Участник**, kept only on the device; saved by choice when the editor closes and cleared once published.
+_Avoid_: saved post
+
 **Упоминание** (`Mention`):
 An `@` reference to a **Участник** inside a **Пост** or **Комментарий**; shown to a **Гость** as «@участник». There are no usernames.
 _Avoid_: tag, @username
@@ -116,6 +128,7 @@ A **План** whose author accepted an **Отклик**; it gets a contextual c
 - A **Пост** of plan type is the feed face of exactly one **План**.
 - A **Комментарий** belongs to one **Пост**; an **Ответ** belongs to one **Комментарий**; nothing answers an **Ответ**.
 - A **Репост** adds nothing to the original **Пост** but its count; a **Цитата** is a separate **Пост** of its own.
+- A **Цитата** points to exactly one **Пост**; when that one is deleted or hidden, the **Цитата** stays and shows «Публикация недоступна» in its place.
 - A **План** has many **Отклики** and at most one accepted, which turns it into a **Встреча**.
 - Two **Участники** share at most one **Контекстный чат**; an accepted **Отклик** creates it if it does not exist.
 - A **Блокировка** is between two **Участники**; an **Ограничение** is between moderation and one person.
