@@ -22,6 +22,7 @@ import type {
   RenewMembershipInput,
   SaveAnswerInput,
 } from '@/contracts';
+import { drafts } from '@/drafts';
 import type { DemoFlags } from '@/repository/mock';
 
 import { useDemoControls, useRepository } from './RepositoryProvider';
@@ -86,7 +87,10 @@ export function useResetDemo() {
   const demo = useDemoControls();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => demo!.resetDemo(),
+    mutationFn: async () => {
+      await demo!.resetDemo();
+      await drafts.clearAll();
+    },
     // Everything cached belongs to the old demo, including the access flow.
     onSuccess: async () => {
       await client.resetQueries();

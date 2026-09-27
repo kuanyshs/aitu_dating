@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,8 +8,10 @@ import { topicLabels, topics as topicKeys, type Topic } from '@/catalogs';
 import { isRepositoryError, LIMITS } from '@/contracts';
 import { useCachedPost, useCreatePost, useMyProfile, usePost, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
+import { draftOnOpen, drafts, sameTarget, type Draft } from '@/drafts';
 import { newIdempotencyKey } from '@/features/access/steps';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
+import { ActionSheet } from '@/ui/components/ActionSheet';
 import { Avatar } from '@/ui/components/Avatar';
 import { AuthorRow } from '@/ui/components/AuthorRow';
 import { PrimaryButton, SecondaryButton, TextButton } from '@/ui/components/buttons';
@@ -32,7 +35,15 @@ const MAX_TOPICS = 4;
  * post is never published twice.
  */
 export default function ComposeScreen() {
+  const styles = useStyles();
   const session = useSession();
+  const userId = session.data?.userId;
+  // The editor starts from the member's Черновик, so it waits for it (a local read).
+  const draft = useQuery({
+    queryKey: draftKey(userId),
+    queryFn: async () => (await drafts.load(userId ?? '')) ?? null,
+    enabled: !!userId,
+  });
   if (session.data && session.data.accessState !== 'ACTIVE_MEMBER') {
     return (
       <Screen testID="screen-compose" withTabBar={false}>
@@ -40,10 +51,13 @@ export default function ComposeScreen() {
       </Screen>
     );
   }
-  return <Editor />;
+  if (!userId || draft.isPending) return <View style={styles.root} testID="screen-compose" />;
+  return <Editor userId={userId} stored={draft.data ?? undefined} />;
 }
 
-function Editor() {
+const draftKey = (userId: string | undefined) => ['draft', userId ?? null] as const;
+
+function Editor({ userId, stored }: { userId: string; stored: Draft | undefined }) {
   const styles = useStyles();
   const router = useRouter();
   const clock = useClock();
@@ -64,13 +78,44 @@ function Editor() {
   const me = useMyProfile();
   const create = useCreatePost();
 
-  const [kind, setKind] = useState<Kind>('post');
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [text, setText] = useState('');
+  const client = useQueryClient();
+  const opening = draftOnOpen(stored, { quotedPostId });
+  const initial = opening === 'restore' ? stored : undefined;
+  const [kind, setKind] = useState<Kind>(initial?.type === 'question' ? 'question' : 'post');
+  const [topics, setTopics] = useState<Topic[]>(initial?.topics ?? []);
+  const [text, setText] = useState(initial?.text ?? '');
   const [idempotencyKey, setKey] = useState(newIdempotencyKey);
+  const [sheet, setSheet] = useState<'conflict' | 'leave' | null>(
+    opening === 'ask' ? 'conflict' : null,
+  );
   const type = quotedPostId ? 'quote' : kind;
 
   const leave = () => (router.canGoBack() ? router.back() : router.replace('/'));
+
+  const storeDraft = async (draft: Draft | null) => {
+    await (draft ? drafts.save(userId, draft) : drafts.clear(userId));
+    client.setQueryData(draftKey(userId), draft);
+  };
+  // The stored draft belongs to this editor when it is for the same post or quote.
+  const ownsDraft = !!stored && sameTarget(stored, { quotedPostId });
+
+  const cancel = () => {
+    if (text.trim()) return setSheet('leave');
+    // Emptying a restored draft and leaving means it is no longer wanted.
+    if (ownsDraft) void storeDraft(null);
+    leave();
+  };
+
+  const continueDraft = () => {
+    if (!stored) return;
+    setKind(stored.type === 'question' ? 'question' : 'post');
+    setTopics(stored.topics);
+    setText(stored.text);
+    setSheet(null);
+    if (stored.quotedPostId !== quotedPostId) {
+      router.setParams({ quote: stored.quotedPostId });
+    }
+  };
   const trimmed = text.trim();
   const canSend =
     trimmed.length > 0 && text.length <= LIMITS.postText && !create.isPending && !quoteGone;
@@ -98,6 +143,7 @@ function Editor() {
       { type, text, topics, idempotencyKey, ...(quotedPostId ? { quotedPostId } : {}) },
       {
         onSuccess: () => {
+          if (ownsDraft) void storeDraft(null);
           toast(t.done);
           // Back to Home, closing whatever the editor was opened over (a post screen too).
           router.dismissTo({ pathname: '/', params: { feed: 'for_you' } });
@@ -124,7 +170,7 @@ function Editor() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
-          <TextButton label={t.cancel} onPress={leave} testID="compose-cancel" />
+          <TextButton label={t.cancel} onPress={cancel} testID="compose-cancel" />
           <AppText variant="bodyStrong" role="heading" style={styles.title} pointerEvents="none">
             {t.title[type]}
           </AppText>
@@ -237,6 +283,60 @@ function Editor() {
           )}
         </View>
       </KeyboardAvoidingView>
+      <ActionSheet
+        visible={sheet !== null}
+        title={sheet === 'conflict' ? t.draft.conflictTitle : t.draft.leaveTitle}
+        message={sheet === 'conflict' ? t.draft.conflictText : t.draft.leaveText}
+        actions={
+          sheet === 'conflict'
+            ? [
+                { label: t.draft.continue, onPress: continueDraft, testID: 'draft-continue' },
+                {
+                  label: t.draft.startOver,
+                  danger: true,
+                  onPress: () => {
+                    setSheet(null);
+                    void storeDraft(null);
+                  },
+                  testID: 'draft-start-over',
+                },
+              ]
+            : [
+                {
+                  label: t.draft.save,
+                  onPress: async () => {
+                    setSheet(null);
+                    await storeDraft({
+                      type,
+                      text,
+                      topics,
+                      ...(quotedPostId ? { quotedPostId } : {}),
+                    });
+                    toast(t.draft.saved);
+                    leave();
+                  },
+                  testID: 'draft-save',
+                },
+                {
+                  label: t.draft.discard,
+                  danger: true,
+                  onPress: () => {
+                    setSheet(null);
+                    if (ownsDraft) void storeDraft(null);
+                    leave();
+                  },
+                  testID: 'draft-discard',
+                },
+              ]
+        }
+        // Dismissing the question about another draft leaves the editor untouched and
+        // closes it; dismissing «Сохранить черновик?» goes back to writing.
+        onClose={() => {
+          setSheet(null);
+          if (sheet === 'conflict') leave();
+        }}
+        testID="compose-sheet"
+      />
     </SafeAreaView>
   );
 }
