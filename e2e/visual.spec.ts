@@ -148,6 +148,7 @@ test.describe('visual baselines @visual', () => {
     await page.getByTestId('comment-c-p02-2').getByTestId('comment-reply').click();
     await page.getByTestId('reply-input').fill('Мне тоже ближе прогулка: меньше пауз, больше тем.');
     await expect(page.getByTestId('reply-counter')).toHaveText('49 / 360');
+    await expect(page.getByTestId('reply-avatar')).toBeVisible();
     await snap(page, 'reply-surface');
   });
 });

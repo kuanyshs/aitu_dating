@@ -104,7 +104,10 @@ export default function ReplyScreen() {
           ) : null}
 
           <View style={styles.compose}>
-            {me.data ? <Avatar avatar={me.data.avatar} size={36} /> : null}
+            {/* The slot is kept while the card loads, so the text never jumps sideways. */}
+            <View style={styles.avatar} testID={me.data ? 'reply-avatar' : undefined}>
+              {me.data ? <Avatar avatar={me.data.avatar} size={36} /> : null}
+            </View>
             <TextInput
               autoFocus
               multiline
@@ -179,6 +182,7 @@ const useStyles = createStyles((colors) => ({
     borderColor: colors.line,
   },
   compose: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  avatar: { width: 36, height: 36 },
   input: {
     ...typography.body,
     flex: 1,
