@@ -186,6 +186,9 @@ const useStyles = createStyles((colors) => ({
     color: colors.text,
     textAlignVertical: 'top',
     paddingTop: spacing.xs,
+    // A borderless writing field: the caret shows focus, not the browser's outline box.
+    outlineStyle: 'solid',
+    outlineWidth: 0,
   },
   footer: {
     gap: spacing.sm,
