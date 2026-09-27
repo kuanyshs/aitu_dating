@@ -118,14 +118,17 @@ describe('member feed', () => {
     }
   });
 
-  it('shows expired members only the safe view', async () => {
+  it('shows expired members everyone else in the safe view, and themselves in full', async () => {
     const repo = createMockRepository({
       clock,
       latency: 0,
       session: { accessState: 'ACTIVE_MEMBER_EXPIRED', roles: ['member'], userId: 'm12' },
     });
     const posts = await allPages(repo, { tab: 'for_you' });
-    for (const post of posts) expect(post.author.view).toBe('safe');
+    const own = posts.filter((p) => p.mine);
+    expect(own.length).toBeGreaterThan(0);
+    for (const post of own) expect(post.author).toMatchObject({ view: 'member', id: 'm12' });
+    for (const post of posts.filter((p) => !p.mine)) expect(post.author.view).toBe('safe');
   });
 
   it('limits the following tab to followed authors', async () => {

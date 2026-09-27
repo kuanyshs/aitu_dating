@@ -25,7 +25,9 @@ export function isMemberViewer(viewer: Viewer): boolean {
  * the safe view with the shared neutral avatar; nothing identifying leaves here.
  */
 export function toAuthorView(member: MemberRecord, viewer: Viewer): AuthorView {
-  if (!seesFullView(viewer)) {
+  // Members, expired ones too, always see themselves in full: it is their own card.
+  const self = isMemberViewer(viewer) && member.id === viewer.userId;
+  if (!seesFullView(viewer) && !self) {
     return {
       view: 'safe',
       gender: member.gender,

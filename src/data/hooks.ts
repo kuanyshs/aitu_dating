@@ -558,6 +558,20 @@ export function useDeletePost() {
       // The open screen is leaving; a later visit reloads and finds it unavailable.
       void client.invalidateQueries({ queryKey: queryKeys.post(postId), refetchType: 'none' });
       void client.invalidateQueries({ queryKey: ['comments', postId], refetchType: 'none' });
+      void client.invalidateQueries({ queryKey: ['profile-posts'] });
     },
+  });
+}
+
+/** A member's own posts, newest first, a page at a time («Мои публикации»). */
+export function useMyPosts(memberId: string | undefined) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: queryKeys.profilePosts(memberId ?? ''),
+    queryFn: ({ pageParam }) =>
+      repository.listProfilePosts({ memberId: memberId ?? '', cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled: !!memberId,
   });
 }
