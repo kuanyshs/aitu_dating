@@ -72,6 +72,7 @@ export type ShapingContext = {
   post(id: string): PostRecord | undefined;
   counters(postId: string): PostCounters;
   reactedByMe?(postId: string): boolean;
+  repostedByMe?(postId: string): boolean;
   isVisible(post: PostRecord): boolean;
 };
 
@@ -93,6 +94,9 @@ export function toPostView(post: PostRecord, ctx: ShapingContext): PostView {
     ...ctx.counters(post.id),
     ...(seesFullView(ctx.viewer) && ctx.reactedByMe
       ? { reactedByMe: ctx.reactedByMe(post.id) }
+      : {}),
+    ...(seesFullView(ctx.viewer) && ctx.repostedByMe
+      ? { repostedByMe: ctx.repostedByMe(post.id) }
       : {}),
     ...(isMemberViewer(ctx.viewer) ? { mine: post.authorId === ctx.viewer.userId } : {}),
     ...(post.mediaKey ? { media: { kind: 'synthetic' as const, key: post.mediaKey } } : {}),

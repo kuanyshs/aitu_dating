@@ -235,9 +235,9 @@ export function useRenewMembership() {
 type FeedData = InfiniteData<{ items: PostView[] }>;
 
 type CommentsData = InfiniteData<CommentPage>;
-type PostPatch = Pick<PostView, 'reactions' | 'reactedByMe'>;
+type PostPatch = Partial<Pick<PostView, 'reactions' | 'reactedByMe' | 'reposts' | 'repostedByMe'>>;
 
-/** Writes a post's new like state into every cached feed page and the post itself. */
+/** Writes a post's new like or repost state into every cached feed page and the post itself. */
 function patchPost(client: QueryClient, postId: string, patch: PostPatch) {
   client.setQueriesData<FeedData>({ queryKey: ['feed'] }, (data) =>
     data
@@ -293,6 +293,37 @@ export function useSetReaction() {
       patchPost(client, result.postId, {
         reactions: result.reactions,
         reactedByMe: result.reactedByMe,
+      }),
+  });
+}
+
+/** Repost / undo it: shown at once everywhere, rolled back if the server refuses. */
+export function useSetRepost() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { postId: string; active: boolean }) => repository.setRepost(input),
+    onMutate: async ({ postId, active }) => {
+      await client.cancelQueries({ queryKey: queryKeys.post(postId) });
+      const before = findPost(client, postId);
+      if (before && before.repostedByMe !== active) {
+        patchPost(client, postId, {
+          repostedByMe: active,
+          reposts: Math.max(0, before.reposts + (active ? 1 : -1)),
+        });
+      }
+      return { before };
+    },
+    onError: (_error, { postId }, context) => {
+      if (context?.before) {
+        const { reposts, repostedByMe } = context.before;
+        patchPost(client, postId, { reposts, repostedByMe });
+      }
+    },
+    onSuccess: (result) =>
+      patchPost(client, result.postId, {
+        reposts: result.reposts,
+        repostedByMe: result.repostedByMe,
       }),
   });
 }

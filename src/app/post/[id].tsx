@@ -57,7 +57,7 @@ export default function PostScreen() {
     [comments.data],
   );
   const { onAction, onOpen } = usePostActions();
-  const { allow, isMember } = useSocialGate();
+  const { allow, isMember, isExpired } = useSocialGate();
 
   const openReply = useCallback(
     (parentId?: string) =>
@@ -98,7 +98,8 @@ export default function PostScreen() {
   // Answering arrives with its own ticket; the gate for guests and expired members works.
   const onCommentAction = useCallback(
     (action: CommentAction, comment: CommentView) => {
-      // Managing one's own comment is always allowed, also with an expired membership.
+      // The menu is open to everyone: own comments are managed also with an expired
+      // membership, and anyone, a guest too, may report someone else's.
       if (action === 'menu') return setSheet({ step: 'menu', target: 'comment', comment });
       if (!allow()) return;
       if (action === 'reply') return openReply(comment.id);
@@ -233,7 +234,7 @@ export default function PostScreen() {
             testID: 'sheet-confirm-delete',
           },
         ]
-      : sheet.target === 'comment' || post.data.mine
+      : (sheet.target === 'comment' ? sheet.comment.mine : post.data.mine)
         ? [
             {
               label: strings.deletion.delete,
@@ -242,16 +243,24 @@ export default function PostScreen() {
               testID: 'sheet-delete',
             },
           ]
-        : [
-            {
-              label: t.report,
-              onPress: () => {
-                closeSheet();
-                router.push('/report');
-              },
-              testID: 'sheet-report',
-            },
-          ];
+        : othersMenu(sheet.target === 'comment' ? sheet.comment.id : postId, sheet.target);
+  // Someone else's content: anyone may report it; members, expired ones too, may block.
+  function othersMenu(targetId: string, targetType: 'post' | 'comment'): SheetAction[] {
+    const go = (href: Parameters<typeof router.push>[0]) => () => {
+      closeSheet();
+      router.push(href);
+    };
+    return [
+      {
+        label: t.report,
+        onPress: go({ pathname: '/report', params: { targetType, targetId } }),
+        testID: 'sheet-report',
+      },
+      ...(isMember || isExpired
+        ? [{ label: t.block, onPress: go('/safety'), testID: 'sheet-block' }]
+        : []),
+    ];
+  }
   const confirmTitle =
     sheet?.target === 'comment' ? strings.deletion.commentTitle : strings.deletion.postTitle;
   const confirmText =

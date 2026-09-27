@@ -147,11 +147,18 @@ export const PostRow = memo(function PostRow({ post, clock, onAction, onOpen, fu
             icon={Repeat2}
             count={post.reposts}
             label={strings.post.actions.repost(post.reposts)}
+            active={post.repostedByMe}
+            // A line icon has nothing to fill: an active repost gets a heavier stroke.
+            activeLook="bold"
+            // One's own post cannot be reposted, only quoted.
+            disabled={post.mine}
+            testID="post-repost"
             onPress={() => onAction('repost', post)}
           />
           <ActionButton
             icon={Quote}
             label={strings.post.actions.quote}
+            testID="post-quote"
             onPress={() => onAction('quote', post)}
           />
         </View>
@@ -165,33 +172,40 @@ function ActionButton({
   count,
   label,
   active,
+  activeLook = 'fill',
+  disabled,
   onPress,
   testID,
 }: {
   icon: Icon;
   count?: number;
   label: string;
-  /** Toggle actions (like) report their state; the icon fills, not just recolours. */
+  /** Toggle actions (like, repost) report their state; the icon changes, not just its colour. */
   active?: boolean;
+  activeLook?: 'fill' | 'bold';
+  disabled?: boolean;
   onPress: () => void;
   testID?: string;
 }) {
   const styles = useStyles();
   const { colors } = useTheme();
+  const color = disabled ? colors.disabledText : colors.text;
   return (
     <Pressable
       role="button"
       aria-label={label}
       aria-pressed={active}
+      aria-disabled={disabled}
+      disabled={disabled}
       onPress={onPress}
       testID={testID}
       style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
     >
       <IconComponent
         size={20}
-        color={colors.text}
-        fill={active ? colors.text : 'none'}
-        strokeWidth={iconStroke.default}
+        color={color}
+        fill={active && activeLook === 'fill' ? color : 'none'}
+        strokeWidth={active && activeLook === 'bold' ? iconStroke.active : iconStroke.default}
       />
       {count !== undefined && count > 0 ? (
         <AppText variant="caption" tone="textMuted">

@@ -61,6 +61,8 @@ export const PostView = z.strictObject({
   commentsCount: z.number().int().min(0),
   /** Present for active members only: whether the viewer has liked the post. */
   reactedByMe: z.boolean().optional(),
+  /** Present for active members only: whether the viewer has reposted the post. */
+  repostedByMe: z.boolean().optional(),
   /** Present for members, expired ones too: the viewer wrote this post and may delete it. */
   mine: z.boolean().optional(),
   media: MediaRef.optional(),

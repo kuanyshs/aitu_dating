@@ -26,9 +26,11 @@ import {
   ReactionState,
   RenewMembershipInput,
   RepositoryError,
+  RepostState,
   Session,
   SetCommentReactionInput,
   SetReactionInput,
+  SetRepostInput,
   UpdateSettingsInput,
   UserSettings,
   defaultUserSettings,
@@ -205,10 +207,14 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return [...data.reactions, ...state.reactions].filter((r) => r.postId === postId);
   }
 
+  function repostsOf(postId: string) {
+    return [...data.reposts, ...state.reposts].filter((r) => r.postId === postId);
+  }
+
   function counters(postId: string): PostCounters {
     return {
       reactions: reactionsOf(postId).length,
-      reposts: [...data.reposts, ...state.reposts].filter((r) => r.postId === postId).length,
+      reposts: repostsOf(postId).length,
       commentsCount: allComments().filter((c) => c.postId === postId && !c.deleted).length,
     };
   }
@@ -335,6 +341,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       post: (id) => postsById.get(id),
       counters,
       reactedByMe: (postId) => reactionsOf(postId).some((r) => r.userId === viewer.userId),
+      repostedByMe: (postId) => repostsOf(postId).some((r) => r.userId === viewer.userId),
       isVisible,
     };
   }
@@ -855,7 +862,35 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       }),
 
     createPost: notImplemented('createPost'),
-    setRepost: notImplemented('setRepost'),
+    setRepost: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const { postId, active } = parseOrFail(SetRepostInput, input, requestId);
+        const post = postsById.get(postId);
+        if (!post || !isVisible(post)) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Post not found.' });
+        }
+        if (post.authorId === me.id) {
+          fail(requestId, { code: 'CONFLICT', message: 'An own post cannot be reposted.' });
+        }
+        const mine = (r: { userId: string; postId: string }) =>
+          r.userId === me.id && r.postId === postId;
+        // Setting the same value twice is a no-op, so a retried request is safe.
+        if (active !== repostsOf(postId).some(mine)) {
+          const others = state.reposts.filter((r) => !mine(r));
+          await saveState({
+            ...state,
+            reposts: active
+              ? [...others, { userId: me.id, postId, createdAt: clock.now().toISOString() }]
+              : others,
+          });
+        }
+        return RepostState.parse({
+          postId,
+          reposts: repostsOf(postId).length,
+          repostedByMe: repostsOf(postId).some(mine),
+        });
+      }),
     setFollow: notImplemented('setFollow'),
     search: notImplemented('search'),
     createPlan: notImplemented('createPlan'),

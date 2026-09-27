@@ -50,6 +50,7 @@ export default function RootLayout() {
                 <Stack.Screen name="member/[id]" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="plan/[id]" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="reply" options={{ presentation: 'fullScreenModal' }} />
+                <Stack.Screen name="compose" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="chats/index" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="chats/[id]" options={{ presentation: 'fullScreenModal' }} />
                 {/* Sheets. */}

@@ -56,3 +56,20 @@ export async function openDemoPanel(page: Page) {
   await page.getByTestId('open-settings').click();
   await expect(page.getByTestId('demo-panel')).toBeVisible();
 }
+
+/**
+ * Signs in as a seed author (m01 wrote p01) by writing the stored session before the
+ * app starts. The demo member has no posts of their own until the «Создание» spec.
+ */
+export async function signInAsSeedAuthor(page: Page) {
+  await page.goto('/');
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'aitu.demo.session.v1',
+      JSON.stringify({
+        version: 1,
+        data: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
+      }),
+    ),
+  );
+}

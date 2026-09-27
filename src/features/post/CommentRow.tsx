@@ -51,17 +51,16 @@ export const CommentRow = memo(function CommentRow({ comment, clock, onAction, c
           <View style={styles.author}>
             <AuthorRow author={comment.author} time={formatRelative(comment.createdAt, clock)} />
           </View>
-          {comment.mine ? (
-            <Pressable
-              role="button"
-              aria-label={strings.deletion.commentMenu}
-              onPress={() => onAction('menu', comment)}
-              style={({ pressed }) => [styles.menu, pressed && styles.pressed]}
-              testID="comment-menu"
-            >
-              <Ellipsis size={18} color={colors.textMuted} strokeWidth={iconStroke.default} />
-            </Pressable>
-          ) : null}
+          {/* Own comments can be deleted; anyone else's reported or their author blocked. */}
+          <Pressable
+            role="button"
+            aria-label={strings.deletion.commentMenu}
+            onPress={() => onAction('menu', comment)}
+            style={({ pressed }) => [styles.menu, pressed && styles.pressed]}
+            testID="comment-menu"
+          >
+            <Ellipsis size={18} color={colors.textMuted} strokeWidth={iconStroke.default} />
+          </Pressable>
         </View>
         <AppText testID="comment-text">{comment.text}</AppText>
         <View style={styles.actions}>

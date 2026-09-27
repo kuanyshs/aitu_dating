@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 
 import { isRepositoryError, type PostView } from '@/contracts';
-import { useSession, useSetReaction } from '@/data/hooks';
+import { useSession, useSetReaction, useSetRepost } from '@/data/hooks';
 import type { PostAction, PostTarget } from '@/ui/components/PostRow';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -29,13 +29,14 @@ export function useSocialGate() {
 }
 
 /**
- * The actions of a post row, shared by the feed and the post screen: members like for
- * real and get honest feedback on what is still to come; everyone else is sent on.
+ * The actions of a post row, shared by the feed and the post screen: members like,
+ * repost and quote for real; everyone else is sent on.
  */
 export function usePostActions() {
   const router = useRouter();
   const toast = useToast((s) => s.show);
   const { mutate: likePost } = useSetReaction();
+  const { mutate: repost } = useSetRepost();
   const { allow } = useSocialGate();
 
   const onAction = useCallback(
@@ -45,18 +46,27 @@ export function usePostActions() {
       if (action === 'comment') {
         return router.push({ pathname: '/post/[id]', params: { id: post.id, compose: '1' } });
       }
-      if (action !== 'reaction') return toast(strings.post.comingSoon);
+      // «Цитировать» starts a new post around this one.
+      if (action === 'quote') {
+        return router.push({ pathname: '/compose', params: { quote: post.id } });
+      }
+      const failed = (message: string) => (error: Error) =>
+        isRepositoryError(error) && error.code === 'MEMBERSHIP_EXPIRED'
+          ? router.push('/renew')
+          : toast(message);
+      if (action === 'repost') {
+        if (post.mine) return;
+        return repost(
+          { postId: post.id, active: !post.repostedByMe },
+          { onError: failed(strings.post.repostFailed) },
+        );
+      }
       likePost(
         { postId: post.id, active: !post.reactedByMe },
-        {
-          onError: (error) =>
-            isRepositoryError(error) && error.code === 'MEMBERSHIP_EXPIRED'
-              ? router.push('/renew')
-              : toast(strings.post.reactionFailed),
-        },
+        { onError: failed(strings.post.reactionFailed) },
       );
     },
-    [allow, likePost, router, toast],
+    [allow, likePost, repost, router, toast],
   );
 
   const onOpen = useCallback(

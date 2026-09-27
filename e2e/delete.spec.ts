@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina } from './helpers';
+import { joinAsMadina, signInAsSeedAuthor } from './helpers';
 
 async function reply(page: Page, text: string) {
   await page.getByTestId('reply-input').fill(text);
@@ -59,13 +59,31 @@ test.describe('deleting own content', () => {
   test('someone else’s comment and post offer no «Удалить»', async ({ page }) => {
     await joinAsMadina(page);
     await page.goto('/post/p01');
-    await expect(page.getByTestId('comment-c-p01-5')).toBeVisible();
-    await expect(page.getByTestId('comment-c-p01-5').getByTestId('comment-menu')).toHaveCount(0);
+    await page.getByTestId('comment-c-p01-5').getByTestId('comment-menu').click();
+    await expect(page.getByTestId('sheet-report')).toBeVisible();
+    await expect(page.getByTestId('sheet-delete')).toHaveCount(0);
+    await page.getByTestId('post-sheet-cancel').click();
     await page.getByTestId('post-menu').click();
     await expect(page.getByTestId('sheet-report')).toBeVisible();
     await expect(page.getByTestId('sheet-delete')).toHaveCount(0);
     await page.getByTestId('sheet-report').click();
     await expect(page.getByTestId('screen-report')).toBeVisible();
+  });
+
+  test('an author deletes their own post, and it leaves the feed', async ({ page }) => {
+    await signInAsSeedAuthor(page);
+    await page.goto('/post/p01');
+    await page.getByTestId('post-menu').click();
+    await expect(page.getByTestId('sheet-report')).toHaveCount(0);
+    await page.getByTestId('sheet-delete').click();
+    await expect(page.getByTestId('post-sheet')).toContainText('Удалить публикацию?');
+    await page.getByTestId('sheet-confirm-delete').click();
+    await expect(page.getByTestId('toast')).toBeVisible();
+    await page.goto('/');
+    await expect(page.getByTestId('post-p02')).toBeVisible();
+    await expect(page.getByTestId('post-p01')).toHaveCount(0);
+    await page.goto('/post/p01');
+    await expect(page.getByTestId('post-unavailable')).toBeVisible();
   });
 
   test('an expired member still deletes their own comment', async ({ page }) => {
