@@ -14,6 +14,7 @@ import type {
   CommentSort,
   CommentView,
   CreatePostInput,
+  CreateReportInput,
   FeedTab,
   MembershipSelection,
   PartialAnswers,
@@ -38,6 +39,7 @@ export const queryKeys = {
   post: (postId: string) => ['post', postId] as const,
   comments: (postId: string, sort: CommentSort) => ['comments', postId, sort] as const,
   profilePosts: (memberId: string) => ['profile-posts', memberId] as const,
+  myReports: ['my-reports'] as const,
 };
 
 export function useSession() {
@@ -494,6 +496,30 @@ export function useCreatePost() {
       ]);
     },
   });
+}
+
+/** Sends a Жалоба; «Мои жалобы» then load afresh. */
+export function useCreateReport() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateReportInput) => repository.createReport(input),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.myReports }),
+  });
+}
+
+/** A comment already loaded on any post screen, found by its id alone. */
+export function useCachedCommentById(commentId: string): CommentView | undefined {
+  const client = useQueryClient();
+  for (const [, data] of client.getQueriesData<CommentsData>({ queryKey: ['comments'] })) {
+    for (const page of data?.pages ?? []) {
+      for (const thread of page.items) {
+        const found = [thread.comment, ...thread.replies].find((c) => c.id === commentId);
+        if (found) return found;
+      }
+    }
+  }
+  return undefined;
 }
 
 /** A post already loaded by the feed or the post screen; never fetches on its own. */

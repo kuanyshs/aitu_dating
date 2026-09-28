@@ -29,6 +29,7 @@ import {
   ReactionState,
   RenewMembershipInput,
   ReportPage,
+  ReportReceipt,
   ReportView,
   RepositoryError,
   RepostState,
@@ -1034,10 +1035,16 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         }
         const { target, reason, details, idempotencyKey } = parsed.data;
 
-        // A retry of a request that already went through returns the same report.
+        const receipt = (record: ReportRecord) =>
+          ReportReceipt.parse({
+            report: toReportView(record),
+            alreadyReported: record.idempotencyKey !== idempotencyKey,
+          });
+
+        // A retry of a request that already went through gets the same answer.
         const existingId = state.reportKeys[idempotencyKey];
         const existing = existingId ? allReports().find((r) => r.id === existingId) : undefined;
-        if (existing) return toReportView(existing);
+        if (existing) return receipt(existing);
 
         const owner = reportTargetOwner(target.type, target.id);
         if (!owner) fail(requestId, { code: 'NOT_FOUND', message: 'Nothing to report here.' });
@@ -1059,7 +1066,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             ...state,
             reportKeys: { ...state.reportKeys, [idempotencyKey]: open.id },
           });
-          return toReportView(open);
+          return receipt(open);
         }
 
         const record = ReportRecord.parse({
@@ -1070,6 +1077,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           reason,
           ...(details ? { details } : {}),
           status: 'created',
+          idempotencyKey,
           createdAt: clock.now().toISOString(),
         });
         await saveState({
@@ -1077,7 +1085,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           reports: [...state.reports, record],
           reportKeys: { ...state.reportKeys, [idempotencyKey]: record.id },
         });
-        return toReportView(record);
+        return receipt(record);
       }),
     listMyReports: (input) =>
       respond('data', (requestId) => {

@@ -10,7 +10,8 @@ type Option<T extends string> = { value: T; label: string };
 type Props<T extends string> = {
   label: string;
   options: readonly Option<T>[];
-  value: T;
+  /** Nothing is chosen yet when undefined. */
+  value: T | undefined;
   onChange: (value: T) => void;
   testID?: string;
 };

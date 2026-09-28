@@ -4,6 +4,7 @@ import { fixedClock } from '@/clock';
 import {
   CLUB_RULES_VERSION,
   ReportPage,
+  ReportReceipt,
   ReportView,
   type CreateReportInput,
   type QuestionnaireAnswers,
@@ -54,7 +55,9 @@ const spamOnP01: CreateReportInput = {
 describe('sending a Жалоба', () => {
   it('stores it as created and shows it in «Мои жалобы»', async () => {
     const repo = await join(repositoryOn());
-    const report = ReportView.parse(await repo.createReport(spamOnP01));
+    const receipt = ReportReceipt.parse(await repo.createReport(spamOnP01));
+    expect(receipt.alreadyReported).toBe(false);
+    const report = ReportView.parse(receipt.report);
     expect(report).toMatchObject({
       target: { type: 'post', id: 'p01' },
       reason: 'spam',
@@ -73,7 +76,11 @@ describe('sending a Жалоба', () => {
       [{ type: 'comment', id: 'c-p01-4' }, 'report-comment'],
       [{ type: 'plan', id: 'plan1' }, 'report-plan'],
     ] as const) {
-      const report = await repo.createReport({ target, reason: 'harassment', idempotencyKey: key });
+      const { report } = await repo.createReport({
+        target,
+        reason: 'harassment',
+        idempotencyKey: key,
+      });
       expect(report.target).toEqual(target);
     }
     expect((await repo.listMyReports({})).items).toHaveLength(3);
@@ -92,12 +99,15 @@ describe('sending a Жалоба', () => {
   it('a second report on a target under review returns the first one', async () => {
     const repo = await join(repositoryOn());
     const first = await repo.createReport(spamOnP01);
-    const second = await repo.createReport({
+    const repeat = {
       target: { type: 'post', id: 'p01' },
       reason: 'safety',
       idempotencyKey: 'report-key-2',
-    });
-    expect(second).toEqual(first);
+    } as const;
+    const second = await repo.createReport(repeat);
+    expect(second).toEqual({ report: first.report, alreadyReported: true });
+    // Its retry gets the same answer.
+    expect(await repo.createReport(repeat)).toEqual(second);
     expect((await repo.listMyReports({})).items).toHaveLength(1);
   });
 
@@ -105,7 +115,7 @@ describe('sending a Жалоба', () => {
     const repo = repositoryOn(createMemoryStore(), seedAuthor);
     const before = (await repo.listMyReports({})).items;
     expect(before.map((r) => r.id)).toEqual(['report1']);
-    const report = await repo.createReport({
+    const { report } = await repo.createReport({
       target: { type: 'user', id: 'm02' },
       reason: 'spam',
       idempotencyKey: 'report-key-3',
@@ -161,7 +171,7 @@ describe('sending a Жалоба', () => {
         idempotencyKey: 'report-long',
       }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', fieldErrors: { details: 'too_long' } });
-    const ok = await repo.createReport({
+    const { report: ok } = await repo.createReport({
       target: { type: 'post', id: 'p02' },
       reason: 'other',
       details: 'Странная ссылка.',
@@ -175,12 +185,15 @@ describe('who may report', () => {
   it('a guest reports anonymously and has no «Мои жалобы»', async () => {
     const store = createMemoryStore();
     const guest = repositoryOn(store);
-    const report = await guest.createReport(spamOnP01);
+    const { report } = await guest.createReport(spamOnP01);
     expect(report.status).toBe('created');
     await expect(guest.listMyReports({})).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
 
     // Nobody else sees it as theirs, and a guest's second report is a new one.
-    const again = await guest.createReport({ ...spamOnP01, idempotencyKey: 'report-key-9' });
+    const { report: again } = await guest.createReport({
+      ...spamOnP01,
+      idempotencyKey: 'report-key-9',
+    });
     expect(again.id).not.toBe(report.id);
     const member = await join(repositoryOn(store));
     expect((await member.listMyReports({})).items).toEqual([]);
@@ -189,7 +202,7 @@ describe('who may report', () => {
   it('an expired member reports and sees their reports', async () => {
     const repo = await join(repositoryOn());
     await repo.expireMembership();
-    const report = await repo.createReport(spamOnP01);
+    const { report } = await repo.createReport(spamOnP01);
     expect((await repo.listMyReports({})).items).toEqual([report]);
   });
 
@@ -229,7 +242,7 @@ describe('«Мои жалобы»', () => {
   it('survive a restart', async () => {
     const store = createMemoryStore();
     const repo = await join(repositoryOn(store));
-    const report = await repo.createReport(spamOnP01);
+    const { report } = await repo.createReport(spamOnP01);
     const restarted = repositoryOn(store);
     expect((await restarted.listMyReports({})).items).toEqual([report]);
   });
@@ -262,7 +275,7 @@ describe('state migration to v11', () => {
       },
     };
     const repo = repositoryOn(createMemoryStore({ [storageKeys.state]: JSON.stringify(v10) }));
-    expect((await repo.createReport(spamOnP01)).status).toBe('created');
+    expect((await repo.createReport(spamOnP01)).report.status).toBe('created');
     expect(await repo.takeResetNotice()).toBeUndefined();
   });
 });

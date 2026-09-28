@@ -61,6 +61,7 @@ import {
   BlockState,
   CreateReportInput,
   ReportPage,
+  ReportReceipt,
   ReportView,
   SetBlockInput,
 } from './safety';
@@ -131,7 +132,7 @@ export const repositoryContract = {
   markChatRead: { input: ChatRef, output: ChatSummary },
   listActivity: { input: ActivityQuery, output: ActivityPage },
 
-  createReport: { input: CreateReportInput, output: ReportView },
+  createReport: { input: CreateReportInput, output: ReportReceipt },
   listMyReports: { input: ListQuery, output: ReportPage },
   setBlock: { input: SetBlockInput, output: BlockState },
   listBlocked: { input: ListQuery, output: BlockedPage },

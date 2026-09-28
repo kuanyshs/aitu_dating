@@ -63,6 +63,7 @@ import type {
   BlockState,
   CreateReportInput,
   ReportPage,
+  ReportReceipt,
   ReportView,
   SetBlockInput,
 } from './safety';
@@ -156,7 +157,7 @@ export interface AituRepository {
   listActivity(query: ActivityQuery): Promise<ActivityPage>;
 
   // Safety.
-  createReport(input: CreateReportInput): Promise<ReportView>;
+  createReport(input: CreateReportInput): Promise<ReportReceipt>;
   /** «Мои жалобы»: the member's own reports, newest first, with status and outcome. */
   listMyReports(query: ListQuery): Promise<ReportPage>;
   setBlock(input: SetBlockInput): Promise<BlockState>;

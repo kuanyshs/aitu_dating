@@ -50,6 +50,16 @@ export const ReportView = z.strictObject({
 });
 export type ReportView = z.infer<typeof ReportView>;
 
+/**
+ * The answer to sending a Жалоба. `alreadyReported` means the same person already has a
+ * report on this target under review and this one was not added: «Вы уже пожаловались».
+ */
+export const ReportReceipt = z.strictObject({
+  report: ReportView,
+  alreadyReported: z.boolean(),
+});
+export type ReportReceipt = z.infer<typeof ReportReceipt>;
+
 export const ReportPage = Page(ReportView);
 export type ReportPage = z.infer<typeof ReportPage>;
 

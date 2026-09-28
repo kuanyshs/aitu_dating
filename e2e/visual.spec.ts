@@ -206,4 +206,25 @@ test.describe('visual baselines @visual', () => {
     await section.getByRole('heading').scrollIntoViewIfNeeded();
     await snap(page, 'my-posts');
   });
+
+  test('Жалоба: the form with a reason and details', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await page.goto('/report?targetType=post&targetId=p02');
+    await expect(page.getByTestId('report-target').getByTestId('author-name')).toBeVisible();
+    await page.getByTestId('report-reason-harassment').click();
+    await page.getByTestId('report-details').fill('Резкие слова в ответ на вежливый вопрос.');
+    await snap(page, 'report-form');
+  });
+
+  test('Жалоба: sent, with the offer to block', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await page.goto('/report?targetType=post&targetId=p02');
+    await expect(page.getByTestId('report-target').getByTestId('author-name')).toBeVisible();
+    await page.getByTestId('report-reason-spam').click();
+    await page.getByTestId('report-submit').click();
+    await expect(page.getByTestId('report-block')).toBeVisible();
+    await snap(page, 'report-sent');
+  });
 });

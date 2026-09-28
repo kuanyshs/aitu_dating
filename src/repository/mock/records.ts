@@ -150,6 +150,8 @@ export const ReportRecord = z.strictObject({
   details: z.string().optional(),
   status: z.enum(['created', 'reviewing', 'resolved']),
   outcome: z.enum(['dismissed', 'content_removed', 'member_restricted']).optional(),
+  /** The key of the request that created it (demo reports only). */
+  idempotencyKey: z.string().optional(),
   createdAt: IsoDateTime,
 });
 export type ReportRecord = z.infer<typeof ReportRecord>;
