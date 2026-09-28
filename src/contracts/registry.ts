@@ -33,6 +33,9 @@ import { RenewMembershipInput } from './membership';
 import {
   ModerateMemberInput,
   ModerationResult,
+  ModerationReportPage,
+  ModerationReportView,
+  ReportRef,
   ReportsQuery,
   ResolveReportInput,
 } from './moderation';
@@ -62,7 +65,6 @@ import {
   CreateReportInput,
   ReportPage,
   ReportReceipt,
-  ReportView,
   SetBlockInput,
 } from './safety';
 import { SearchPage, SearchQuery } from './search';
@@ -137,8 +139,9 @@ export const repositoryContract = {
   setBlock: { input: SetBlockInput, output: BlockState },
   listBlocked: { input: ListQuery, output: BlockedPage },
 
-  listReports: { input: ReportsQuery, output: ReportPage },
-  resolveReport: { input: ResolveReportInput, output: ReportView },
+  listReports: { input: ReportsQuery, output: ModerationReportPage },
+  openReport: { input: ReportRef, output: ModerationReportView },
+  resolveReport: { input: ResolveReportInput, output: ModerationReportView },
   moderateMember: { input: ModerateMemberInput, output: ModerationResult },
 
   getSettings: { input: none, output: UserSettings },

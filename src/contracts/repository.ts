@@ -30,6 +30,9 @@ import type { RenewMembershipInput } from './membership';
 import type {
   ModerateMemberInput,
   ModerationResult,
+  ModerationReportPage,
+  ModerationReportView,
+  ReportRef,
   ReportsQuery,
   ResolveReportInput,
 } from './moderation';
@@ -64,7 +67,6 @@ import type {
   CreateReportInput,
   ReportPage,
   ReportReceipt,
-  ReportView,
   SetBlockInput,
 } from './safety';
 import type { SearchPage, SearchQuery } from './search';
@@ -164,8 +166,16 @@ export interface AituRepository {
   listBlocked(query: ListQuery): Promise<BlockedPage>;
 
   // Moderation. Only sessions with the `moderator` role; everyone else gets FORBIDDEN.
-  listReports(query: ReportsQuery): Promise<ReportPage>;
-  resolveReport(input: ResolveReportInput): Promise<ReportView>;
+  /** Newest first; reports about the moderator's own content are not theirs to decide. */
+  listReports(query: ReportsQuery): Promise<ModerationReportPage>;
+  /** Opening a new report takes it into review («На рассмотрении»). */
+  openReport(input: ReportRef): Promise<ModerationReportView>;
+  /**
+   * Decides a report and, with the same outcome, every other open report on its target.
+   * An already resolved report, removing a person's «content», or restricting someone
+   * already restricted is a CONFLICT.
+   */
+  resolveReport(input: ResolveReportInput): Promise<ModerationReportView>;
   moderateMember(input: ModerateMemberInput): Promise<ModerationResult>;
 
   // Settings.

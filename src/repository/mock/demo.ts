@@ -93,10 +93,18 @@ export const MockState = z.strictObject({
   reportKeys: z.record(z.string(), z.string()),
   /** Блокировки between members; the seed has none. */
   blocks: z.array(BlockRecord),
+  /** Moderation's progress on reports, seed ones too: status and outcome by report id. */
+  reportUpdates: z.record(
+    z.string(),
+    z.strictObject({
+      status: z.enum(['created', 'reviewing', 'resolved']),
+      outcome: z.enum(['dismissed', 'content_removed', 'member_restricted']).optional(),
+    }),
+  ),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 12;
+export const MOCK_STATE_VERSION = 13;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -128,6 +136,8 @@ export const mockStateMigrations = [
   (v10: unknown) => ({ ...(v10 as object), reports: [], reportKeys: {} }),
   // v12 adds Блокировки.
   (v11: unknown) => ({ ...(v11 as object), blocks: [] }),
+  // v13 adds moderation decisions on reports.
+  (v12: unknown) => ({ ...(v12 as object), reportUpdates: {} }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -153,6 +163,7 @@ export const defaultMockState = (): MockState => ({
   reports: [],
   reportKeys: {},
   blocks: [],
+  reportUpdates: {},
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-import { Id } from './common';
-import { ReportOutcome } from './safety';
+import { Id, Page } from './common';
+import { MemberAuthorView } from './people';
+import { ReportOutcome, ReportView } from './safety';
 
 /** A moderator's decision on a member: Ограничение hides their content from everyone. */
 export const ModerateMemberInput = z.strictObject({
@@ -27,3 +28,27 @@ export const ResolveReportInput = z.strictObject({
   resolution: ReportOutcome,
 });
 export type ResolveReportInput = z.infer<typeof ResolveReportInput>;
+
+export const ReportRef = z.strictObject({ reportId: Id });
+export type ReportRef = z.infer<typeof ReportRef>;
+
+/**
+ * A Жалоба as the Очередь модерации shows it: with who is behind the target (always in
+ * the full view: moderation sees through blocks and restrictions) and what they wrote.
+ * `subject` is absent when the person no longer exists; `text` for a post, a comment or
+ * a plan. `restricted` tells whether «Ограничить участника» still makes sense.
+ */
+export const ModerationReportView = z.strictObject({
+  report: ReportView,
+  subject: z
+    .strictObject({
+      person: MemberAuthorView,
+      text: z.string().optional(),
+      restricted: z.boolean(),
+    })
+    .optional(),
+});
+export type ModerationReportView = z.infer<typeof ModerationReportView>;
+
+export const ModerationReportPage = Page(ModerationReportView);
+export type ModerationReportPage = z.infer<typeof ModerationReportPage>;

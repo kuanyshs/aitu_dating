@@ -18,6 +18,8 @@ import {
   FeedPage,
   FeedQuery,
   ModerateMemberInput,
+  ModerationReportPage,
+  ModerationReportView,
   ModerationResult,
   MemberRef,
   PassportCandidate,
@@ -32,6 +34,9 @@ import {
   RenewMembershipInput,
   ReportPage,
   ReportReceipt,
+  ReportRef,
+  ReportsQuery,
+  ResolveReportInput,
   ReportView,
   RepositoryError,
   RepostState,
@@ -276,7 +281,72 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
   /** Seed reports and those sent during the demo, oldest first. */
   function allReports(): ReportRecord[] {
-    return [...data.reports, ...state.reports];
+    return [...data.reports, ...state.reports].map((r) => {
+      const update = state.reportUpdates[r.id];
+      if (!update) return r;
+      const { outcome: _previous, ...rest } = r;
+      return { ...rest, ...update };
+    });
+  }
+
+  /** Who is behind a report target at all, seen or hidden, for moderation. */
+  function reportTargetAuthor(type: ReportRecord['targetType'], id: string) {
+    switch (type) {
+      case 'user':
+        return member(id);
+      case 'post': {
+        const post = postById(id);
+        return post ? { ...member(post.authorId)!, text: post.text } : undefined;
+      }
+      case 'comment': {
+        const comment = allComments().find((c) => c.id === id);
+        return comment ? { ...member(comment.authorId)!, text: comment.text } : undefined;
+      }
+      case 'plan': {
+        const plan = plansById.get(id);
+        const post = allPosts().find((p) => p.planId === id);
+        return plan ? { ...member(plan.authorId)!, text: post?.text } : undefined;
+      }
+      case 'message':
+        return undefined;
+    }
+  }
+
+  /** Moderation sessions only: an active role on a session that is not restricted. */
+  function requireModerator(requestId: string): Session {
+    const current = effectiveSession();
+    if (current.accessState === 'BLOCKED' || !current.roles.includes('moderator')) {
+      fail(requestId, { code: 'FORBIDDEN', message: 'Moderators only.' });
+    }
+    return current;
+  }
+
+  function toModerationView(record: ReportRecord): ModerationReportView {
+    const author = reportTargetAuthor(record.targetType, record.targetId);
+    const person = author ? member(author.id) : undefined;
+    return ModerationReportView.parse({
+      report: toReportView(record),
+      ...(person && author
+        ? {
+            subject: {
+              // Moderation sees the person in full, whoever is looking.
+              person: toAuthorView(person, { accessState: 'ACTIVE_MEMBER' }),
+              ...('text' in author && author.text ? { text: author.text } : {}),
+              restricted: isRestricted(person),
+            },
+          }
+        : {}),
+    });
+  }
+
+  /** A report this moderator may decide on: it exists and is not about their content. */
+  function moderatedReport(requestId: string, moderator: Session, reportId: string) {
+    const record = allReports().find((r) => r.id === reportId);
+    const author = record ? reportTargetAuthor(record.targetType, record.targetId) : undefined;
+    if (!record || (author && author.id === moderator.userId)) {
+      fail(requestId, { code: 'NOT_FOUND', message: 'Report not found.' });
+    }
+    return record;
   }
 
   function toReportView(record: ReportRecord): ReportView {
@@ -1213,8 +1283,85 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           });
         return BlockedPage.parse(page(items, cursor, limit ?? DEFAULT_PAGE_SIZE, requestId));
       }),
-    listReports: notImplemented('listReports'),
-    resolveReport: notImplemented('resolveReport'),
+    listReports: (input) =>
+      respond('data', (requestId) => {
+        const moderator = requireModerator(requestId);
+        const { status, cursor } = parseOrFail(ReportsQuery, input ?? {}, requestId);
+        // Newest first; among equal times the later one wins.
+        const items = allReports()
+          .filter((r) => !status || r.status === status)
+          .filter((r) => reportTargetAuthor(r.targetType, r.targetId)?.id !== moderator.userId)
+          .reverse()
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        return ModerationReportPage.parse(
+          page(items.map(toModerationView), cursor, DEFAULT_PAGE_SIZE, requestId),
+        );
+      }),
+    openReport: (input) =>
+      respond('data', async (requestId) => {
+        const moderator = requireModerator(requestId);
+        const { reportId } = parseOrFail(ReportRef, input, requestId);
+        const record = moderatedReport(requestId, moderator, reportId);
+        if (record.status !== 'created') return toModerationView(record);
+        await saveState({
+          ...state,
+          reportUpdates: { ...state.reportUpdates, [record.id]: { status: 'reviewing' } },
+        });
+        return toModerationView({ ...record, status: 'reviewing' });
+      }),
+    resolveReport: (input) =>
+      respond('data', async (requestId) => {
+        const moderator = requireModerator(requestId);
+        const { reportId, resolution } = parseOrFail(ResolveReportInput, input, requestId);
+        const record = moderatedReport(requestId, moderator, reportId);
+        if (record.status === 'resolved') {
+          fail(requestId, { code: 'CONFLICT', message: 'The report is already decided.' });
+        }
+        const author = reportTargetAuthor(record.targetType, record.targetId);
+        const person = author ? member(author.id) : undefined;
+        let next: MockState = state;
+
+        if (resolution === 'content_removed') {
+          // Removed exactly as its author would delete it.
+          const postId =
+            record.targetType === 'post'
+              ? record.targetId
+              : record.targetType === 'plan'
+                ? allPosts().find((p) => p.planId === record.targetId)?.id
+                : undefined;
+          if (postId) {
+            next = { ...next, deletedPostIds: [...new Set([...next.deletedPostIds, postId])] };
+          } else if (record.targetType === 'comment') {
+            next = {
+              ...next,
+              deletedCommentIds: [...new Set([...next.deletedCommentIds, record.targetId])],
+            };
+          } else {
+            fail(requestId, { code: 'CONFLICT', message: 'There is no content to remove.' });
+          }
+        }
+        if (resolution === 'member_restricted') {
+          if (!person || isRestricted(person)) {
+            fail(requestId, { code: 'CONFLICT', message: 'Nobody to restrict here.' });
+          }
+          next = {
+            ...next,
+            restrictedSubjects: [...new Set([...next.restrictedSubjects, person.aituSubjectId])],
+          };
+        }
+
+        // One decision closes every open report on the same target.
+        const decided = { status: 'resolved' as const, outcome: resolution };
+        const updates = { ...next.reportUpdates };
+        for (const r of allReports()) {
+          const sameTarget = r.targetType === record.targetType && r.targetId === record.targetId;
+          if (r.id === record.id || (sameTarget && r.status !== 'resolved')) {
+            updates[r.id] = decided;
+          }
+        }
+        await saveState({ ...next, reportUpdates: updates });
+        return toModerationView({ ...record, ...decided });
+      }),
 
     renewMembership: (input) =>
       respond(
