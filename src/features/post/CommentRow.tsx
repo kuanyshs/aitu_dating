@@ -25,18 +25,26 @@ type Props = {
 
 const authorName = (author: AuthorView) => (author.view === 'member' ? author.name : undefined);
 
-/** One Комментарий or Ответ; a deleted one keeps its place with «Комментарий удалён». */
+/**
+ * One Комментарий or Ответ; a deleted one keeps its place with «Комментарий удалён», one
+ * hidden by a Блокировка with «Комментарий скрыт».
+ */
 export const CommentRow = memo(function CommentRow({ comment, clock, onAction, canReply }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const t = strings.postDetail;
 
-  if (comment.deleted) {
+  // Deleted by its author, or hidden by a Блокировка: only its place in the thread stays.
+  if (comment.deleted || comment.hidden) {
     return (
       <View style={styles.row} testID={`comment-${comment.id}`}>
         <View style={styles.avatarGap} />
-        <AppText tone="textMuted" style={styles.deleted} testID="comment-deleted">
-          {t.deleted}
+        <AppText
+          tone="textMuted"
+          style={styles.deleted}
+          testID={comment.hidden ? 'comment-hidden' : 'comment-deleted'}
+        >
+          {comment.hidden ? t.hidden : t.deleted}
         </AppText>
       </View>
     );

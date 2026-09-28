@@ -56,6 +56,7 @@ export const strings = {
     unavailableText: 'Её удалили или скрыли.',
     postErrorTitle: 'Не удалось открыть публикацию',
     deleted: 'Комментарий удалён',
+    hidden: 'Комментарий скрыт',
     reply: 'Ответить',
     replyTo: (author: string) => `Ответить: ${author}`,
     like: (n: number) => `Нравится: ${n}`,
@@ -81,6 +82,15 @@ export const strings = {
     commentDone: 'Комментарий удалён',
     postDone: 'Публикация удалена',
     failed: 'Не удалось удалить. Попробуйте ещё раз.',
+  },
+  block: {
+    title: 'Заблокировать автора?',
+    // Names are not declined, so the name goes into the text, not after the verb.
+    hint: (name: string | undefined) =>
+      `${name ? `Вы и ${name}` : 'Вы и автор'} перестанете видеть друг друга: публикации, комментарии и профили.`,
+    confirm: 'Заблокировать',
+    done: 'Автор заблокирован',
+    failed: 'Не удалось заблокировать. Попробуйте ещё раз.',
   },
   myPosts: {
     title: 'Мои публикации',
@@ -186,10 +196,7 @@ export const strings = {
     repeatTitle: 'Вы уже пожаловались',
     repeatText: 'Жалоба на рассмотрении — модераторы разберутся. Статус — в «Мои жалобы».',
     done: 'Готово',
-    // Names are not declined, so the name goes into the hint, not after the verb.
     blockAuthor: 'Заблокировать автора',
-    blockHint: (name: string | undefined) =>
-      `${name ? `Вы и ${name}` : 'Вы и автор'} перестанете видеть друг друга: публикации, комментарии и профили.`,
   },
   renew: {
     title: 'Продление membership',

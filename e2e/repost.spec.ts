@@ -95,7 +95,7 @@ test.describe('repost, quote and the «•••» menu', () => {
       contentType: 'image/png',
     });
     await page.getByTestId('sheet-block').click();
-    await expect(page.getByTestId('screen-safety')).toBeVisible();
+    await expect(page.getByTestId('post-sheet')).toContainText('Заблокировать автора?');
   });
 
   test('an expired member is sent to Продление, yet may block', async ({ page }) => {
@@ -110,6 +110,10 @@ test.describe('repost, quote and the «•••» menu', () => {
     await page.goto('/post/p02');
     await page.getByTestId('post-menu').click();
     await page.getByTestId('sheet-block').click();
-    await expect(page.getByTestId('screen-safety')).toBeVisible();
+    // The safe view has no name: the confirmation speaks of «автор».
+    await expect(page.getByTestId('post-sheet')).toContainText('Вы и автор перестанете');
+    await page.getByTestId('sheet-confirm-block').click();
+    await expect(page.getByTestId('toast')).toContainText('Автор заблокирован');
+    await expect(page.getByTestId('screen-post')).toHaveCount(0);
   });
 });

@@ -15,6 +15,7 @@ import {
   useDeletePost,
   usePost,
   usePostComments,
+  useSetBlock,
   useSetCommentReaction,
 } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
@@ -89,10 +90,11 @@ export default function PostScreen() {
   const { mutate: likeComment } = useSetCommentReaction(postId);
   const deleteComment = useDeleteComment(postId);
   const deletePost = useDeletePost();
-  // «•••» opens a menu; «Удалить» in it asks for confirmation in a second sheet.
+  const setBlock = useSetBlock();
+  // «•••» opens a menu; «Удалить» and «Заблокировать» ask for confirmation in a second sheet.
+  type Step = 'menu' | 'confirm' | 'block';
   type Sheet =
-    | { step: 'menu' | 'confirm'; target: 'post' }
-    | { step: 'menu' | 'confirm'; target: 'comment'; comment: CommentView };
+    { step: Step; target: 'post' } | { step: Step; target: 'comment'; comment: CommentView };
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const closeSheet = useCallback(() => setSheet(null), []);
   // Answering arrives with its own ticket; the gate for guests and expired members works.
@@ -223,52 +225,98 @@ export default function PostScreen() {
     closeSheet();
   };
 
+  const confirmBlock = () => {
+    if (!sheet) return;
+    const author = sheet.target === 'comment' ? sheet.comment.author : post.data.author;
+    const postAuthor = post.data.author;
+    // The post goes with its author; a comment's author may be the post's author too.
+    const authorOfPost =
+      sheet.target === 'post' ||
+      (author.view === 'member' && postAuthor.view === 'member' && author.id === postAuthor.id);
+    setBlock.mutate(
+      {
+        target: { type: sheet.target, id: sheet.target === 'comment' ? sheet.comment.id : postId },
+        active: true,
+      },
+      {
+        onSuccess: () => {
+          toast(strings.block.done);
+          if (authorOfPost) leave();
+        },
+        onError: () => toast(strings.block.failed),
+      },
+    );
+    closeSheet();
+  };
+
   const sheetActions: SheetAction[] = !sheet
     ? []
-    : sheet.step === 'confirm'
+    : sheet.step === 'block'
       ? [
           {
-            label: strings.deletion.delete,
+            label: strings.block.confirm,
             danger: true,
-            onPress: confirmDelete,
-            testID: 'sheet-confirm-delete',
+            onPress: confirmBlock,
+            testID: 'sheet-confirm-block',
           },
         ]
-      : (sheet.target === 'comment' ? sheet.comment.mine : post.data.mine)
+      : sheet.step === 'confirm'
         ? [
             {
               label: strings.deletion.delete,
               danger: true,
-              onPress: () => setSheet({ ...sheet, step: 'confirm' }),
-              testID: 'sheet-delete',
+              onPress: confirmDelete,
+              testID: 'sheet-confirm-delete',
             },
           ]
-        : othersMenu(sheet.target === 'comment' ? sheet.comment.id : postId, sheet.target);
+        : (sheet.target === 'comment' ? sheet.comment.mine : post.data.mine)
+          ? [
+              {
+                label: strings.deletion.delete,
+                danger: true,
+                onPress: () => setSheet({ ...sheet, step: 'confirm' }),
+                testID: 'sheet-delete',
+              },
+            ]
+          : othersMenu(sheet);
   // Someone else's content: anyone may report it; members, expired ones too, may block.
-  function othersMenu(targetId: string, targetType: 'post' | 'comment'): SheetAction[] {
-    const go = (href: Parameters<typeof router.push>[0]) => () => {
-      closeSheet();
-      router.push(href);
-    };
+  function othersMenu(current: Sheet): SheetAction[] {
+    const targetId = current.target === 'comment' ? current.comment.id : postId;
     return [
       {
         label: t.report,
-        onPress: go({ pathname: '/report', params: { targetType, targetId } }),
+        onPress: () => {
+          closeSheet();
+          router.push({ pathname: '/report', params: { targetType: current.target, targetId } });
+        },
         testID: 'sheet-report',
       },
       ...(isMember || isExpired
-        ? [{ label: t.block, onPress: go('/safety'), testID: 'sheet-block' }]
+        ? [
+            {
+              label: t.block,
+              onPress: () => setSheet({ ...current, step: 'block' }),
+              testID: 'sheet-block',
+            },
+          ]
         : []),
     ];
   }
+  const sheetAuthor = sheet?.target === 'comment' ? sheet.comment.author : post.data.author;
   const confirmTitle =
-    sheet?.target === 'comment' ? strings.deletion.commentTitle : strings.deletion.postTitle;
+    sheet?.step === 'block'
+      ? strings.block.title
+      : sheet?.target === 'comment'
+        ? strings.deletion.commentTitle
+        : strings.deletion.postTitle;
   const confirmText =
-    sheet?.target === 'comment'
-      ? sheet.comment.parentId
-        ? strings.deletion.replyText
-        : strings.deletion.commentText
-      : strings.deletion.postText;
+    sheet?.step === 'block'
+      ? strings.block.hint(sheetAuthor.view === 'member' ? sheetAuthor.name : undefined)
+      : sheet?.target === 'comment'
+        ? sheet.comment.parentId
+          ? strings.deletion.replyText
+          : strings.deletion.commentText
+        : strings.deletion.postText;
 
   let body: React.ReactNode = null;
   if (comments.isPending) body = <FeedSkeleton rows={3} />;
@@ -318,8 +366,8 @@ export default function PostScreen() {
       <PostFooter onCompose={() => openReply()} />
       <ActionSheet
         visible={!!sheet}
-        title={sheet?.step === 'confirm' ? confirmTitle : undefined}
-        message={sheet?.step === 'confirm' ? confirmText : undefined}
+        title={sheet && sheet.step !== 'menu' ? confirmTitle : undefined}
+        message={sheet && sheet.step !== 'menu' ? confirmText : undefined}
         actions={sheetActions}
         onClose={closeSheet}
         testID="post-sheet"

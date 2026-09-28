@@ -16,6 +16,7 @@ import type {
   CreatePostInput,
   CreateReportInput,
   FeedTab,
+  SetBlockInput,
   MembershipSelection,
   PartialAnswers,
   PostView,
@@ -505,6 +506,24 @@ export function useCreateReport() {
   return useMutation({
     mutationFn: (input: CreateReportInput) => repository.createReport(input),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.myReports }),
+  });
+}
+
+/**
+ * Sets or lifts a Блокировка. Whatever was loaded may now show or hide the other person,
+ * so every content query reloads; an open screen of theirs reads «недоступна».
+ */
+export function useSetBlock() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SetBlockInput) => repository.setBlock(input),
+    onSuccess: () =>
+      Promise.all(
+        ['feed', 'post', 'comments', 'profile-posts', 'blocked'].map((key) =>
+          client.invalidateQueries({ queryKey: [key] }),
+        ),
+      ),
   });
 }
 

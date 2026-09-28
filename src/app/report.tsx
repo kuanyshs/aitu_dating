@@ -17,6 +17,7 @@ import {
   useCreateReport,
   usePost,
   useSession,
+  useSetBlock,
 } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { newIdempotencyKey } from '@/features/access/steps';
@@ -29,6 +30,7 @@ import { formatRelative } from '@/ui/format';
 import { ShieldCheck } from '@/ui/icons';
 import { useReportFooter } from '@/ui/navigation/statusInset';
 import { strings } from '@/ui/strings';
+import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
 import { radius, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
@@ -95,12 +97,15 @@ function ReportForm({ target, leave }: { target: ReportTarget; leave: () => void
   const accessState = session.data?.accessState;
   // Members, expired ones too, may block the author afterwards; guests may not.
   const canBlock =
-    !!context && (accessState === 'ACTIVE_MEMBER' || accessState === 'ACTIVE_MEMBER_EXPIRED');
+    !!context &&
+    !context.mine &&
+    (accessState === 'ACTIVE_MEMBER' || accessState === 'ACTIVE_MEMBER_EXPIRED');
 
   if (receipt) {
     return (
       <Sent
         receipt={receipt}
+        target={target}
         guest={accessState === 'GUEST_PREVIEW'}
         blockAuthor={canBlock && context ? context.author : undefined}
         onDone={leave}
@@ -222,11 +227,13 @@ function ReportForm({ target, leave }: { target: ReportTarget; leave: () => void
 /** «Жалоба отправлена», or «Вы уже пожаловались» when one is already under review. */
 function Sent({
   receipt,
+  target,
   guest,
   blockAuthor,
   onDone,
 }: {
   receipt: ReportReceipt;
+  target: ReportTarget;
   guest: boolean;
   blockAuthor: AuthorView | undefined;
   onDone: () => void;
@@ -234,7 +241,24 @@ function Sent({
   const styles = useStyles();
   const router = useRouter();
   const { colors } = useTheme();
+  const toast = useToast((s) => s.show);
+  const setBlock = useSetBlock();
   const repeat = receipt.alreadyReported;
+  const block = () => {
+    if (target.type !== 'post' && target.type !== 'comment') return;
+    setBlock.mutate(
+      { target: { type: target.type, id: target.id }, active: true },
+      {
+        onSuccess: () => {
+          toast(strings.block.done);
+          // The author's post is gone for the member now: its screen closes as well.
+          if (target.type === 'post') router.dismissTo('/');
+          else onDone();
+        },
+        onError: () => toast(strings.block.failed),
+      },
+    );
+  };
   const text = repeat ? t.repeatText : guest ? t.sentGuestText : t.sentText;
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.root} testID="screen-report">
@@ -252,12 +276,12 @@ function Sent({
         {blockAuthor ? (
           <>
             <AppText variant="caption" tone="textMuted" testID="report-block-hint">
-              {t.blockHint(blockAuthor.view === 'member' ? blockAuthor.name : undefined)}
+              {strings.block.hint(blockAuthor.view === 'member' ? blockAuthor.name : undefined)}
             </AppText>
-            {/* Блокировка itself arrives with its own ticket; until then the section opens. */}
             <SecondaryButton
               label={t.blockAuthor}
-              onPress={() => router.replace('/safety')}
+              loading={setBlock.isPending}
+              onPress={block}
               testID="report-block"
             />
           </>
