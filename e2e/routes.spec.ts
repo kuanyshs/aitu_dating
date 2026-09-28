@@ -8,7 +8,6 @@ const stubs = [
   { path: '/plan/plan1', testID: 'screen-plan', title: 'План встречи' },
   { path: '/chats', testID: 'screen-chats', title: 'Сообщения' },
   { path: '/chats/chat-1', testID: 'screen-chat', title: 'Чат' },
-  { path: '/safety', testID: 'screen-safety', title: 'Безопасность' },
   { path: '/about', testID: 'screen-about', title: 'О продукте' },
   { path: '/membership', testID: 'screen-membership', title: 'Membership' },
   { path: '/notifications', testID: 'screen-notifications', title: 'Уведомления' },
@@ -66,7 +65,10 @@ test.describe('route stubs', () => {
       await page.getByTestId('home-menu').click();
       await page.getByTestId(item).click();
       await expect(page.getByTestId(screen)).toBeVisible();
-      await page.getByTestId(screen).getByTestId('stub-back').click();
+      await page
+        .getByTestId(screen)
+        .getByTestId(screen === 'screen-safety' ? 'safety-close' : 'stub-back')
+        .click();
       await expect(page.getByTestId('screen-home')).toBeVisible();
     }
   });

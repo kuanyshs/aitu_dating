@@ -227,4 +227,30 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('report-block')).toBeVisible();
     await snap(page, 'report-sent');
   });
+
+  test('Безопасность: a member with a block and reports', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await page.goto('/post/p02');
+    await expect(page.getByTestId('reply-composer')).toBeVisible();
+    await page.getByTestId('post-menu').click();
+    await page.getByTestId('sheet-block').click();
+    await page.getByTestId('sheet-confirm-block').click();
+    await expect(page.getByTestId('screen-post')).toHaveCount(0);
+    await page.goto('/report?targetType=post&targetId=p03');
+    await page.getByTestId('report-reason-harassment').click();
+    await page.getByTestId('report-submit').click();
+    await expect(page.getByTestId('report-sent')).toBeVisible();
+    await page.goto('/safety');
+    await expect(page.getByTestId('blocked-name')).toBeVisible();
+    await expect(page.getByTestId('report-status')).toBeVisible();
+    await page.getByTestId('safety-blocked').scrollIntoViewIfNeeded();
+    await snap(page, 'safety-member');
+  });
+
+  test('Безопасность: a guest', async ({ page }) => {
+    await page.goto('/safety');
+    await expect(page.getByTestId('safety-support')).toBeVisible();
+    await snap(page, 'safety-guest');
+  });
 });

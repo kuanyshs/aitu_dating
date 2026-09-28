@@ -41,6 +41,7 @@ export const queryKeys = {
   comments: (postId: string, sort: CommentSort) => ['comments', postId, sort] as const,
   profilePosts: (memberId: string) => ['profile-posts', memberId] as const,
   myReports: ['my-reports'] as const,
+  blocked: ['blocked'] as const,
 };
 
 export function useSession() {
@@ -618,5 +619,29 @@ export function useMyPosts(memberId: string | undefined) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled: !!memberId,
+  });
+}
+
+/** «Заблокированные»: the member's own Блокировки, newest first. */
+export function useBlocked(enabled: boolean) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: queryKeys.blocked,
+    queryFn: ({ pageParam }) => repository.listBlocked({ cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
+  });
+}
+
+/** «Мои жалобы»: the member's own reports with status and outcome, newest first. */
+export function useMyReports(enabled: boolean) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: queryKeys.myReports,
+    queryFn: ({ pageParam }) => repository.listMyReports({ cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
   });
 }
