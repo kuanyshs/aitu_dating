@@ -21,6 +21,8 @@ import type {
   PartialAnswers,
   PostView,
   ProfileStepInput,
+  ReportStatus,
+  ResolveReportInput,
   RenewMembershipInput,
   SaveAnswerInput,
 } from '@/contracts';
@@ -42,6 +44,7 @@ export const queryKeys = {
   profilePosts: (memberId: string) => ['profile-posts', memberId] as const,
   myReports: ['my-reports'] as const,
   blocked: ['blocked'] as const,
+  moderation: (status: ReportStatus) => ['moderation', status] as const,
 };
 
 export function useSession() {
@@ -643,5 +646,41 @@ export function useMyReports(enabled: boolean) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled,
+  });
+}
+
+/** Очередь модерации: one tab of reports, newest first. */
+export function useModerationQueue(status: ReportStatus) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: queryKeys.moderation(status),
+    queryFn: ({ pageParam }) => repository.listReports({ status, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+  });
+}
+
+/** Opening a new report takes it into review; the tabs reload. */
+export function useOpenReport() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (reportId: string) => repository.openReport({ reportId }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['moderation'] }),
+  });
+}
+
+/** A decision may remove content or restrict a person: the queue and content reload. */
+export function useResolveReport() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ResolveReportInput) => repository.resolveReport(input),
+    onSuccess: () =>
+      Promise.all(
+        ['moderation', 'feed', 'post', 'comments', 'profile-posts', 'my-reports'].map((key) =>
+          client.invalidateQueries({ queryKey: [key] }),
+        ),
+      ),
   });
 }

@@ -253,4 +253,30 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('safety-support')).toBeVisible();
     await snap(page, 'safety-guest');
   });
+
+  test('Модерация: the queue of new reports', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await page.goto('/settings');
+    await page.getByTestId('demo-moderator').click();
+    await expect(page.getByTestId('demo-moderator')).toHaveAttribute('aria-checked', 'true');
+    await page.goto('/moderator');
+    await expect(page.getByTestId('moderation-report4')).toBeVisible();
+    await snap(page, 'moderation-queue');
+  });
+
+  test('Модерация: a decision to confirm', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await page.goto('/settings');
+    await page.getByTestId('demo-moderator').click();
+    await expect(page.getByTestId('demo-moderator')).toHaveAttribute('aria-checked', 'true');
+    await page.goto('/moderator');
+    await page.getByTestId('moderation-report5').click();
+    await page.getByTestId('moderation-decide-content_removed').click();
+    await expect(page.getByTestId('moderation-confirm')).toBeVisible();
+    // Opening took it into review: the tab underneath has reloaded without it.
+    await expect(page.getByTestId('moderation-report5')).toHaveCount(0);
+    await snap(page, 'moderation-confirm');
+  });
 });
