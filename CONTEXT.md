@@ -37,12 +37,24 @@ Choosing a new **Период** (and paying, unless free-verified) for an expire
 _Avoid_: resubscribe, re-onboarding
 
 **Блокировка** (`Block`):
-One **Участник** hiding another: their content and chats disappear for both sides and no new chat or **Отклик** between them is possible.
+One **Участник** hiding another: their content and chats disappear for both sides and no new chat or **Отклик** between them is possible. Hidden **Посты** read «Публикация недоступна», a hidden **Комментарий** that still holds others' **Ответы** reads «Комментарий скрыт», the other's **Карточка** is not found; counters stay as they were. Nobody blocks themselves; a **Блокировка** is lifted in «Безопасность» → «Заблокированные».
 _Avoid_: ban, restriction
 
 **Ограничение** (`Restriction`):
 A moderation decision that puts a person into the blocked access state: they see only the restriction screen, rules and support, and their content is hidden from everyone.
 _Avoid_: block, ban
+
+**Жалоба** (`Report`):
+A signal to moderation about a person or a piece of content (**Пост**, **Комментарий**, **План**, message) with a reason and optional details. It goes from created to reviewing to resolved and ends with an **Итог жалобы**. A second **Жалоба** on the same target while the first is unresolved returns the first; nobody reports their own content. A **Гость** may report anonymously but never sees the status.
+_Avoid_: complaint, flag
+
+**Итог жалобы** (`ReportOutcome`):
+The moderator's decision on a **Жалоба**: dismissed, content removed (shown exactly like a deletion by its author) or member restricted (an **Ограничение**). One decision resolves every open **Жалоба** on the same target. The reporter learns it only from «Мои жалобы».
+_Avoid_: verdict
+
+**Очередь модерации** (`ReportQueue`):
+The moderator's list of **Жалобы** in three tabs: new, reviewing, resolved. Opening a **Жалоба** moves it to reviewing; a moderator never sees **Жалобы** about their own content.
+_Avoid_: inbox, tickets
 
 ### Profile
 
@@ -132,6 +144,7 @@ A **План** whose author accepted an **Отклик**; it gets a contextual c
 - A **План** has many **Отклики** and at most one accepted, which turns it into a **Встреча**.
 - Two **Участники** share at most one **Контекстный чат**; an accepted **Отклик** creates it if it does not exist.
 - A **Блокировка** is between two **Участники**; an **Ограничение** is between moderation and one person.
+- A **Жалоба** targets exactly one person or piece of content; many **Жалобы** on one target share one **Итог жалобы**.
 
 ## Example dialogue
 
