@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Id } from './common';
+import { ReportOutcome } from './safety';
 
 /** A moderator's decision on a member: Ограничение hides their content from everyone. */
 export const ModerateMemberInput = z.strictObject({
@@ -23,6 +24,6 @@ export type ReportsQuery = z.infer<typeof ReportsQuery>;
 
 export const ResolveReportInput = z.strictObject({
   reportId: Id,
-  resolution: z.enum(['dismissed', 'content_removed', 'member_restricted']),
+  resolution: ReportOutcome,
 });
 export type ResolveReportInput = z.infer<typeof ResolveReportInput>;

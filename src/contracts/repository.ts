@@ -157,6 +157,8 @@ export interface AituRepository {
 
   // Safety.
   createReport(input: CreateReportInput): Promise<ReportView>;
+  /** «Мои жалобы»: the member's own reports, newest first, with status and outcome. */
+  listMyReports(query: ListQuery): Promise<ReportPage>;
   setBlock(input: SetBlockInput): Promise<BlockState>;
   listBlocked(query: ListQuery): Promise<BlockedPage>;
 

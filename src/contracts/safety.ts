@@ -13,17 +13,31 @@ export const ReportTarget = z.strictObject({
 });
 export type ReportTarget = z.infer<typeof ReportTarget>;
 
-/** Жалоба. A guest may report what they can see; they cannot block. */
-export const CreateReportInput = z.strictObject({
-  target: ReportTarget,
-  reason: ReportReason,
-  details: z.string().trim().max(LIMITS.reportDetails, 'too_long').optional(),
-  idempotencyKey: z.string().min(8),
-});
+/**
+ * Жалоба. A guest may report what they can see (anonymously); they cannot block.
+ * Details are optional except for «Другое»; nobody reports their own content (CONFLICT).
+ * A second report by the same person on a target still under review returns the first.
+ */
+export const CreateReportInput = z
+  .strictObject({
+    target: ReportTarget,
+    reason: ReportReason,
+    details: z.string().trim().max(LIMITS.reportDetails, 'too_long').optional(),
+    idempotencyKey: z.string().min(8),
+  })
+  .superRefine((input, ctx) => {
+    if (input.reason === 'other' && !input.details) {
+      ctx.addIssue({ code: 'custom', path: ['details'], message: 'required' });
+    }
+  });
 export type CreateReportInput = z.infer<typeof CreateReportInput>;
 
 export const ReportStatus = z.enum(['created', 'reviewing', 'resolved']);
 export type ReportStatus = z.infer<typeof ReportStatus>;
+
+/** Итог жалобы: the moderator's decision, present once the report is resolved. */
+export const ReportOutcome = z.enum(['dismissed', 'content_removed', 'member_restricted']);
+export type ReportOutcome = z.infer<typeof ReportOutcome>;
 
 export const ReportView = z.strictObject({
   id: Id,
@@ -31,6 +45,7 @@ export const ReportView = z.strictObject({
   reason: ReportReason,
   details: z.string().optional(),
   status: ReportStatus,
+  outcome: ReportOutcome.optional(),
   createdAt: IsoDateTime,
 });
 export type ReportView = z.infer<typeof ReportView>;

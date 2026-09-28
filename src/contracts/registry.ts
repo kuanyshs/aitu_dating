@@ -132,6 +132,7 @@ export const repositoryContract = {
   listActivity: { input: ActivityQuery, output: ActivityPage },
 
   createReport: { input: CreateReportInput, output: ReportView },
+  listMyReports: { input: ListQuery, output: ReportPage },
   setBlock: { input: SetBlockInput, output: BlockState },
   listBlocked: { input: ListQuery, output: BlockedPage },
 

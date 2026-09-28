@@ -9,6 +9,8 @@ import {
   CompleteOnboardingInput,
   CreateCommentInput,
   CreatePostInput,
+  CreateReportInput,
+  ListQuery,
   ConfirmPaymentInput,
   MyProfile,
   FeedPage,
@@ -26,6 +28,8 @@ import {
   ProfileView,
   ReactionState,
   RenewMembershipInput,
+  ReportPage,
+  ReportView,
   RepositoryError,
   RepostState,
   Session,
@@ -54,7 +58,13 @@ import {
 } from './demo';
 import { buildThreads } from './comments';
 import { selectFeed } from './feed';
-import { PostRecord, type CommentRecord, type MemberRecord, type SeedData } from './records';
+import {
+  PostRecord,
+  ReportRecord,
+  type CommentRecord,
+  type MemberRecord,
+  type SeedData,
+} from './records';
 import { loadSeed } from './seed';
 import { passportCandidates } from './seed/candidates';
 import {
@@ -237,6 +247,54 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   function isVisible(post: PostRecord): boolean {
     const author = member(post.authorId);
     return !!author && !isRestricted(author) && !state.deletedPostIds.includes(post.id);
+  }
+
+  /** Seed reports and those sent during the demo, oldest first. */
+  function allReports(): ReportRecord[] {
+    return [...data.reports, ...state.reports];
+  }
+
+  function toReportView(record: ReportRecord): ReportView {
+    return ReportView.parse({
+      id: record.id,
+      target: { type: record.targetType, id: record.targetId },
+      reason: record.reason,
+      ...(record.details ? { details: record.details } : {}),
+      status: record.status,
+      ...(record.outcome ? { outcome: record.outcome } : {}),
+      createdAt: record.createdAt,
+    });
+  }
+
+  /**
+   * Who is behind a report target the reporter can still see: undefined when it does
+   * not exist or is hidden. Messages arrive with the chats spec; none exist yet.
+   */
+  function reportTargetOwner(type: ReportRecord['targetType'], id: string): string | undefined {
+    const visibleMember = (memberId: string) => {
+      const record = member(memberId);
+      return record && !isRestricted(record) ? record.id : undefined;
+    };
+    switch (type) {
+      case 'user':
+        return visibleMember(id);
+      case 'post': {
+        const post = postById(id);
+        return post && isVisible(post) ? post.authorId : undefined;
+      }
+      case 'comment': {
+        const comment = allComments().find((c) => c.id === id);
+        const post = comment ? postById(comment.postId) : undefined;
+        if (!comment || comment.deleted || !post || !isVisible(post)) return undefined;
+        return visibleMember(comment.authorId);
+      }
+      case 'plan': {
+        const plan = plansById.get(id);
+        return plan ? visibleMember(plan.authorId) : undefined;
+      }
+      case 'message':
+        return undefined;
+    }
   }
 
   /** The Aitu subject behind the current session, member or not. */
@@ -961,7 +1019,79 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     retryMessage: notImplemented('retryMessage'),
     markChatRead: notImplemented('markChatRead'),
     listActivity: notImplemented('listActivity'),
-    createReport: notImplemented('createReport'),
+    createReport: (input) =>
+      respond('data', async (requestId) => {
+        // Guests report anonymously; a restricted session cannot report.
+        const viewer = requireReader(requestId);
+        const reporterId = isMemberViewer(viewer) ? viewer.userId : undefined;
+        const parsed = CreateReportInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the report.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const { target, reason, details, idempotencyKey } = parsed.data;
+
+        // A retry of a request that already went through returns the same report.
+        const existingId = state.reportKeys[idempotencyKey];
+        const existing = existingId ? allReports().find((r) => r.id === existingId) : undefined;
+        if (existing) return toReportView(existing);
+
+        const owner = reportTargetOwner(target.type, target.id);
+        if (!owner) fail(requestId, { code: 'NOT_FOUND', message: 'Nothing to report here.' });
+        if (reporterId && owner === reporterId) {
+          fail(requestId, { code: 'CONFLICT', message: 'Own content cannot be reported.' });
+        }
+        // The same person on the same target under review: the first report stands.
+        const open = reporterId
+          ? allReports().find(
+              (r) =>
+                r.reporterId === reporterId &&
+                r.targetType === target.type &&
+                r.targetId === target.id &&
+                r.status !== 'resolved',
+            )
+          : undefined;
+        if (open) {
+          await saveState({
+            ...state,
+            reportKeys: { ...state.reportKeys, [idempotencyKey]: open.id },
+          });
+          return toReportView(open);
+        }
+
+        const record = ReportRecord.parse({
+          id: `report-${state.reports.length + 1}`,
+          ...(reporterId ? { reporterId } : {}),
+          targetType: target.type,
+          targetId: target.id,
+          reason,
+          ...(details ? { details } : {}),
+          status: 'created',
+          createdAt: clock.now().toISOString(),
+        });
+        await saveState({
+          ...state,
+          reports: [...state.reports, record],
+          reportKeys: { ...state.reportKeys, [idempotencyKey]: record.id },
+        });
+        return toReportView(record);
+      }),
+    listMyReports: (input) =>
+      respond('data', (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { cursor, limit } = parseOrFail(ListQuery, input ?? {}, requestId);
+        // Newest first; among equal times the later one wins.
+        const mine = allReports()
+          .filter((r) => r.reporterId === me.id)
+          .reverse()
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        return ReportPage.parse(
+          page(mine.map(toReportView), cursor, limit ?? DEFAULT_PAGE_SIZE, requestId),
+        );
+      }),
     setBlock: notImplemented('setBlock'),
     listBlocked: notImplemented('listBlocked'),
     listReports: notImplemented('listReports'),

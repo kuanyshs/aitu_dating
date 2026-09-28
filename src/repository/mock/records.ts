@@ -142,14 +142,17 @@ export const RepostRecord = z.strictObject({
 
 export const ReportRecord = z.strictObject({
   id: Id,
-  reporterId: Id,
-  targetType: z.enum(['user', 'post', 'comment', 'plan']),
+  /** Absent for a guest: their report is anonymous. */
+  reporterId: Id.optional(),
+  targetType: z.enum(['user', 'post', 'comment', 'plan', 'message']),
   targetId: Id,
   reason: z.enum(['safety', 'harassment', 'spam', 'privacy', 'other']),
   details: z.string().optional(),
   status: z.enum(['created', 'reviewing', 'resolved']),
+  outcome: z.enum(['dismissed', 'content_removed', 'member_restricted']).optional(),
   createdAt: IsoDateTime,
 });
+export type ReportRecord = z.infer<typeof ReportRecord>;
 
 export const SeedData = z.strictObject({
   members: z.array(MemberRecord),

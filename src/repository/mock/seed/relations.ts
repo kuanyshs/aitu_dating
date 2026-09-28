@@ -190,6 +190,7 @@ export const reports: Report[] = [
     reason: 'spam',
     details: 'Зазывает во внешний канал.',
     status: 'resolved',
+    outcome: 'member_restricted',
     createdAt: hoursAgo(11),
   },
   {
@@ -199,6 +200,7 @@ export const reports: Report[] = [
     targetId: 'm11',
     reason: 'privacy',
     status: 'resolved',
+    outcome: 'member_restricted',
     createdAt: hoursAgo(10),
   },
   {
