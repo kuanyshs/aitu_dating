@@ -1,6 +1,8 @@
 import type { Clock } from '@/clock';
 import {
   AccessFlowState,
+  BlockedPage,
+  BlockState,
   CommentPage,
   CommentQuery,
   CommentReactionState,
@@ -34,6 +36,7 @@ import {
   RepositoryError,
   RepostState,
   Session,
+  SetBlockInput,
   SetCommentReactionInput,
   SetReactionInput,
   SetRepostInput,
@@ -60,6 +63,7 @@ import {
 import { buildThreads } from './comments';
 import { selectFeed } from './feed';
 import {
+  BlockRecord,
   PostRecord,
   ReportRecord,
   type CommentRecord,
@@ -245,9 +249,29 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return record.restricted || state.restrictedSubjects.includes(record.aituSubjectId);
   }
 
+  /**
+   * Блокировка between the current member and someone else, whoever blocked whom.
+   * Everything a request reads is shaped for the current session, so it is the viewer.
+   */
+  function blockedWithMe(memberId: string): boolean {
+    const me = session.userId;
+    return (
+      !!me &&
+      state.blocks.some(
+        (b) =>
+          (b.blockerId === me && b.blockedId === memberId) ||
+          (b.blockerId === memberId && b.blockedId === me),
+      )
+    );
+  }
+
+  /** A person the viewer may see: not restricted, not in a Блокировка with them. */
+  function isShown(record: MemberRecord | undefined): record is MemberRecord {
+    return !!record && !isRestricted(record) && !blockedWithMe(record.id);
+  }
+
   function isVisible(post: PostRecord): boolean {
-    const author = member(post.authorId);
-    return !!author && !isRestricted(author) && !state.deletedPostIds.includes(post.id);
+    return isShown(member(post.authorId)) && !state.deletedPostIds.includes(post.id);
   }
 
   /** Seed reports and those sent during the demo, oldest first. */
@@ -274,7 +298,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   function reportTargetOwner(type: ReportRecord['targetType'], id: string): string | undefined {
     const visibleMember = (memberId: string) => {
       const record = member(memberId);
-      return record && !isRestricted(record) ? record.id : undefined;
+      return isShown(record) ? record.id : undefined;
     };
     switch (type) {
       case 'user':
@@ -786,20 +810,35 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         }
         // Comments of restricted people are hidden like their posts; a deleted reply is
         // gone, a deleted root stays only while it still has replies to hold together.
+        // A Блокировка hides comments the same way, and a root it hides reads «скрыт».
+        const hiddenRoot = (c: CommentRecord) => !c.parentCommentId && blockedWithMe(c.authorId);
         const visible = allComments().filter((c) => {
           const author = member(c.authorId);
           return (
             c.postId === postId &&
             !!author &&
             !isRestricted(author) &&
-            !(c.deleted && c.parentCommentId)
+            !(c.parentCommentId && (c.deleted || blockedWithMe(c.authorId)))
           );
         });
         const threads = buildThreads(visible, sort, (id) => commentReactionsOf(id).length).filter(
-          (t) => !t.root.deleted || t.replies.length > 0,
+          (t) => (!t.root.deleted && !hiddenRoot(t.root)) || t.replies.length > 0,
         );
         const full = seesFullView(viewer);
-        const toView = (c: CommentRecord): CommentView => ({
+        const toView = (c: CommentRecord): CommentView =>
+          hiddenRoot(c) ? hiddenView(c) : shownView(c);
+        // Nothing of the hidden author leaves: no text, no name, no photo.
+        const hiddenView = (c: CommentRecord): CommentView => ({
+          id: c.id,
+          postId: c.postId,
+          author: toAuthorView(member(c.authorId)!, { accessState: 'GUEST_PREVIEW' }),
+          text: '',
+          createdAt: c.createdAt,
+          reactions: commentReactionsOf(c.id).length,
+          deleted: false,
+          hidden: true,
+        });
+        const shownView = (c: CommentRecord): CommentView => ({
           id: c.id,
           postId: c.postId,
           ...(c.parentCommentId ? { parentId: c.parentCommentId } : {}),
@@ -831,7 +870,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         }
         const { memberId } = parseOrFail(MemberRef, input, requestId);
         const record = member(memberId);
-        if (!record || isRestricted(record)) {
+        if (!isShown(record)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Member not found.' });
         }
         const full = seesFullView(viewer);
@@ -876,7 +915,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         }
         const { memberId, cursor, limit } = parseOrFail(ProfilePostsQuery, query, requestId);
         const record = member(memberId);
-        if (!record || isRestricted(record)) {
+        if (!isShown(record)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Member not found.' });
         }
         const posts = allPosts()
@@ -900,7 +939,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const plan = plansById.get(planId);
         const author = plan ? member(plan.authorId) : undefined;
         const post = allPosts().find((p) => p.planId === planId);
-        if (!plan || !author || isRestricted(author) || !post) {
+        if (!plan || !isShown(author) || !post) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Plan not found.' });
         }
         const full = seesFullView(viewer);
@@ -1100,8 +1139,80 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           page(mine.map(toReportView), cursor, limit ?? DEFAULT_PAGE_SIZE, requestId),
         );
       }),
-    setBlock: notImplemented('setBlock'),
-    listBlocked: notImplemented('listBlocked'),
+    setBlock: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { target, active } = parseOrFail(SetBlockInput, input, requestId);
+        const answer = (blocked: boolean) => BlockState.parse({ target, blocked });
+
+        if (target.type === 'block') {
+          // «Заблокированные» only lifts; an entry already gone is already lifted.
+          if (active) {
+            fail(requestId, {
+              code: 'VALIDATION_ERROR',
+              message: 'A block entry can only be lifted.',
+              fieldErrors: { target: 'invalid' },
+            });
+          }
+          await saveState({
+            ...state,
+            blocks: state.blocks.filter((b) => !(b.id === target.id && b.blockerId === me.id)),
+          });
+          return answer(false);
+        }
+
+        // The person behind the target, whether or not their content is still shown:
+        // a retried request finds it hidden by the block it has just made.
+        const otherId =
+          target.type === 'user'
+            ? member(target.id)?.id
+            : target.type === 'post'
+              ? postById(target.id)?.authorId
+              : allComments().find((c) => c.id === target.id)?.authorId;
+        if (!otherId || !member(otherId)) {
+          fail(requestId, { code: 'NOT_FOUND', message: 'Nobody to block here.' });
+        }
+        if (otherId === me.id) {
+          fail(requestId, { code: 'CONFLICT', message: 'Nobody blocks themselves.' });
+        }
+        const mine = (b: BlockRecord) => b.blockerId === me.id && b.blockedId === otherId;
+        const others = state.blocks.filter((b) => !mine(b));
+        if (active !== state.blocks.some(mine)) {
+          await saveState({
+            ...state,
+            blocks: active
+              ? [
+                  ...others,
+                  BlockRecord.parse({
+                    id: `block-${me.id}-${otherId}`,
+                    blockerId: me.id,
+                    blockedId: otherId,
+                    createdAt: clock.now().toISOString(),
+                  }),
+                ]
+              : others,
+          });
+        }
+        return answer(active);
+      }),
+    listBlocked: (input) =>
+      respond('data', (requestId) => {
+        const me = requireOwnCard(requestId);
+        const viewer = viewerOf(effectiveSession());
+        const { cursor, limit } = parseOrFail(ListQuery, input ?? {}, requestId);
+        // Newest first; among equal times the later one wins.
+        const items = state.blocks
+          .filter((b) => b.blockerId === me.id)
+          .reverse()
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .flatMap((b) => {
+            const person = member(b.blockedId);
+            return person
+              ? [{ blockId: b.id, person: toAuthorView(person, viewer), createdAt: b.createdAt }]
+              : [];
+          });
+        return BlockedPage.parse(page(items, cursor, limit ?? DEFAULT_PAGE_SIZE, requestId));
+      }),
     listReports: notImplemented('listReports'),
     resolveReport: notImplemented('resolveReport'),
 
@@ -1234,13 +1345,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         if (parentId) {
           const parent = allComments().find((c) => c.id === parentId);
           const parentAuthor = parent ? member(parent.authorId) : undefined;
-          if (
-            !parent ||
-            parent.postId !== postId ||
-            parent.deleted ||
-            !parentAuthor ||
-            isRestricted(parentAuthor)
-          ) {
+          if (!parent || parent.postId !== postId || parent.deleted || !isShown(parentAuthor)) {
             fail(requestId, { code: 'NOT_FOUND', message: 'Comment not found.' });
           }
           // Nothing answers an Ответ: the thread has two levels.
@@ -1322,14 +1427,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const comment = allComments().find((c) => c.id === commentId);
         const post = comment ? postById(comment.postId) : undefined;
         const author = comment ? member(comment.authorId) : undefined;
-        if (
-          !comment ||
-          comment.deleted ||
-          !post ||
-          !isVisible(post) ||
-          !author ||
-          isRestricted(author)
-        ) {
+        if (!comment || comment.deleted || !post || !isVisible(post) || !isShown(author)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Comment not found.' });
         }
         const mine = (r: { userId: string; commentId: string }) =>

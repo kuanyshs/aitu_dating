@@ -17,6 +17,11 @@ export const CommentView = z.strictObject({
   createdAt: IsoDateTime,
   reactions: z.number().int().min(0),
   deleted: z.boolean(),
+  /**
+   * A root comment by someone in a Блокировка with the viewer, kept only to hold others'
+   * replies: empty text and the neutral safe view («Комментарий скрыт»).
+   */
+  hidden: z.literal(true).optional(),
   /** Present for members, expired ones too: their own comment can be deleted. */
   mine: z.boolean().optional(),
   /** Present for active members: whether the viewer has liked this comment. */

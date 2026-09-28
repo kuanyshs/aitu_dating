@@ -156,6 +156,15 @@ export const ReportRecord = z.strictObject({
 });
 export type ReportRecord = z.infer<typeof ReportRecord>;
 
+/** Блокировка: `blockerId` hid `blockedId`; the effect is the same both ways. */
+export const BlockRecord = z.strictObject({
+  id: Id,
+  blockerId: Id,
+  blockedId: Id,
+  createdAt: IsoDateTime,
+});
+export type BlockRecord = z.infer<typeof BlockRecord>;
+
 export const SeedData = z.strictObject({
   members: z.array(MemberRecord),
   posts: z.array(PostRecord),

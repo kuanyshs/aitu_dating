@@ -10,6 +10,7 @@ import {
 } from '@/contracts';
 
 import {
+  BlockRecord,
   CommentReactionRecord,
   CommentRecord,
   MemberRecord,
@@ -90,10 +91,12 @@ export const MockState = z.strictObject({
   reports: z.array(ReportRecord),
   /** Created reports by idempotency key → report id, so a retry reports once. */
   reportKeys: z.record(z.string(), z.string()),
+  /** Блокировки between members; the seed has none. */
+  blocks: z.array(BlockRecord),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 11;
+export const MOCK_STATE_VERSION = 12;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -123,6 +126,8 @@ export const mockStateMigrations = [
   (v9: unknown) => ({ ...(v9 as object), posts: [], postKeys: {} }),
   // v11 adds reports sent during the demo and their idempotency keys.
   (v10: unknown) => ({ ...(v10 as object), reports: [], reportKeys: {} }),
+  // v12 adds Блокировки.
+  (v11: unknown) => ({ ...(v11 as object), blocks: [] }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -147,6 +152,7 @@ export const defaultMockState = (): MockState => ({
   postKeys: {},
   reports: [],
   reportKeys: {},
+  blocks: [],
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';
