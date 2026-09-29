@@ -330,22 +330,20 @@ test.describe('visual baselines @visual', () => {
     await snap(page, 'plan-member');
   });
 
-  test('План: the author with Отклики to decide', async ({ page }) => {
-    for (const [userId, message] of [
-      ['m02', 'Давно хотел в эту кофейню.'],
-      ['m03', ''],
-    ] as const) {
-      await signInAs(page, userId);
-      await page.goto('/plan/plan1');
-      await page.getByTestId('plan-respond').click();
-      if (message) await page.getByTestId('plan-message').fill(message);
-      await page.getByTestId('plan-send').click();
-      await expect(page.getByTestId('plan-pending')).toBeVisible();
-    }
+  test('План: the author with an Отклик to decide', async ({ page }) => {
+    // One Отклик: the demo clock restarts on every load, so the order of two sent from
+    // separate loads is not fixed.
+    await signInAs(page, 'm02');
+    await page.goto('/plan/plan1');
+    await page.getByTestId('plan-respond').click();
+    await page.getByTestId('plan-message').fill('Давно хотел в эту кофейню.');
+    await page.getByTestId('plan-send').click();
+    await expect(page.getByTestId('plan-pending')).toBeVisible();
+
     await signInAs(page, 'm06');
     await page.goto('/plan/plan1');
-    await expect(page.getByTestId('plan-waiting')).toHaveText('Ждут ответа: 2');
-    await expect(page.getByTestId('plan-accept-response-2')).toBeVisible();
+    await expect(page.getByTestId('plan-waiting')).toHaveText('Ждут ответа: 1');
+    await expect(page.getByTestId('plan-accept-response-1')).toBeVisible();
     await snap(page, 'plan-author');
   });
 
