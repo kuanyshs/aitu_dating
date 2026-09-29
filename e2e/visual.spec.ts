@@ -291,4 +291,20 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('member-posts').getByRole('article').first()).toBeVisible();
     await snap(page, 'member-profile');
   });
+
+  test('Поиск: people nearby', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await page.getByTestId('tab-search').click();
+    await expect(page.getByTestId('search-nearby')).toBeVisible();
+    await expect(page.getByTestId('search-results').getByRole('link').first()).toBeVisible();
+    await snap(page, 'search-people');
+  });
+
+  test('Поиск: posts by a Тема', async ({ page }) => {
+    await page.goto('/search');
+    await page.getByTestId('search-topic-meetings').click();
+    await expect(page.getByTestId('search-results').getByRole('article').first()).toBeVisible();
+    await snap(page, 'search-posts');
+  });
 });

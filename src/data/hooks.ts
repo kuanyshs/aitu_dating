@@ -24,6 +24,7 @@ import type {
   ProfileView,
   ReportStatus,
   ResolveReportInput,
+  SearchQuery,
   RenewMembershipInput,
   SaveAnswerInput,
 } from '@/contracts';
@@ -763,5 +764,17 @@ export function useFollowList(memberId: string, tab: 'followers' | 'following') 
         : repository.listFollowing({ memberId, cursor: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+  });
+}
+
+/** Поиск, a page at a time; waits while the query is not ready to be asked. */
+export function useSearch(query: Omit<SearchQuery, 'cursor'>, enabled: boolean) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: ['search', query],
+    queryFn: ({ pageParam }) => repository.search({ ...query, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
   });
 }
