@@ -110,8 +110,16 @@ _Avoid_: tag, @username
 ### Relations and chats
 
 **Подписка** (`Follow`):
-One **Участник** following another; two opposite **Подписки** make a mutual follow.
+One **Участник** following another; two opposite **Подписки** make a mutual follow. Only an active **Участник** follows; nobody follows themselves. A **Блокировка** removes the **Подписки** both ways, and lifting it does not bring them back. A member's «Подписчики» are those following them, their «Подписки» those they follow.
 _Avoid_: subscription (as in **Membership**), friend
+
+**Поиск** (`Search`):
+Finding people and **Посты** by text and filters (city, interests, **Намерение**, **Темы**). A **Гость** and an expired **Участник** search **Посты** only; people are for active **Участники**. Nobody in a **Блокировка** with the viewer, nobody under **Ограничение** and never oneself shows up.
+_Avoid_: discovery, explore
+
+**Профиль недоступен** (`profile unavailable`):
+What another **Участник**'s profile reads when they are in a **Блокировка** with the viewer or under **Ограничение**; nothing else about them is shown.
+_Avoid_: deleted account
 
 **Контекстный чат** (`Chat`):
 The single conversation between two **Участники**, opened from a **Комментарий**, a mutual **Подписка** or an accepted **Отклик**; it keeps the context it started from.
