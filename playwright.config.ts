@@ -5,6 +5,9 @@ const phone = { viewport: { width: 390, height: 844 }, hasTouch: true };
 
 export default defineConfig({
   testDir: 'e2e',
+  // Every test has its own browser context (and so its own mock state), so tests of one
+  // file may run in parallel; CI shards then split by test, not by whole files.
+  fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   // Visual baselines: one file per screen and theme. They are rendered in CI inside the

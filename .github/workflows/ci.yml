@@ -48,9 +48,15 @@ jobs:
           path: dist
           retention-days: 7
 
-  e2e:
+  # The e2e suite runs in four parallel shards; the `e2e` job below sums them up so there
+  # is still one check to look at.
+  e2e-shard:
     needs: web-build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -59,15 +65,23 @@ jobs:
           name: web-dist
           path: dist
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm e2e
+      - run: pnpm e2e --shard=${{ matrix.shard }}/4
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             playwright-report
             test-results
           retention-days: 7
+
+  e2e:
+    needs: e2e-shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: All shards passed
+        run: test "${{ needs.e2e-shard.result }}" = success
 
   # Visual baselines are rendered and compared inside the Playwright image only, so the
   # pixels never depend on the runner's fonts. A commit whose message contains
