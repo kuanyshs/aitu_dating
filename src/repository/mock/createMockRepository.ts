@@ -12,7 +12,10 @@ import {
   CreateCommentInput,
   CreatePostInput,
   CreateReportInput,
+  FollowListQuery,
+  FollowState,
   ListQuery,
+  MemberPage,
   ConfirmPaymentInput,
   MyProfile,
   FeedPage,
@@ -43,6 +46,7 @@ import {
   Session,
   SetBlockInput,
   SetCommentReactionInput,
+  SetFollowInput,
   SetReactionInput,
   SetRepostInput,
   UpdateSettingsInput,
@@ -69,6 +73,7 @@ import { buildThreads } from './comments';
 import { selectFeed } from './feed';
 import {
   BlockRecord,
+  FollowRecord,
   PostRecord,
   ReportRecord,
   type CommentRecord,
@@ -270,6 +275,33 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     );
   }
 
+  const samePair = (a: { followerId: string; followingId: string }, b: typeof a) =>
+    a.followerId === b.followerId && a.followingId === b.followingId;
+
+  /** Seed Подписки still in place, and those made during the demo. */
+  function allFollows(): FollowRecord[] {
+    return [
+      ...data.follows.filter((f) => !state.unfollows.some((u) => samePair(u, f))),
+      ...state.follows,
+    ];
+  }
+
+  const isFollowing = (followerId: string, followingId: string) =>
+    allFollows().some((f) => samePair(f, { followerId, followingId }));
+
+  /** The state without the given Подписки: demo ones dropped, seed ones marked undone. */
+  function withoutFollows(next: MockState, gone: (f: FollowRecord) => boolean): MockState {
+    const undone = data.follows
+      .filter(gone)
+      .filter((f) => !next.unfollows.some((u) => samePair(u, f)))
+      .map(({ followerId, followingId }) => ({ followerId, followingId }));
+    return {
+      ...next,
+      follows: next.follows.filter((f) => !gone(f)),
+      unfollows: [...next.unfollows, ...undone],
+    };
+  }
+
   /** A person the viewer may see: not restricted, not in a Блокировка with them. */
   function isShown(record: MemberRecord | undefined): record is MemberRecord {
     return !!record && !isRestricted(record) && !blockedWithMe(record.id);
@@ -310,6 +342,46 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       case 'message':
         return undefined;
     }
+  }
+
+  /** Newest first; among equal times the later one wins. */
+  const newestFollows = (follows: FollowRecord[]) =>
+    [...follows].reverse().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  /** Who follows a member, as the viewer may see them. */
+  function followersOf(memberId: string): MemberRecord[] {
+    return newestFollows(allFollows().filter((f) => f.followingId === memberId))
+      .map((f) => member(f.followerId))
+      .filter(isShown);
+  }
+
+  /** Whom a member follows, as the viewer may see them. */
+  function followingOf(memberId: string): MemberRecord[] {
+    return newestFollows(allFollows().filter((f) => f.followerId === memberId))
+      .map((f) => member(f.followingId))
+      .filter(isShown);
+  }
+
+  /** «Подписчики» and «Подписки»: active members only, of someone they may see or of themselves. */
+  function followPage(
+    requestId: string,
+    input: unknown,
+    people: (memberId: string) => MemberRecord[],
+  ): MemberPage {
+    const me = requireActiveMember(requestId);
+    const { memberId, cursor, limit } = parseOrFail(FollowListQuery, input, requestId);
+    if (memberId !== me.id && !isShown(member(memberId))) {
+      fail(requestId, { code: 'NOT_FOUND', message: 'Member not found.' });
+    }
+    const viewer = viewerOf(effectiveSession());
+    return MemberPage.parse(
+      page(
+        people(memberId).map((person) => toAuthorView(person, viewer)),
+        cursor,
+        limit ?? DEFAULT_PAGE_SIZE,
+        requestId,
+      ),
+    );
   }
 
   /** Moderation sessions only: an active role on a session that is not restricted. */
@@ -635,7 +707,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const viewerRecord = viewer.userId ? member(viewer.userId) : undefined;
         const followingIds = new Set(
           isMember
-            ? data.follows.filter((f) => f.followerId === viewer.userId).map((f) => f.followingId)
+            ? allFollows()
+                .filter((f) => f.followerId === viewer.userId)
+                .map((f) => f.followingId)
             : [],
         );
         const viewerTopics = new Set<string>(
@@ -958,18 +1032,15 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             : {}),
           stats: {
             posts: allPosts().filter((p) => p.authorId === record.id && isVisible(p)).length,
-            followers: data.follows.filter((f) => f.followingId === record.id).length,
-            following: data.follows.filter((f) => f.followerId === record.id).length,
+            // Counted as the lists show them: without anyone hidden from the viewer.
+            followers: followersOf(record.id).length,
+            following: followingOf(record.id).length,
           },
           ...(full
             ? {
                 relation: {
-                  following: data.follows.some(
-                    (f) => f.followerId === viewer.userId && f.followingId === record.id,
-                  ),
-                  followsMe: data.follows.some(
-                    (f) => f.followerId === record.id && f.followingId === viewer.userId,
-                  ),
+                  following: isFollowing(viewer.userId!, record.id),
+                  followsMe: isFollowing(record.id, viewer.userId!),
                   blocked: false,
                 },
               }
@@ -1112,7 +1183,45 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           repostedByMe: repostsOf(postId).some(mine),
         });
       }),
-    setFollow: notImplemented('setFollow'),
+    setFollow: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const { memberId, active } = parseOrFail(SetFollowInput, input, requestId);
+        if (memberId === me.id) {
+          fail(requestId, { code: 'CONFLICT', message: 'Nobody follows themselves.' });
+        }
+        const other = member(memberId);
+        if (!isShown(other)) fail(requestId, { code: 'NOT_FOUND', message: 'Member not found.' });
+        const pair = { followerId: me.id, followingId: other.id };
+        // Setting the same value twice is a no-op, so a retried request is safe.
+        if (active !== isFollowing(me.id, other.id)) {
+          if (active) {
+            const fromSeed = data.follows.some((f) => samePair(f, pair));
+            await saveState(
+              fromSeed
+                ? { ...state, unfollows: state.unfollows.filter((u) => !samePair(u, pair)) }
+                : {
+                    ...state,
+                    follows: [
+                      ...state.follows,
+                      FollowRecord.parse({ ...pair, createdAt: clock.now().toISOString() }),
+                    ],
+                  },
+            );
+          } else {
+            await saveState(withoutFollows(state, (f) => samePair(f, pair)));
+          }
+        }
+        return FollowState.parse({
+          memberId: other.id,
+          following: active,
+          followers: followersOf(other.id).length,
+        });
+      }),
+    listFollowers: (input) =>
+      respond('data', (requestId) => followPage(requestId, input, followersOf)),
+    listFollowing: (input) =>
+      respond('data', (requestId) => followPage(requestId, input, followingOf)),
     search: notImplemented('search'),
     createPlan: notImplemented('createPlan'),
     cancelPlan: notImplemented('cancelPlan'),
@@ -1248,8 +1357,17 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const mine = (b: BlockRecord) => b.blockerId === me.id && b.blockedId === otherId;
         const others = state.blocks.filter((b) => !mine(b));
         if (active !== state.blocks.some(mine)) {
+          // A Блокировка removes the Подписки both ways; lifting it does not restore them.
+          const base = active
+            ? withoutFollows(
+                state,
+                (f) =>
+                  samePair(f, { followerId: me.id, followingId: otherId }) ||
+                  samePair(f, { followerId: otherId, followingId: me.id }),
+              )
+            : state;
           await saveState({
-            ...state,
+            ...base,
             blocks: active
               ? [
                   ...others,

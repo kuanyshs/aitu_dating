@@ -56,6 +56,8 @@ import type { CreatePostInput, PostRef, PostView, RepostState, SetRepostInput } 
 import type {
   FollowState,
   MemberRef,
+  FollowListQuery,
+  MemberPage,
   ProfilePostsQuery,
   ProfileView,
   SetFollowInput,
@@ -133,6 +135,9 @@ export interface AituRepository {
   getProfile(input: MemberRef): Promise<ProfileView>;
   listProfilePosts(query: ProfilePostsQuery): Promise<FeedPage>;
   setFollow(input: SetFollowInput): Promise<FollowState>;
+  /** «Подписчики» and «Подписки» of a member: active members only, newest first. */
+  listFollowers(query: FollowListQuery): Promise<MemberPage>;
+  listFollowing(query: FollowListQuery): Promise<MemberPage>;
   search(query: SearchQuery): Promise<SearchPage>;
 
   // Plans and Отклики. Plan: published → matched → closed, cancelled at any time.

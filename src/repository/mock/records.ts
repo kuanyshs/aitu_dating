@@ -119,6 +119,7 @@ export const FollowRecord = z.strictObject({
   followingId: Id,
   createdAt: IsoDateTime,
 });
+export type FollowRecord = z.infer<typeof FollowRecord>;
 
 export const ReactionRecord = z.strictObject({
   userId: Id,

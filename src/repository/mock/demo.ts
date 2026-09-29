@@ -13,6 +13,7 @@ import {
   BlockRecord,
   CommentReactionRecord,
   CommentRecord,
+  FollowRecord,
   MemberRecord,
   PostRecord,
   ReactionRecord,
@@ -93,6 +94,10 @@ export const MockState = z.strictObject({
   reportKeys: z.record(z.string(), z.string()),
   /** Блокировки between members; the seed has none. */
   blocks: z.array(BlockRecord),
+  /** Подписки made during the demo, on top of the seed. */
+  follows: z.array(FollowRecord),
+  /** Seed Подписки undone during the demo (unfollowed, or removed by a Блокировка). */
+  unfollows: z.array(z.strictObject({ followerId: z.string(), followingId: z.string() })),
   /** Moderation's progress on reports, seed ones too: status and outcome by report id. */
   reportUpdates: z.record(
     z.string(),
@@ -104,7 +109,7 @@ export const MockState = z.strictObject({
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 13;
+export const MOCK_STATE_VERSION = 14;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -138,6 +143,8 @@ export const mockStateMigrations = [
   (v11: unknown) => ({ ...(v11 as object), blocks: [] }),
   // v13 adds moderation decisions on reports.
   (v12: unknown) => ({ ...(v12 as object), reportUpdates: {} }),
+  // v14 adds Подписки made and undone during the demo.
+  (v13: unknown) => ({ ...(v13 as object), follows: [], unfollows: [] }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -164,6 +171,8 @@ export const defaultMockState = (): MockState => ({
   reportKeys: {},
   blocks: [],
   reportUpdates: {},
+  follows: [],
+  unfollows: [],
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';

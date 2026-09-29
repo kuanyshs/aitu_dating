@@ -56,7 +56,15 @@ import {
   RespondToPlanInput,
 } from './plan';
 import { CreatePostInput, PostRef, PostView, RepostState, SetRepostInput } from './post';
-import { FollowState, MemberRef, ProfilePostsQuery, ProfileView, SetFollowInput } from './profile';
+import {
+  FollowListQuery,
+  FollowState,
+  MemberPage,
+  MemberRef,
+  ProfilePostsQuery,
+  ProfileView,
+  SetFollowInput,
+} from './profile';
 import { ReactionState, SetReactionInput } from './reaction';
 import type { AituRepository } from './repository';
 import {
@@ -114,6 +122,8 @@ export const repositoryContract = {
   getProfile: { input: MemberRef, output: ProfileView },
   listProfilePosts: { input: ProfilePostsQuery, output: FeedPage },
   setFollow: { input: SetFollowInput, output: FollowState },
+  listFollowers: { input: FollowListQuery, output: MemberPage },
+  listFollowing: { input: FollowListQuery, output: MemberPage },
   search: { input: SearchQuery, output: SearchPage },
 
   getPlan: { input: PlanRef, output: PlanView },

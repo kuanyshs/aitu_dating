@@ -45,7 +45,19 @@ export const ProfilePostsQuery = z.strictObject({
 });
 export type ProfilePostsQuery = z.infer<typeof ProfilePostsQuery>;
 
-/** Подписка on or off; returns the new state. */
+/** «Подписчики» or «Подписки» of a member, a page at a time, newest first. */
+export const FollowListQuery = z.strictObject({
+  memberId: Id,
+  cursor: z.string().optional(),
+  limit: z.number().int().min(1).max(50).optional(),
+});
+export type FollowListQuery = z.infer<typeof FollowListQuery>;
+
+/**
+ * Подписка on or off; returns the new state. Only an active member follows; oneself is a
+ * CONFLICT, someone restricted or in a Блокировка with the viewer is NOT_FOUND. A
+ * Блокировка removes the Подписки both ways, and lifting it does not bring them back.
+ */
 export const SetFollowInput = z.strictObject({ memberId: Id, active: z.boolean() });
 export type SetFollowInput = z.infer<typeof SetFollowInput>;
 
