@@ -29,8 +29,15 @@ import {
   OPEN_PLANS_MAX,
   PassportCandidate,
   PLAN_HORIZON_DAYS,
+  MyResponsePage,
+  PlanPage,
   PlanRef,
+  PlanResponsePage,
+  PlanResponseRef,
+  PlanResponsesQuery,
+  PlanResponseView,
   PlanView,
+  RespondToPlanInput,
   PostRef,
   PostView,
   ProfilePostsQuery,
@@ -82,6 +89,7 @@ import {
   BlockRecord,
   FollowRecord,
   PlanRecord,
+  PlanResponseRecord,
   PostRecord,
   ReportRecord,
   type CommentRecord,
@@ -617,13 +625,19 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return plan;
   }
 
+  /** Отклики from people the viewer may see; withdrawn ones are gone. */
+  function standingResponses(planId: string): PlanResponseRecord[] {
+    return state.planResponses.filter(
+      (r) => r.planId === planId && r.status !== 'withdrawn' && isShown(member(r.authorId)),
+    );
+  }
+
   function planView(plan: CurrentPlan, viewer: Viewer): PlanView {
     const author = member(plan.authorId)!;
     const post = allPosts().find((p) => p.planId === plan.id)!;
     const full = seesFullView(viewer);
-    const pending = state.planResponses.filter(
-      (r) => r.planId === plan.id && r.status === 'pending',
-    ).length;
+    const standing = standingResponses(plan.id);
+    const mine = standing.find((r) => r.authorId === viewer.userId);
     return PlanView.parse({
       ...toPlanSummary(plan),
       postId: post.id,
@@ -631,8 +645,41 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       description: plan.description,
       ...(full ? { place: plan.place } : {}),
       createdAt: plan.createdAt,
-      ...(full && plan.authorId === viewer.userId ? { pendingResponses: pending } : {}),
+      ...(full && plan.authorId === viewer.userId
+        ? { pendingResponses: standing.filter((r) => r.status === 'pending').length }
+        : {}),
+      ...(mine && mine.status !== 'withdrawn'
+        ? { myResponse: { id: mine.id, status: mine.status } }
+        : {}),
     });
+  }
+
+  function responseView(record: PlanResponseRecord, viewer: Viewer): PlanResponseView {
+    return PlanResponseView.parse({
+      id: record.id,
+      planId: record.planId,
+      author: toAuthorView(member(record.authorId)!, viewer),
+      ...(record.message ? { message: record.message } : {}),
+      status: record.status,
+      createdAt: record.createdAt,
+    });
+  }
+
+  /** An Отклик on a plan the viewer may see, with that plan. */
+  function findResponse(input: unknown, requestId: string) {
+    const { responseId } = parseOrFail(PlanResponseRef, input, requestId);
+    const response = state.planResponses.find((r) => r.id === responseId);
+    if (!response || !isShown(member(response.authorId))) {
+      fail(requestId, { code: 'NOT_FOUND', message: 'Response not found.' });
+    }
+    return { response, plan: findPlan(response.planId, requestId) };
+  }
+
+  async function saveResponses(
+    change: (r: PlanResponseRecord) => PlanResponseRecord,
+    patch: Partial<MockState> = {},
+  ) {
+    await saveState({ ...state, ...patch, planResponses: state.planResponses.map(change) });
   }
 
   /** The author's own plan, for closing and cancelling (an expired member may too). */
@@ -1444,11 +1491,161 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         if (plan.status === 'published') await setPlanStatus(plan, 'closed');
         return planView(planById(plan.id)!, viewerOf(effectiveSession()));
       }),
-    listPlanResponses: notImplemented('listPlanResponses'),
-    respondToPlan: notImplemented('respondToPlan'),
-    acceptPlanResponse: notImplemented('acceptPlanResponse'),
-    declinePlanResponse: notImplemented('declinePlanResponse'),
-    withdrawPlanResponse: notImplemented('withdrawPlanResponse'),
+    listPlanResponses: (input) =>
+      respond('data', (requestId) => {
+        const { planId, cursor, limit } = parseOrFail(PlanResponsesQuery, input, requestId);
+        const plan = requireOwnPlan({ planId }, requestId);
+        const viewer = viewerOf(effectiveSession());
+        const rank = { pending: 0, accepted: 1, declined: 2, withdrawn: 3 } as const;
+        const ordered = standingResponses(plan.id).sort(
+          (a, b) => rank[a.status] - rank[b.status] || b.createdAt.localeCompare(a.createdAt),
+        );
+        return PlanResponsePage.parse(
+          page(
+            ordered.map((r) => responseView(r, viewer)),
+            cursor,
+            limit ?? DEFAULT_PAGE_SIZE,
+            requestId,
+          ),
+        );
+      }),
+
+    respondToPlan: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const viewer = viewerOf(effectiveSession());
+        const parsed = RespondToPlanInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the message.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const { planId, message, idempotencyKey } = parsed.data;
+        const plan = findPlan(planId, requestId);
+
+        // A retry of a request that already went through returns the same Отклик.
+        const retried = state.planResponses.find((r) => r.idempotencyKey === idempotencyKey);
+        if (retried) return responseView(retried, viewer);
+        if (plan.authorId === me.id) {
+          fail(requestId, { code: 'CONFLICT', message: 'Nobody responds to their own plan.' });
+        }
+        // One standing Отклик per person and plan: sending again returns it.
+        const standing = state.planResponses.find(
+          (r) => r.planId === planId && r.authorId === me.id && r.status !== 'withdrawn',
+        );
+        if (standing) return responseView(standing, viewer);
+        if (plan.status !== 'published') {
+          fail(requestId, { code: 'CONFLICT', message: 'The plan takes no more responses.' });
+        }
+
+        const record = PlanResponseRecord.parse({
+          id: `response-${state.planResponses.length + 1}`,
+          planId,
+          authorId: me.id,
+          ...(message ? { message } : {}),
+          status: 'pending',
+          idempotencyKey,
+          createdAt: clock.now().toISOString(),
+        });
+        await saveState({ ...state, planResponses: [...state.planResponses, record] });
+        return responseView(record, viewer);
+      }),
+
+    acceptPlanResponse: (input) =>
+      respond('data', async (requestId) => {
+        const { response, plan } = findResponse(input, requestId);
+        requireOwnPlan({ planId: plan.id }, requestId);
+        if (response.status !== 'accepted') {
+          const open = plan.status === 'published' || plan.status === 'closed';
+          if (response.status !== 'pending' || !open) {
+            fail(requestId, { code: 'CONFLICT', message: 'This response cannot be accepted.' });
+          }
+          // One accepted Отклик makes the Встреча; everyone else still waiting is declined.
+          await saveResponses(
+            (r) =>
+              r.id === response.id
+                ? { ...r, status: 'accepted' }
+                : r.planId === plan.id && r.status === 'pending'
+                  ? { ...r, status: 'declined' }
+                  : r,
+            { planUpdates: { ...state.planUpdates, [plan.id]: { status: 'matched' } } },
+          );
+        }
+        const saved = state.planResponses.find((r) => r.id === response.id)!;
+        return responseView(saved, viewerOf(effectiveSession()));
+      }),
+
+    declinePlanResponse: (input) =>
+      respond('data', async (requestId) => {
+        const { response, plan } = findResponse(input, requestId);
+        requireOwnPlan({ planId: plan.id }, requestId);
+        if (response.status === 'pending') {
+          await saveResponses((r) => (r.id === response.id ? { ...r, status: 'declined' } : r));
+        } else if (response.status !== 'declined') {
+          fail(requestId, { code: 'CONFLICT', message: 'This response cannot be declined.' });
+        }
+        const saved = state.planResponses.find((r) => r.id === response.id)!;
+        return responseView(saved, viewerOf(effectiveSession()));
+      }),
+
+    withdrawPlanResponse: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const { response } = findResponse(input, requestId);
+        if (response.authorId !== me.id) {
+          fail(requestId, { code: 'FORBIDDEN', message: 'Only the sender withdraws it.' });
+        }
+        if (response.status === 'pending') {
+          await saveResponses((r) => (r.id === response.id ? { ...r, status: 'withdrawn' } : r));
+        } else if (response.status !== 'withdrawn') {
+          fail(requestId, { code: 'CONFLICT', message: 'The author has already decided.' });
+        }
+        const saved = state.planResponses.find((r) => r.id === response.id)!;
+        return responseView(saved, viewerOf(effectiveSession()));
+      }),
+
+    listMyPlans: (input) =>
+      respond('data', (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { cursor, limit } = parseOrFail(ListQuery, input ?? {}, requestId);
+        const viewer = viewerOf(effectiveSession());
+        const now = clock.now();
+        const starts = (p: CurrentPlan) => planStartsAt(p).getTime();
+        const upcoming = (p: CurrentPlan) =>
+          p.status !== 'cancelled' && p.status !== 'past' && planStartsAt(p) > now;
+        const mine = allPlans().filter((p) => p.authorId === me.id);
+        const ordered = [
+          ...mine.filter(upcoming).sort((a, b) => starts(a) - starts(b)),
+          ...mine.filter((p) => !upcoming(p)).sort((a, b) => starts(b) - starts(a)),
+        ];
+        return PlanPage.parse(
+          page(
+            ordered.map((p) => planView(p, viewer)),
+            cursor,
+            limit ?? DEFAULT_PAGE_SIZE,
+            requestId,
+          ),
+        );
+      }),
+
+    listMyResponses: (input) =>
+      respond('data', (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { cursor, limit } = parseOrFail(ListQuery, input ?? {}, requestId);
+        const viewer = viewerOf(effectiveSession());
+        const items = state.planResponses
+          .filter((r) => r.authorId === me.id && r.status !== 'withdrawn')
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .flatMap((response) => {
+            const plan = planById(response.planId);
+            // A plan behind a Блокировка or an Ограничение is not shown.
+            if (!plan || !isShown(member(plan.authorId))) return [];
+            return [{ response: responseView(response, viewer), plan: planView(plan, viewer) }];
+          });
+        return MyResponsePage.parse(page(items, cursor, limit ?? DEFAULT_PAGE_SIZE, requestId));
+      }),
     listChats: notImplemented('listChats'),
     getChat: notImplemented('getChat'),
     listMessages: notImplemented('listMessages'),

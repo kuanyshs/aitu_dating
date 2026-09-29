@@ -45,6 +45,8 @@ import type {
 } from './onboarding';
 import type {
   CreatePlanInput,
+  MyResponsePage,
+  PlanPage,
   PlanRef,
   PlanResponsePage,
   PlanResponseRef,
@@ -154,6 +156,10 @@ export interface AituRepository {
   acceptPlanResponse(input: PlanResponseRef): Promise<PlanResponseView>;
   declinePlanResponse(input: PlanResponseRef): Promise<PlanResponseView>;
   withdrawPlanResponse(input: PlanResponseRef): Promise<PlanResponseView>;
+  /** The member's own plans, cancelled and past ones too. */
+  listMyPlans(query: ListQuery): Promise<PlanPage>;
+  /** The member's standing Отклики with their plans, newest first. */
+  listMyResponses(query: ListQuery): Promise<MyResponsePage>;
 
   // Контекстные чаты and Активность.
   listChats(query: ListQuery): Promise<ChatPage>;

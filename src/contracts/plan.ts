@@ -19,8 +19,10 @@ export const PlanView = PlanSummary.extend({
   createdAt: IsoDateTime,
   /** Owner only: how many Отклики are waiting. */
   pendingResponses: z.number().int().min(0).optional(),
-  /** The viewer's own Отклик, if any. */
-  myResponseId: Id.optional(),
+  /** The viewer's standing Отклик (not withdrawn), if any. */
+  myResponse: z
+    .strictObject({ id: Id, status: z.enum(['pending', 'accepted', 'declined']) })
+    .optional(),
 });
 export type PlanView = z.infer<typeof PlanView>;
 
@@ -77,6 +79,7 @@ export type PlanResponsePage = z.infer<typeof PlanResponsePage>;
 export const PlanResponsesQuery = z.strictObject({
   planId: Id,
   cursor: z.string().optional(),
+  limit: z.number().int().min(1).max(50).optional(),
 });
 export type PlanResponsesQuery = z.infer<typeof PlanResponsesQuery>;
 
@@ -89,3 +92,14 @@ export type RespondToPlanInput = z.infer<typeof RespondToPlanInput>;
 
 export const PlanResponseRef = z.strictObject({ responseId: Id });
 export type PlanResponseRef = z.infer<typeof PlanResponseRef>;
+
+/** «Мои планы»: upcoming first, nearest on top; then the rest, latest on top. */
+export const PlanPage = Page(PlanView);
+export type PlanPage = z.infer<typeof PlanPage>;
+
+/** One of «Мои отклики»: the Отклик and the plan it answers. */
+export const MyResponseItem = z.strictObject({ response: PlanResponseView, plan: PlanView });
+export type MyResponseItem = z.infer<typeof MyResponseItem>;
+
+export const MyResponsePage = Page(MyResponseItem);
+export type MyResponsePage = z.infer<typeof MyResponsePage>;

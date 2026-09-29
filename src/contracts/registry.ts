@@ -48,6 +48,8 @@ import {
 } from './onboarding';
 import {
   CreatePlanInput,
+  MyResponsePage,
+  PlanPage,
   PlanRef,
   PlanResponsePage,
   PlanResponseRef,
@@ -136,6 +138,8 @@ export const repositoryContract = {
   acceptPlanResponse: { input: PlanResponseRef, output: PlanResponseView },
   declinePlanResponse: { input: PlanResponseRef, output: PlanResponseView },
   withdrawPlanResponse: { input: PlanResponseRef, output: PlanResponseView },
+  listMyPlans: { input: ListQuery, output: PlanPage },
+  listMyResponses: { input: ListQuery, output: MyResponsePage },
 
   listChats: { input: ListQuery, output: ChatPage },
   getChat: { input: ChatRef, output: ChatSummary },
