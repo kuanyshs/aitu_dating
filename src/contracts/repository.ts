@@ -41,6 +41,7 @@ import type {
   MyProfile,
   ProfileStepInput,
   SaveAnswerInput,
+  UpdateCardInput,
 } from './onboarding';
 import type {
   CreatePlanInput,
@@ -112,7 +113,7 @@ export interface AituRepository {
   completeOnboarding(input: CompleteOnboardingInput): Promise<MyProfile>;
   getMyProfile(): Promise<MyProfile>;
   /** Edits the own card; allowed for active and expired members. */
-  updateMyCard(input: ProfileStepInput): Promise<MyProfile>;
+  updateMyCard(input: UpdateCardInput): Promise<MyProfile>;
 
   /** Продление for an expired member: new dates, same card, no Анкета. */
   renewMembership(input: RenewMembershipInput): Promise<MyProfile>;

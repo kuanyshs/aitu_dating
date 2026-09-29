@@ -44,6 +44,7 @@ import {
   MyProfile,
   ProfileStepInput,
   SaveAnswerInput,
+  UpdateCardInput,
 } from './onboarding';
 import {
   CreatePlanInput,
@@ -105,7 +106,7 @@ export const repositoryContract = {
   saveAnswer: { input: SaveAnswerInput, output: AccessFlowState },
   completeOnboarding: { input: CompleteOnboardingInput, output: MyProfile },
   getMyProfile: { input: none, output: MyProfile },
-  updateMyCard: { input: ProfileStepInput, output: MyProfile },
+  updateMyCard: { input: UpdateCardInput, output: MyProfile },
   renewMembership: { input: RenewMembershipInput, output: MyProfile },
 
   getHomeFeed: { input: FeedQuery, output: FeedPage },

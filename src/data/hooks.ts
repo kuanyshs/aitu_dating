@@ -25,6 +25,7 @@ import type {
   ReportStatus,
   ResolveReportInput,
   SearchQuery,
+  UpdateCardInput,
   RenewMembershipInput,
   SaveAnswerInput,
 } from '@/contracts';
@@ -776,5 +777,19 @@ export function useSearch(query: Omit<SearchQuery, 'cursor'>, enabled: boolean) 
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled,
+  });
+}
+
+/** Saves one's own Карточка; the Profile tab, one's profile and search show it at once. */
+export function useUpdateMyCard() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateCardInput) => repository.updateMyCard(input),
+    onSuccess: (me) => {
+      client.setQueryData(queryKeys.myProfile, me);
+      void client.invalidateQueries({ queryKey: queryKeys.profile(me.id) });
+      void client.invalidateQueries({ queryKey: ['search'] });
+    },
   });
 }

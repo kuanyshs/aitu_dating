@@ -178,6 +178,16 @@ describe('own card and settings', () => {
     });
     expect(me.card).toMatchObject({ bio: 'Теперь про книги.', interests: ['books'] });
     expect(me.card.questionnaire).toEqual(answers);
+
+    // The Намерение changes in the card and in the Анкета together.
+    const withIntent = await repo.updateMyCard({
+      bio: 'Теперь про книги.',
+      interests: ['books'],
+      communicationStyle: 'calm_dialogue',
+      intent: 'friendship',
+    });
+    expect(withIntent.card.intent).toBe('friendship');
+    expect(withIntent.card.questionnaire).toEqual({ ...answers, intent: 'friendship' });
   });
 
   it('keeps settings per member across restarts', async () => {

@@ -307,4 +307,13 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('search-results').getByRole('article').first()).toBeVisible();
     await snap(page, 'search-posts');
   });
+
+  test('Профиль: editing the Карточка', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await page.getByTestId('tab-profile').click();
+    await page.getByTestId('profile-edit-card').click();
+    await expect(page.getByTestId('card-edit-passport')).toBeVisible();
+    await snap(page, 'card-edit');
+  });
 });

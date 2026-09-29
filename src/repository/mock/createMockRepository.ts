@@ -31,7 +31,6 @@ import {
   PostRef,
   PostView,
   ProfilePostsQuery,
-  ProfileStepInput,
   ProfileView,
   ReactionState,
   RenewMembershipInput,
@@ -51,6 +50,7 @@ import {
   SetFollowInput,
   SetReactionInput,
   SetRepostInput,
+  UpdateCardInput,
   UpdateSettingsInput,
   UserSettings,
   defaultUserSettings,
@@ -929,7 +929,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     updateMyCard: (input) =>
       respond('data', async (requestId) => {
         const record = requireOwnCard(requestId);
-        const parsed = ProfileStepInput.safeParse(input);
+        const parsed = UpdateCardInput.safeParse(input);
         if (!parsed.success) {
           fail(requestId, {
             code: 'VALIDATION_ERROR',
@@ -937,7 +937,16 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             fieldErrors: access.fieldErrorsOf(parsed.error, 'profile'),
           });
         }
-        const updated: MemberRecord = { ...record, card: { ...record.card, ...parsed.data } };
+        const { intent, ...fields } = parsed.data;
+        // The Намерение is also the Анкета's answer to the same question.
+        const updated: MemberRecord = {
+          ...record,
+          card: {
+            ...record.card,
+            ...fields,
+            ...(intent ? { intent, questionnaire: { ...record.card.questionnaire, intent } } : {}),
+          },
+        };
         await saveMember(updated);
         return toMyProfile(updated);
       }),

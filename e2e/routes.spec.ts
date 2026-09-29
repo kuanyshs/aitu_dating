@@ -10,7 +10,6 @@ const stubs = [
   { path: '/about', testID: 'screen-about', title: 'О продукте' },
   { path: '/membership', testID: 'screen-membership', title: 'Membership' },
   { path: '/notifications', testID: 'screen-notifications', title: 'Уведомления' },
-  { path: '/card-edit', testID: 'screen-card-edit', title: 'Редактирование карточки' },
 ] as const;
 
 test.describe('route stubs', () => {

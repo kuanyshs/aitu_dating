@@ -29,6 +29,15 @@ export const ProfileStepInput = z.strictObject({
 });
 export type ProfileStepInput = z.infer<typeof ProfileStepInput>;
 
+/**
+ * Editing one's own Карточка: the profile step's fields and, optionally, the Намерение.
+ * The Намерение is also the Анкета's answer to the same question, so both change together.
+ */
+export const UpdateCardInput = ProfileStepInput.extend({
+  intent: z.enum(datingIntents).optional(),
+});
+export type UpdateCardInput = z.infer<typeof UpdateCardInput>;
+
 /** All seven single-choice answers of the Анкета, stored as catalog keys. */
 export const QuestionnaireAnswers = z.strictObject({
   city: z.enum(questionnaire.city),
