@@ -29,7 +29,7 @@ function answerLabel(question: QuestionKey, answer: string): string {
 }
 
 /** The member's own Карточка: Passport identity on top, then what they wrote about themselves. */
-export function ProfileCardView({ me }: { me: MyProfile }) {
+export function ProfileCardView({ me, stats }: { me: MyProfile; stats?: React.ReactNode }) {
   const styles = useStyles();
   const { colors } = useTheme();
   const t = strings.profile;
@@ -57,6 +57,8 @@ export function ProfileCardView({ me }: { me: MyProfile }) {
         </View>
         <Avatar avatar={me.avatar} size={72} />
       </View>
+
+      {stats}
 
       <AppText testID="profile-bio-text">{me.card.bio}</AppText>
 

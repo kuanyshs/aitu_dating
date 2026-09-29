@@ -190,6 +190,32 @@ export const strings = {
     retry: 'Повторить',
     more: 'Показать ещё',
   },
+  follows: {
+    title: 'Подписки',
+    back: 'Назад',
+    tabsLabel: 'Список',
+    tabs: { followers: 'Подписчики', following: 'Подписки' },
+    emptyFollowers: 'Пока нет подписчиков',
+    emptyFollowing: 'Пока ни на кого не подписаны',
+    emptyText: 'Подписки появляются, когда участники следят за публикациями друг друга.',
+    more: 'Показать ещё',
+    errorTitle: 'Не удалось загрузить список',
+    errorText: 'Проверьте соединение и попробуйте ещё раз.',
+    retry: 'Повторить',
+    openMember: (name: string) => `Открыть профиль: ${name}`,
+    age: (n: number) => {
+      const last = n % 10;
+      const word =
+        n % 100 >= 11 && n % 100 <= 14
+          ? 'лет'
+          : last === 1
+            ? 'год'
+            : last >= 2 && last <= 4
+              ? 'года'
+              : 'лет';
+      return `${n} ${word}`;
+    },
+  },
   memberPosts: {
     title: 'Публикации',
     emptyTitle: 'Пока нет публикаций',

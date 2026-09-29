@@ -737,6 +737,11 @@ export function useSetFollow() {
       );
       void client.invalidateQueries({ queryKey: ['feed', 'following'] });
       void client.invalidateQueries({ queryKey: ['follows'] });
+      // The follower's own «Подписки» count changes too.
+      void client.invalidateQueries({
+        queryKey: ['profile'],
+        predicate: (query) => query.queryKey[1] !== result.memberId,
+      });
     },
   });
 }
@@ -745,4 +750,18 @@ export function useSetFollow() {
 export function useCachedProfile(memberId: string): ProfileView | undefined {
   const client = useQueryClient();
   return memberId ? client.getQueryData<ProfileView>(queryKeys.profile(memberId)) : undefined;
+}
+
+/** «Подписчики» or «Подписки» of a member, newest first, a page at a time. */
+export function useFollowList(memberId: string, tab: 'followers' | 'following') {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: ['follows', tab, memberId],
+    queryFn: ({ pageParam }) =>
+      tab === 'followers'
+        ? repository.listFollowers({ memberId, cursor: pageParam })
+        : repository.listFollowing({ memberId, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+  });
 }

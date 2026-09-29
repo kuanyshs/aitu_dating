@@ -48,6 +48,7 @@ export default function RootLayout() {
                 {/* Full-screen surfaces. */}
                 <Stack.Screen name="post/[id]" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="member/[id]" options={{ presentation: 'fullScreenModal' }} />
+                <Stack.Screen name="follows" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="plan/[id]" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="reply" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="compose" options={{ presentation: 'fullScreenModal' }} />

@@ -12,6 +12,7 @@ import {
 import { isRepositoryError, type ProfileView } from '@/contracts';
 import { useProfile, useSession, useSetBlock, useSetFollow } from '@/data/hooks';
 import { MyPosts } from '@/features/profile/MyPosts';
+import { ProfileStats } from '@/features/profile/ProfileStats';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { ActionSheet, type SheetAction } from '@/ui/components/ActionSheet';
 import { Avatar } from '@/ui/components/Avatar';
@@ -176,7 +177,12 @@ function MemberProfile({
     <Screen testID="screen-member" withTabBar={false}>
       <Header onMenu={() => setSheet('menu')} />
       <Identity profile={data} />
-      <Stats profile={data} />
+      <ProfileStats
+        memberId={memberId}
+        stats={data.stats}
+        openLists={!!data.relation}
+        testID="member-stat"
+      />
       {data.relation ? (
         <FollowButton memberId={memberId} relation={data.relation} />
       ) : (
@@ -228,27 +234,6 @@ function Identity({ profile }: { profile: ProfileView }) {
           {strings.profile.ageCity(person.age, cityLabels[person.city])}
         </AppText>
       </View>
-    </View>
-  );
-}
-
-function Stats({ profile }: { profile: ProfileView }) {
-  const styles = useStyles();
-  const items = [
-    ['posts', profile.stats.posts],
-    ['followers', profile.stats.followers],
-    ['following', profile.stats.following],
-  ] as const;
-  return (
-    <View style={styles.stats}>
-      {items.map(([key, value]) => (
-        <View key={key} style={styles.stat} testID={`member-stat-${key}`}>
-          <AppText variant="title">{String(value)}</AppText>
-          <AppText variant="caption" tone="textMuted">
-            {t.stats[key]}
-          </AppText>
-        </View>
-      ))}
     </View>
   );
 }
@@ -324,13 +309,6 @@ const useStyles = createStyles((colors) => ({
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   grow: { flex: 1, gap: spacing.xs },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  stats: {
-    flexDirection: 'row',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  stat: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, gap: 2 },
   follow: { gap: spacing.sm },
   badge: {
     alignSelf: 'flex-start',

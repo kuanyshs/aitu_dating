@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
-import { useLogout, useMyProfile, useSession } from '@/data/hooks';
+import { useLogout, useMyProfile, useProfile, useSession } from '@/data/hooks';
 import { MyPosts } from '@/features/profile/MyPosts';
+import { ProfileStats } from '@/features/profile/ProfileStats';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { TextButton } from '@/ui/components/buttons';
 import { ProfileCardView } from '@/ui/components/ProfileCardView';
@@ -37,6 +38,7 @@ export default function ProfileScreen() {
   // An expired member keeps their own card in full; only other people are hidden.
   const isMember = state === 'ACTIVE_MEMBER' || isExpired;
   const me = useMyProfile(isMember);
+  const own = useProfile(me.data?.id ?? '', { enabled: !!me.data });
   const router = useRouter();
   const logout = useLogout();
   const toast = useToast((s) => s.show);
@@ -53,7 +55,21 @@ export default function ProfileScreen() {
   return (
     <Screen testID="screen-profile">
       {isExpired ? <RenewBanner testID="profile-renew-banner" /> : null}
-      {me.data ? <ProfileCardView me={me.data} /> : null}
+      {me.data ? (
+        <ProfileCardView
+          me={me.data}
+          stats={
+            own.data ? (
+              <ProfileStats
+                memberId={me.data.id}
+                stats={own.data.stats}
+                openLists={state === 'ACTIVE_MEMBER'}
+                testID="profile-stat"
+              />
+            ) : null
+          }
+        />
+      ) : null}
       <TextButton
         label={strings.profile.editCard}
         onPress={() => router.push('/card-edit')}
