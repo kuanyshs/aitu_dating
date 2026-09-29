@@ -14,6 +14,7 @@ import {
 import {
   useCachedCommentById,
   useCachedPost,
+  useCachedPlan,
   useCachedProfile,
   useCreateReport,
   usePost,
@@ -96,7 +97,9 @@ function ReportForm({ target, leave }: { target: ReportTarget; leave: () => void
   const context = post ?? comment;
   // A person reported from their profile, as that profile showed them.
   const person = useCachedProfile(target.type === 'user' ? target.id : '')?.person;
-  const author = context?.author ?? person;
+  // A plan reported from its screen: its author may be blocked afterwards.
+  const plan = useCachedPlan(target.type === 'plan' ? target.id : '');
+  const author = context?.author ?? person ?? plan?.author;
 
   const accessState = session.data?.accessState;
   // Members, expired ones too, may block the author afterwards; guests may not.
@@ -251,9 +254,16 @@ function Sent({
   const setBlock = useSetBlock();
   const repeat = receipt.alreadyReported;
   const block = () => {
-    if (target.type !== 'post' && target.type !== 'comment' && target.type !== 'user') return;
+    // A plan is blocked through its author.
+    const blockTarget =
+      target.type === 'plan' && blockAuthor?.view === 'member'
+        ? { type: 'user' as const, id: blockAuthor.id }
+        : target.type === 'post' || target.type === 'comment' || target.type === 'user'
+          ? { type: target.type, id: target.id }
+          : undefined;
+    if (!blockTarget) return;
     setBlock.mutate(
-      { target: { type: target.type, id: target.id }, active: true },
+      { target: blockTarget, active: true },
       {
         onSuccess: () => {
           toast(strings.block.done);

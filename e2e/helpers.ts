@@ -62,15 +62,25 @@ export async function openDemoPanel(page: Page) {
  * app starts. The demo member has no posts of their own until the «Создание» spec.
  */
 export async function signInAsSeedAuthor(page: Page) {
-  await page.goto('/');
-  await page.evaluate(() =>
-    localStorage.setItem(
-      'aitu.demo.session.v1',
-      JSON.stringify({
-        version: 1,
-        data: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
-      }),
-    ),
+  await signInAs(page, 'm01');
+}
+
+/**
+ * Makes a seed member the current session. The demo state stays, so several people can
+ * take turns on the same plan; the app reloads on the next `goto`.
+ */
+export async function signInAs(page: Page, userId: string) {
+  if (page.url() === 'about:blank') await page.goto('/');
+  await page.evaluate(
+    (id) =>
+      localStorage.setItem(
+        'aitu.demo.session.v1',
+        JSON.stringify({
+          version: 1,
+          data: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: id },
+        }),
+      ),
+    userId,
   );
 }
 

@@ -16,6 +16,8 @@ import type {
   CreatePostInput,
   CreateReportInput,
   FeedTab,
+  PlanView,
+  RespondToPlanInput,
   SetBlockInput,
   MembershipSelection,
   PartialAnswers,
@@ -49,7 +51,14 @@ export const queryKeys = {
   blocked: ['blocked'] as const,
   profile: (memberId: string) => ['profile', memberId] as const,
   moderation: (status: ReportStatus) => ['moderation', status] as const,
+  plan: (planId: string) => ['plan', planId] as const,
+  planResponses: (planId: string) => ['plan-responses', planId] as const,
+  myPlans: ['my-plans'] as const,
+  myResponses: ['my-responses'] as const,
 };
+
+/** Everything a plan or an Отклик shows up in. */
+const planKeys = ['plan', 'plan-responses', 'my-plans', 'my-responses', 'feed', 'post'];
 
 export function useSession() {
   const repository = useRepository();
@@ -528,9 +537,16 @@ export function useSetBlock() {
     mutationFn: (input: SetBlockInput) => repository.setBlock(input),
     onSuccess: () =>
       Promise.all(
-        ['feed', 'post', 'comments', 'profile', 'profile-posts', 'follows', 'blocked'].map((key) =>
-          client.invalidateQueries({ queryKey: [key] }),
-        ),
+        [
+          'feed',
+          'post',
+          'comments',
+          'profile',
+          'profile-posts',
+          'follows',
+          'blocked',
+          ...planKeys,
+        ].map((key) => client.invalidateQueries({ queryKey: [key] })),
       ),
   });
 }
@@ -792,4 +808,71 @@ export function useUpdateMyCard() {
       void client.invalidateQueries({ queryKey: ['search'] });
     },
   });
+}
+
+/** A План in the view the session may see. */
+export function usePlan(planId: string) {
+  const repository = useRepository();
+  return useQuery({
+    queryKey: queryKeys.plan(planId),
+    queryFn: () => repository.getPlan({ planId }),
+  });
+}
+
+/** A plan already loaded, for screens opened from it (the report form). */
+export function useCachedPlan(planId: string): PlanView | undefined {
+  const client = useQueryClient();
+  return planId ? client.getQueryData<PlanView>(queryKeys.plan(planId)) : undefined;
+}
+
+/** The author's Отклики on their plan, waiting ones first. */
+export function usePlanResponses(planId: string, enabled: boolean) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: queryKeys.planResponses(planId),
+    queryFn: ({ pageParam }) => repository.listPlanResponses({ planId, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
+  });
+}
+
+/** A change to a plan or an Отклик: the plan, its lists and its feed face reload. */
+function usePlanMutation<I, O>(run: (input: I) => Promise<O>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: run,
+    onSuccess: () =>
+      Promise.all(planKeys.map((key) => client.invalidateQueries({ queryKey: [key] }))),
+  });
+}
+
+export function useRespondToPlan() {
+  const repository = useRepository();
+  return usePlanMutation((input: RespondToPlanInput) => repository.respondToPlan(input));
+}
+
+export function useWithdrawResponse() {
+  const repository = useRepository();
+  return usePlanMutation((responseId: string) => repository.withdrawPlanResponse({ responseId }));
+}
+
+export function useAcceptResponse() {
+  const repository = useRepository();
+  return usePlanMutation((responseId: string) => repository.acceptPlanResponse({ responseId }));
+}
+
+export function useDeclineResponse() {
+  const repository = useRepository();
+  return usePlanMutation((responseId: string) => repository.declinePlanResponse({ responseId }));
+}
+
+export function useClosePlan() {
+  const repository = useRepository();
+  return usePlanMutation((planId: string) => repository.closePlan({ planId }));
+}
+
+export function useCancelPlan() {
+  const repository = useRepository();
+  return usePlanMutation((planId: string) => repository.cancelPlan({ planId }));
 }

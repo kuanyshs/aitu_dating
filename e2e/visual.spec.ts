@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { expectMemberNames, expectNoMemberNames, joinAsMadina } from './helpers';
+import { expectMemberNames, expectNoMemberNames, joinAsMadina, signInAs } from './helpers';
 
 /**
  * Visual baselines of the first slice in both themes (390×844). They are rendered and
@@ -315,5 +315,34 @@ test.describe('visual baselines @visual', () => {
     await page.getByTestId('profile-edit-card').click();
     await expect(page.getByTestId('card-edit-passport')).toBeVisible();
     await snap(page, 'card-edit');
+  });
+
+  test('План: a member with the place and an Отклик being written', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await page.goto('/plan/plan1');
+    await expect(page.getByTestId('plan-place')).toBeVisible();
+    await page.getByTestId('plan-respond').click();
+    await page.getByTestId('plan-message').fill('Люблю утренний кофе, буду рада компании.');
+    await snap(page, 'plan-member');
+  });
+
+  test('План: the author with Отклики to decide', async ({ page }) => {
+    for (const [userId, message] of [
+      ['m02', 'Давно хотел в эту кофейню.'],
+      ['m03', ''],
+    ] as const) {
+      await signInAs(page, userId);
+      await page.goto('/plan/plan1');
+      await page.getByTestId('plan-respond').click();
+      if (message) await page.getByTestId('plan-message').fill(message);
+      await page.getByTestId('plan-send').click();
+      await expect(page.getByTestId('plan-pending')).toBeVisible();
+    }
+    await signInAs(page, 'm06');
+    await page.goto('/plan/plan1');
+    await expect(page.getByTestId('plan-waiting')).toHaveText('Ждут ответа: 2');
+    await expect(page.getByTestId('plan-accept-response-2')).toBeVisible();
+    await snap(page, 'plan-author');
   });
 });

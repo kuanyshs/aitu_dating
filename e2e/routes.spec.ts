@@ -4,7 +4,6 @@ import { joinAsMadina } from './helpers';
 
 /** Every surface on the screen map that is not built yet: a named stub with «Назад». */
 const stubs = [
-  { path: '/plan/plan1', testID: 'screen-plan', title: 'План встречи' },
   { path: '/chats', testID: 'screen-chats', title: 'Сообщения' },
   { path: '/chats/chat-1', testID: 'screen-chat', title: 'Чат' },
   { path: '/about', testID: 'screen-about', title: 'О продукте' },
@@ -39,7 +38,7 @@ test.describe('route stubs', () => {
     await page.getByTestId('feed-tab-plans').click();
     await page.getByTestId('plan-card').first().click();
     await expect(page.getByTestId('screen-plan')).toBeVisible();
-    await page.getByTestId('screen-plan').getByTestId('stub-back').click();
+    await page.getByTestId('plan-back').click();
     await expect(page.getByTestId('feed-tab-plans')).toHaveAttribute('aria-checked', 'true');
   });
 
