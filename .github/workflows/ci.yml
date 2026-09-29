@@ -48,15 +48,22 @@ jobs:
           path: dist
           retention-days: 7
 
-  # The e2e suite runs in four parallel shards; the `e2e` job below sums them up so there
-  # is still one check to look at.
+  # The e2e suite runs in parallel jobs; the `e2e` job below sums them up so there is still
+  # one check to look at. Most tests skip the dark theme, so a plain split of the whole
+  # list would leave the dark shards idle: the light theme gets four shards, dark one.
   e2e-shard:
     needs: web-build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        include:
+          - { name: light 1/4, args: --project=light --shard=1/4 }
+          - { name: light 2/4, args: --project=light --shard=2/4 }
+          - { name: light 3/4, args: --project=light --shard=3/4 }
+          - { name: light 4/4, args: --project=light --shard=4/4 }
+          - { name: dark, args: --project=dark }
+    name: e2e (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -65,11 +72,11 @@ jobs:
           name: web-dist
           path: dist
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm e2e --shard=${{ matrix.shard }}/4
+      - run: pnpm e2e ${{ matrix.args }}
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.shard }}
+          name: playwright-report-${{ strategy.job-index }}
           path: |
             playwright-report
             test-results
