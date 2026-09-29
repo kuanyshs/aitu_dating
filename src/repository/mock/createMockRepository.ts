@@ -39,6 +39,8 @@ import {
   ReportReceipt,
   ReportRef,
   ReportsQuery,
+  SearchPage,
+  SearchQuery,
   ResolveReportInput,
   ReportView,
   RepositoryError,
@@ -70,6 +72,7 @@ import {
   type ResetNotice,
 } from './demo';
 import { buildThreads } from './comments';
+import { matchPeople, matchPosts } from './search';
 import { selectFeed } from './feed';
 import {
   BlockRecord,
@@ -156,6 +159,12 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
    */
   function member(id: string): MemberRecord | undefined {
     return state.members.find((m) => m.id === id) ?? seedMembersById.get(id);
+  }
+
+  /** Everyone: members who joined during the demo and the seed community. */
+  function allMembers(): MemberRecord[] {
+    const demoIds = new Set(state.members.map((m) => m.id));
+    return [...state.members, ...data.members.filter((m) => !demoIds.has(m.id))];
   }
 
   async function saveMember(record: MemberRecord, patch: Partial<MockState> = {}) {
@@ -1222,7 +1231,67 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       respond('data', (requestId) => followPage(requestId, input, followersOf)),
     listFollowing: (input) =>
       respond('data', (requestId) => followPage(requestId, input, followingOf)),
-    search: notImplemented('search'),
+    search: (input) =>
+      respond('data', (requestId) => {
+        const viewer = requireReader(requestId);
+        const query = parseOrFail(SearchQuery, input, requestId);
+        const limit = query.limit ?? DEFAULT_PAGE_SIZE;
+
+        if (query.kind === 'plans') {
+          fail(requestId, {
+            code: 'NOT_IMPLEMENTED',
+            message: 'Plans are searched with the plans spec.',
+          });
+        }
+
+        if (query.kind === 'people') {
+          // People are for active members; the others search posts only.
+          const me = requireActiveMember(requestId);
+          const people = matchPeople(
+            allMembers().filter((m) => m.id !== me.id && isShown(m)),
+            query,
+            me.city,
+          );
+          return SearchPage.parse(
+            page(
+              people.map((person) => ({
+                kind: 'person' as const,
+                person: toAuthorView(person, viewer),
+                card: {
+                  bio: person.card.bio,
+                  intent: person.card.intent,
+                  interests: person.card.interests,
+                  communicationStyle: person.card.communicationStyle,
+                },
+              })),
+              query.cursor,
+              limit,
+              requestId,
+            ),
+          );
+        }
+
+        const text = (query.text ?? '').trim();
+        if (text.length < 2 && !query.topics?.length) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Type at least two characters or pick a topic.',
+            fieldErrors: { text: 'too_short' },
+          });
+        }
+        const context = shapingContext(viewer);
+        return SearchPage.parse(
+          page(
+            matchPosts(allPosts().filter(isVisible), query).map((post) => ({
+              kind: 'post' as const,
+              post: toPostView(post, context),
+            })),
+            query.cursor,
+            limit,
+            requestId,
+          ),
+        );
+      }),
     createPlan: notImplemented('createPlan'),
     cancelPlan: notImplemented('cancelPlan'),
     closePlan: notImplemented('closePlan'),
