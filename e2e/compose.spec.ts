@@ -99,11 +99,11 @@ test.describe('Создание: a post or a question', () => {
     ).toHaveCount(1);
   });
 
-  test('«План» leads to its placeholder until the plans spec', async ({ page }) => {
+  test('«План» opens the plan form', async ({ page }) => {
     await joinAsMadina(page);
     await openEditor(page);
     await page.getByTestId('compose-type-plan').click();
-    await expect(page.getByTestId('screen-new-plan')).toBeVisible();
+    await expect(page.getByTestId('new-plan-city-karaganda')).toBeVisible();
   });
 
   test('a guest and an expired member are shown the way in instead', async ({ page }) => {

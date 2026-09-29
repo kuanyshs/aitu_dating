@@ -15,6 +15,7 @@ import type {
   CommentView,
   CreatePostInput,
   CreateReportInput,
+  CreatePlanInput,
   FeedTab,
   PlanView,
   RespondToPlanInput,
@@ -58,7 +59,15 @@ export const queryKeys = {
 };
 
 /** Everything a plan or an Отклик shows up in. */
-const planKeys = ['plan', 'plan-responses', 'my-plans', 'my-responses', 'feed', 'post'];
+const planKeys = [
+  'plan',
+  'plan-responses',
+  'my-plans',
+  'my-responses',
+  'feed',
+  'post',
+  'profile-posts',
+];
 
 export function useSession() {
   const repository = useRepository();
@@ -875,4 +884,10 @@ export function useClosePlan() {
 export function useCancelPlan() {
   const repository = useRepository();
   return usePlanMutation((planId: string) => repository.cancelPlan({ planId }));
+}
+
+/** Publishes a plan with its feed post. */
+export function useCreatePlan() {
+  const repository = useRepository();
+  return usePlanMutation((input: CreatePlanInput) => repository.createPlan(input));
 }

@@ -345,4 +345,14 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('plan-accept-response-2')).toBeVisible();
     await snap(page, 'plan-author');
   });
+
+  test('План: the form to create one', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await page.goto('/plan/new');
+    await page.getByTestId('new-plan-date-2026-09-28').click();
+    await page.getByTestId('new-plan-time-18:00').click();
+    await expect(page.getByTestId('new-plan-time-18:00')).toHaveAttribute('aria-checked', 'true');
+    await snap(page, 'plan-new');
+  });
 });

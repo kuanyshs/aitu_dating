@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 
 import { useSession } from '@/data/hooks';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
-import { PrimaryButton } from '@/ui/components/buttons';
+import { PrimaryButton, SecondaryButton } from '@/ui/components/buttons';
 import { PlaceholderScreen } from '@/ui/components/PlaceholderScreen';
 import { Screen } from '@/ui/components/Screen';
 import { strings } from '@/ui/strings';
@@ -25,6 +25,11 @@ export default function CreateScreen() {
         label={strings.compose.write}
         onPress={() => router.push('/compose')}
         testID="create-write"
+      />
+      <SecondaryButton
+        label={strings.planNew.open}
+        onPress={() => router.push('/plan/new')}
+        testID="create-plan"
       />
     </PlaceholderScreen>
   );
