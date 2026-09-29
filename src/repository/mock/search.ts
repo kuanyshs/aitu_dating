@@ -3,14 +3,13 @@ import type { SearchQuery } from '@/contracts';
 
 import type { MemberRecord, PostRecord } from './records';
 
+// «ё» (U+0451) reads as «е» (U+0435); code points keep Cyrillic literals out of the code.
+const YO = new RegExp(String.fromCharCode(0x0451), 'g');
+const YE = String.fromCharCode(0x0435);
+
 /** Lower case, «ё» as «е», single spaces: how both the text and the query are compared. */
 export function normalize(value: string): string {
-  // U+0451 «ё» reads as U+0435 «е».
-  return value
-    .toLowerCase()
-    .replace(/\u0451/g, '\u0435')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return value.toLowerCase().replace(YO, YE).replace(/\s+/g, ' ').trim();
 }
 
 const hasFilters = (query: SearchQuery) =>
