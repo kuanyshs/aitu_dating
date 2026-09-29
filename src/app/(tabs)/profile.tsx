@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { useLogout, useMyProfile, useProfile, useSession } from '@/data/hooks';
+import { MyPlans } from '@/features/profile/MyPlans';
 import { MyPosts } from '@/features/profile/MyPosts';
 import { ProfileStats } from '@/features/profile/ProfileStats';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
@@ -75,6 +76,7 @@ export default function ProfileScreen() {
         onPress={() => router.push('/card-edit')}
         testID="profile-edit-card"
       />
+      {me.data ? <MyPlans canCreate={!isExpired} /> : null}
       {me.data ? <MyPosts memberId={me.data.id} canWrite={!isExpired} /> : null}
       <ProfileLinks />
       <TextButton

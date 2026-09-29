@@ -50,7 +50,7 @@ export function toAuthorView(member: MemberRecord, viewer: Viewer): AuthorView {
 }
 
 /** Guest-safe plan facts for the feed card; the exact place stays in plan detail. */
-export function toPlanSummary(plan: CurrentPlan): PlanSummary {
+export function toPlanSummary(plan: CurrentPlan, pendingResponses?: number): PlanSummary {
   return {
     id: plan.id,
     city: plan.city,
@@ -63,6 +63,7 @@ export function toPlanSummary(plan: CurrentPlan): PlanSummary {
     paymentPolicy: plan.paymentPolicy,
     isPublicPlace: plan.isPublicPlace,
     status: plan.status,
+    ...(pendingResponses !== undefined ? { pendingResponses } : {}),
   };
 }
 
@@ -72,6 +73,8 @@ export type ShapingContext = {
   viewer: Viewer;
   member(id: string): MemberRecord | undefined;
   plan(id: string): CurrentPlan | undefined;
+  /** Waiting Отклики on a plan, for its author in the full view only. */
+  pendingResponses?(plan: CurrentPlan): number | undefined;
   post(id: string): PostRecord | undefined;
   counters(postId: string): PostCounters;
   reactedByMe?(postId: string): boolean;
@@ -103,7 +106,7 @@ export function toPostView(post: PostRecord, ctx: ShapingContext): PostView {
       : {}),
     ...(isMemberViewer(ctx.viewer) ? { mine: post.authorId === ctx.viewer.userId } : {}),
     ...(post.mediaKey ? { media: { kind: 'synthetic' as const, key: post.mediaKey } } : {}),
-    ...(plan ? { plan: toPlanSummary(plan) } : {}),
+    ...(plan ? { plan: toPlanSummary(plan, ctx.pendingResponses?.(plan)) } : {}),
     ...(quotedRecord && quotedAuthor && ctx.isVisible(quotedRecord)
       ? {
           quoted: {

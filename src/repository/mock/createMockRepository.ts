@@ -606,6 +606,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       viewer,
       member: (id) => member(id),
       plan: (id) => planById(id),
+      pendingResponses: (plan) => pendingFor(plan, viewer),
       post: (id) => postById(id),
       counters,
       reactedByMe: (postId) => reactionsOf(postId).some((r) => r.userId === viewer.userId),
@@ -632,6 +633,12 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     );
   }
 
+  /** The count of waiting Отклики, shown to the author in the full view only. */
+  function pendingFor(plan: CurrentPlan, viewer: Viewer): number | undefined {
+    if (!seesFullView(viewer) || plan.authorId !== viewer.userId) return undefined;
+    return standingResponses(plan.id).filter((r) => r.status === 'pending').length;
+  }
+
   function planView(plan: CurrentPlan, viewer: Viewer): PlanView {
     const author = member(plan.authorId)!;
     const post = allPosts().find((p) => p.planId === plan.id)!;
@@ -639,15 +646,12 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const standing = standingResponses(plan.id);
     const mine = standing.find((r) => r.authorId === viewer.userId);
     return PlanView.parse({
-      ...toPlanSummary(plan),
+      ...toPlanSummary(plan, pendingFor(plan, viewer)),
       postId: post.id,
       author: toAuthorView(author, viewer),
       description: plan.description,
       ...(full ? { place: plan.place } : {}),
       createdAt: plan.createdAt,
-      ...(full && plan.authorId === viewer.userId
-        ? { pendingResponses: standing.filter((r) => r.status === 'pending').length }
-        : {}),
       ...(mine && mine.status !== 'withdrawn'
         ? { myResponse: { id: mine.id, status: mine.status } }
         : {}),

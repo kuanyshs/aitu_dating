@@ -246,9 +246,14 @@ function PlanCard({ plan, clock }: { plan: PlanSummary; clock: Clock }) {
         `${cityLabels[plan.city]}${plan.isPublicPlace ? ` · ${strings.plan.publicPlace}` : ''}`,
       )}
       {detail(Wallet, paymentPolicyLabels[plan.paymentPolicy])}
-      {plan.status === 'matched' ? (
-        <AppText variant="caption" tone="textMuted">
-          {strings.plan.matched}
+      {plan.status !== 'published' ? (
+        <AppText variant="caption" tone="textMuted" testID="plan-card-status">
+          {strings.planScreen.status[plan.status]}
+        </AppText>
+      ) : null}
+      {plan.pendingResponses ? (
+        <AppText variant="caption" testID="plan-card-waiting">
+          {strings.planScreen.waiting(plan.pendingResponses)}
         </AppText>
       ) : null}
     </View>

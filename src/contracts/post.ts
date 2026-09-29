@@ -45,6 +45,8 @@ export const PlanSummary = z.strictObject({
   paymentPolicy: z.enum(paymentPolicies),
   isPublicPlace: z.boolean(),
   status: PlanStatus,
+  /** Owner only: how many Отклики are waiting. */
+  pendingResponses: z.number().int().min(0).optional(),
 });
 export type PlanSummary = z.infer<typeof PlanSummary>;
 

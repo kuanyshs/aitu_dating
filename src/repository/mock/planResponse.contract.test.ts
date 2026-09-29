@@ -197,6 +197,21 @@ describe('the author decides', () => {
   });
 });
 
+describe('the plan in the feed', () => {
+  it('carries the waiting count for its author only', async () => {
+    const store = createMemoryStore();
+    await respond(store, 'm02');
+    const own = await on(store, 'm06').getPost({ postId: 'p-plan1' });
+    expect(own.plan?.pendingResponses).toBe(1);
+    const feed = await on(store, 'm06').getHomeFeed({ tab: 'plans', limit: 50 });
+    expect(feed.items.find((p) => p.id === 'p-plan1')?.plan?.pendingResponses).toBe(1);
+    expect((await on(store, 'm02').getPost({ postId: 'p-plan1' })).plan?.pendingResponses).toBe(
+      undefined,
+    );
+    expect((await on(store).getPost({ postId: 'p-plan1' })).plan?.pendingResponses).toBe(undefined);
+  });
+});
+
 describe('listing Отклики on a plan', () => {
   it('shows the author waiting ones first, newest on top, page by page', async () => {
     const store = createMemoryStore();

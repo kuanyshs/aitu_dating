@@ -17,8 +17,6 @@ export const PlanView = PlanSummary.extend({
   description: z.string().max(LIMITS.planDescription),
   place: z.string().min(1).optional(),
   createdAt: IsoDateTime,
-  /** Owner only: how many Отклики are waiting. */
-  pendingResponses: z.number().int().min(0).optional(),
   /** The viewer's standing Отклик (not withdrawn), if any. */
   myResponse: z
     .strictObject({ id: Id, status: z.enum(['pending', 'accepted', 'declined']) })

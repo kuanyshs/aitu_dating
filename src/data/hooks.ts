@@ -891,3 +891,27 @@ export function useCreatePlan() {
   const repository = useRepository();
   return usePlanMutation((input: CreatePlanInput) => repository.createPlan(input));
 }
+
+/** «Мои планы»: upcoming first, then the rest. */
+export function useMyPlans(enabled: boolean) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: queryKeys.myPlans,
+    queryFn: ({ pageParam }) => repository.listMyPlans({ cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
+  });
+}
+
+/** «Мои отклики»: standing Отклики with their plans, newest first. */
+export function useMyResponses(enabled: boolean) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: queryKeys.myResponses,
+    queryFn: ({ pageParam }) => repository.listMyResponses({ cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
+  });
+}
