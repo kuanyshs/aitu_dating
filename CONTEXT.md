@@ -128,19 +128,22 @@ _Avoid_: DM, direct message
 ### Meetings
 
 **План** (`Plan`):
-A one-to-one meeting invitation published by its author: city, date, time, format, place, duration, **Цель встречи** and payment policy. Never has capacity or group participants.
+A one-to-one meeting invitation published by its author: city, date, time, format, place, duration, **Цель встречи** and payment policy. Never has capacity or group participants. Only an active **Участник** creates one, in a public place they confirm («Это публичное место»), and holds at most 3 open future **Планы** at a time. The exact place is shown to active **Участники** only; the count of waiting **Отклики** to the author only. Under a **Блокировка** the **План** is not found.
 _Avoid_: event, meetup, встреча (for the unpublished or unmatched thing)
+
+**Статус плана** (`PlanStatus`):
+Открыт (takes **Отклики**), «Набор закрыт» (the author stopped new **Отклики**; waiting ones are still decided), **Встреча** («Встреча договорена»), Отменён (by the author, from any status; waiting **Отклики** are declined) and Прошёл (the start time has come for an open or closed **План**; computed, never stored). A past **План** takes no **Отклики** and leaves the «Планы» feed tab.
 
 **Цель встречи** (`MeetingGoal`):
 Why a specific **План** exists: познакомиться, поговорить or совместное занятие.
 _Avoid_: intent (unqualified)
 
 **Отклик** (`MeetingRequest`):
-Another **Участник**'s request to join a **План**. A **План** can receive many; its author accepts at most one.
+Another **Участник**'s request to join a **План**, with an optional message up to 360 characters. Only an active **Участник**, never on their own **План**, and only on an open future one. One standing **Отклик** per person and **План**: sending again returns the same one; after «Отозвать» a new one may be sent. It is waiting, accepted, declined (the sender reads «Автор выбрал другой вариант») or withdrawn.
 _Avoid_: join, application, заявка
 
 **Встреча** (matched **План**):
-A **План** whose author accepted an **Отклик**; it gets a contextual chat between the two people.
+A **План** whose author accepted an **Отклик**, after a confirmation; all other waiting **Отклики** are declined at once. Acceptance is never undone — only the whole **План** can be cancelled. Both people see «Встреча договорена» and «Написать», which opens their contextual chat.
 
 ## Relationships
 
@@ -149,7 +152,7 @@ A **План** whose author accepted an **Отклик**; it gets a contextual c
 - A **Комментарий** belongs to one **Пост**; an **Ответ** belongs to one **Комментарий**; nothing answers an **Ответ**.
 - A **Репост** adds nothing to the original **Пост** but its count; a **Цитата** is a separate **Пост** of its own.
 - A **Цитата** points to exactly one **Пост**; when that one is deleted or hidden, the **Цитата** stays and shows «Публикация недоступна» in its place.
-- A **План** has many **Отклики** and at most one accepted, which turns it into a **Встреча**.
+- A **План** has many **Отклики** and at most one accepted, which turns it into a **Встреча**; a **Участник** has at most one standing **Отклик** per **План**.
 - Two **Участники** share at most one **Контекстный чат**; an accepted **Отклик** creates it if it does not exist.
 - A **Блокировка** is between two **Участники**; an **Ограничение** is between moderation and one person.
 - A **Жалоба** targets exactly one person or piece of content; many **Жалобы** on one target share one **Итог жалобы**.
