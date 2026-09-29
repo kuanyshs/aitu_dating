@@ -36,11 +36,19 @@ test('a question leads the feed, is quoted, and the quote outlives it', async ({
   await expect.poll(async () => (await topFeedArticle(page))?.text ?? '').toContain(quote);
   await expect(byText(quote).getByTestId('quoted-post')).toContainText(question);
 
-  // Delete the original question from its screen.
-  await byText(question)
-    .filter({ hasNot: page.getByTestId('quoted-post') })
-    .getByTestId('post-open')
-    .click();
+  // Delete the original question from its screen. The feed may still shift while the
+  // quote card lays out, and a tap can land on the quote above: make sure the question is
+  // what opened, or go back and tap again.
+  await expect(async () => {
+    if (await page.getByTestId('screen-post').count()) await page.getByTestId('post-back').click();
+    await byText(question)
+      .filter({ hasNot: page.getByTestId('quoted-post') })
+      .getByTestId('post-open')
+      .click();
+    await expect(page.getByTestId('screen-post').getByTestId('post-text')).toHaveText(question, {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 20_000 });
   await page.getByTestId('post-menu').click();
   await page.getByTestId('sheet-delete').click();
   await page.getByTestId('sheet-confirm-delete').click();
