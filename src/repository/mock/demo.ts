@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   AccessFlowStep,
+  StoredPlanStatus,
   UserSettings,
   MembershipSelection,
   PartialAnswers,
@@ -15,6 +16,8 @@ import {
   CommentRecord,
   FollowRecord,
   MemberRecord,
+  PlanRecord,
+  PlanResponseRecord,
   PostRecord,
   ReactionRecord,
   ReportRecord,
@@ -106,10 +109,18 @@ export const MockState = z.strictObject({
       outcome: z.enum(['dismissed', 'content_removed', 'member_restricted']).optional(),
     }),
   ),
+  /** Plans created during the demo, on top of the seed. */
+  plans: z.array(PlanRecord),
+  /** Created plans by idempotency key → plan id, so a retry publishes once. */
+  planKeys: z.record(z.string(), z.string()),
+  /** Status changes by plan id, seed plans too: closed, matched, cancelled. */
+  planUpdates: z.record(z.string(), z.strictObject({ status: StoredPlanStatus })),
+  /** Отклики sent during the demo. */
+  planResponses: z.array(PlanResponseRecord),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 14;
+export const MOCK_STATE_VERSION = 15;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -145,6 +156,14 @@ export const mockStateMigrations = [
   (v12: unknown) => ({ ...(v12 as object), reportUpdates: {} }),
   // v14 adds Подписки made and undone during the demo.
   (v13: unknown) => ({ ...(v13 as object), follows: [], unfollows: [] }),
+  // v15 adds plans, their status changes and Отклики.
+  (v14: unknown) => ({
+    ...(v14 as object),
+    plans: [],
+    planKeys: {},
+    planUpdates: {},
+    planResponses: [],
+  }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -173,6 +192,10 @@ export const defaultMockState = (): MockState => ({
   reportUpdates: {},
   follows: [],
   unfollows: [],
+  plans: [],
+  planKeys: {},
+  planUpdates: {},
+  planResponses: [],
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';

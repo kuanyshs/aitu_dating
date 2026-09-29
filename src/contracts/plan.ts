@@ -24,6 +24,11 @@ export const PlanView = PlanSummary.extend({
 });
 export type PlanView = z.infer<typeof PlanView>;
 
+/** Plans are made for today and the next 13 days. */
+export const PLAN_HORIZON_DAYS = 14;
+/** How many open future plans an author may hold at a time. */
+export const OPEN_PLANS_MAX = 3;
+
 const Time = z.string().regex(/^\d{2}:\d{2}$/);
 
 export const CreatePlanInput = z

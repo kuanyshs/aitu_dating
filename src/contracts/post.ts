@@ -17,8 +17,17 @@ export type PostType = z.infer<typeof PostType>;
 
 export const TopicKey = z.enum(topics);
 
-export const PlanStatus = z.enum(['published', 'matched', 'closed', 'cancelled']);
+/**
+ * published (open for Отклики), matched (Встреча), closed («Набор закрыт»), cancelled
+ * (Отменён) are stored; past (Прошёл) is computed: an open or closed plan whose start
+ * time has come.
+ */
+export const PlanStatus = z.enum(['published', 'matched', 'closed', 'cancelled', 'past']);
 export type PlanStatus = z.infer<typeof PlanStatus>;
+
+/** The statuses a plan is stored with; «Прошёл» is never stored. */
+export const StoredPlanStatus = PlanStatus.exclude(['past']);
+export type StoredPlanStatus = z.infer<typeof StoredPlanStatus>;
 
 /** Guest-safe summary of a one-to-one plan shown inside its feed post. */
 export const PlanSummary = z.strictObject({

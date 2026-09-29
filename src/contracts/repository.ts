@@ -141,7 +141,8 @@ export interface AituRepository {
   listFollowing(query: FollowListQuery): Promise<MemberPage>;
   search(query: SearchQuery): Promise<SearchPage>;
 
-  // Plans and Отклики. Plan: published → matched → closed, cancelled at any time.
+  // Plans and Отклики. Plan: published → closed | matched, cancelled at any time;
+  // an open or closed plan reads as past once its start time has come.
   getPlan(input: PlanRef): Promise<PlanView>;
   /** Creates the plan and its Post(type=plan) together. */
   createPlan(input: CreatePlanInput): Promise<PlanView>;

@@ -1,6 +1,7 @@
 import type { FeedQuery } from '@/contracts';
 
-import type { PlanRecord, PostRecord } from './records';
+import type { CurrentPlan } from './plans';
+import type { PostRecord } from './records';
 import type { PostCounters } from './shaping';
 
 export type FeedContext = {
@@ -12,7 +13,7 @@ export type FeedContext = {
   followingIds: ReadonlySet<string>;
   counters(postId: string): PostCounters;
   authorCity(post: PostRecord): string | undefined;
-  plan(id: string): PlanRecord | undefined;
+  plan(id: string): CurrentPlan | undefined;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;

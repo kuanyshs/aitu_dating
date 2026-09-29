@@ -10,6 +10,7 @@ import {
   CommentView,
   CompleteOnboardingInput,
   CreateCommentInput,
+  CreatePlanInput,
   CreatePostInput,
   CreateReportInput,
   FollowListQuery,
@@ -25,7 +26,9 @@ import {
   ModerationReportView,
   ModerationResult,
   MemberRef,
+  OPEN_PLANS_MAX,
   PassportCandidate,
+  PLAN_HORIZON_DAYS,
   PlanRef,
   PlanView,
   PostRef,
@@ -72,11 +75,13 @@ import {
   type ResetNotice,
 } from './demo';
 import { buildThreads } from './comments';
+import { almatyDate, currentStatus, planStartsAt, type CurrentPlan } from './plans';
 import { matchPeople, matchPosts } from './search';
 import { selectFeed } from './feed';
 import {
   BlockRecord,
   FollowRecord,
+  PlanRecord,
   PostRecord,
   ReportRecord,
   type CommentRecord,
@@ -181,7 +186,18 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
    */
   const isExpired = (record: MemberRecord) =>
     record.id in state.expiredMemberships || new Date(record.membership.endsAt) <= clock.now();
-  const plansById = new Map(data.plans.map((p) => [p.id, p]));
+  /** Seed plans and those created during the demo, as readers see them now. */
+  function allPlans(): CurrentPlan[] {
+    const now = clock.now();
+    return [...data.plans, ...state.plans].map((plan) => {
+      const stored = { ...plan, ...state.planUpdates[plan.id] };
+      return { ...stored, status: currentStatus(stored, now) };
+    });
+  }
+
+  function planById(id: string): CurrentPlan | undefined {
+    return allPlans().find((p) => p.id === id);
+  }
   const seedPostsById = new Map(data.posts.map((p) => [p.id, p]));
 
   /** Seed posts and those published during the demo. */
@@ -344,7 +360,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         return comment ? { ...member(comment.authorId)!, text: comment.text } : undefined;
       }
       case 'plan': {
-        const plan = plansById.get(id);
+        const plan = planById(id);
         const post = allPosts().find((p) => p.planId === id);
         return plan ? { ...member(plan.authorId)!, text: post?.text } : undefined;
       }
@@ -465,7 +481,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         return visibleMember(comment.authorId);
       }
       case 'plan': {
-        const plan = plansById.get(id);
+        const plan = planById(id);
         return plan ? visibleMember(plan.authorId) : undefined;
       }
       case 'message':
@@ -581,13 +597,69 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return {
       viewer,
       member: (id) => member(id),
-      plan: (id) => plansById.get(id),
+      plan: (id) => planById(id),
       post: (id) => postById(id),
       counters,
       reactedByMe: (postId) => reactionsOf(postId).some((r) => r.userId === viewer.userId),
       repostedByMe: (postId) => repostsOf(postId).some((r) => r.userId === viewer.userId),
       isVisible,
     };
+  }
+
+  /** A plan the viewer may see: its author is shown to them and its post exists. */
+  function findPlan(planId: string, requestId: string): CurrentPlan {
+    const plan = planById(planId);
+    const author = plan ? member(plan.authorId) : undefined;
+    const post = allPosts().find((p) => p.planId === planId);
+    if (!plan || !isShown(author) || !post) {
+      fail(requestId, { code: 'NOT_FOUND', message: 'Plan not found.' });
+    }
+    return plan;
+  }
+
+  function planView(plan: CurrentPlan, viewer: Viewer): PlanView {
+    const author = member(plan.authorId)!;
+    const post = allPosts().find((p) => p.planId === plan.id)!;
+    const full = seesFullView(viewer);
+    const pending = state.planResponses.filter(
+      (r) => r.planId === plan.id && r.status === 'pending',
+    ).length;
+    return PlanView.parse({
+      ...toPlanSummary(plan),
+      postId: post.id,
+      author: toAuthorView(author, viewer),
+      description: plan.description,
+      ...(full ? { place: plan.place } : {}),
+      createdAt: plan.createdAt,
+      ...(full && plan.authorId === viewer.userId ? { pendingResponses: pending } : {}),
+    });
+  }
+
+  /** The author's own plan, for closing and cancelling (an expired member may too). */
+  function requireOwnPlan(input: unknown, requestId: string) {
+    const me = requireOwnCard(requestId);
+    const { planId } = parseOrFail(PlanRef, input, requestId);
+    const plan = findPlan(planId, requestId);
+    if (plan.authorId !== me.id) {
+      fail(requestId, { code: 'FORBIDDEN', message: 'Only the author manages the plan.' });
+    }
+    return plan;
+  }
+
+  async function setPlanStatus(plan: CurrentPlan, status: PlanRecord['status']) {
+    await saveState({
+      ...state,
+      planUpdates: { ...state.planUpdates, [plan.id]: { status } },
+      // Cancelling answers everyone still waiting.
+      planResponses:
+        status === 'cancelled'
+          ? state.planResponses.map((r) =>
+              r.planId === plan.id && r.status === 'pending'
+                ? { ...r, status: 'declined' as const }
+                : r,
+            )
+          : state.planResponses,
+    });
   }
 
   /** Readers of community content: anyone but a restricted session. */
@@ -736,7 +808,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           followingIds,
           counters,
           authorCity: (post) => member(post.authorId)?.city,
-          plan: (id) => plansById.get(id),
+          plan: (id) => planById(id),
         });
 
         const offset = query.cursor === undefined ? 0 : Number(query.cursor);
@@ -1095,22 +1167,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       respond('data', (requestId) => {
         const viewer = requireReader(requestId);
         const { planId } = parseOrFail(PlanRef, input, requestId);
-        const plan = plansById.get(planId);
-        const author = plan ? member(plan.authorId) : undefined;
-        const post = allPosts().find((p) => p.planId === planId);
-        if (!plan || !isShown(author) || !post) {
-          fail(requestId, { code: 'NOT_FOUND', message: 'Plan not found.' });
-        }
-        const full = seesFullView(viewer);
-        return PlanView.parse({
-          ...toPlanSummary(plan),
-          postId: post.id,
-          author: toAuthorView(author, viewer),
-          description: plan.description,
-          ...(full ? { place: plan.place } : {}),
-          createdAt: plan.createdAt,
-          ...(full && plan.authorId === viewer.userId ? { pendingResponses: 0 } : {}),
-        });
+        return planView(findPlan(planId, requestId), viewer);
       }),
 
     getSettings: () =>
@@ -1301,9 +1358,92 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           ),
         );
       }),
-    createPlan: notImplemented('createPlan'),
-    cancelPlan: notImplemented('cancelPlan'),
-    closePlan: notImplemented('closePlan'),
+    createPlan: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const viewer = viewerOf(effectiveSession());
+        const parsed = CreatePlanInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the plan.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const { topics, idempotencyKey, isPublicPlace, timeEnd, ...fields } = parsed.data;
+
+        // A retry of a request that already went through returns the same plan.
+        const existing = planById(state.planKeys[idempotencyKey] ?? '');
+        if (existing) return planView(existing, viewer);
+
+        const now = clock.now();
+        const invalid = (field: string, reason: string) =>
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the date and time.',
+            fieldErrors: { [field]: reason },
+          });
+        if (fields.date < almatyDate(now)) invalid('date', 'past');
+        if (fields.date > almatyDate(now, PLAN_HORIZON_DAYS - 1)) invalid('date', 'too_far');
+        if (planStartsAt(fields) <= now) invalid('timeStart', 'past');
+
+        const open = allPlans().filter((p) => p.authorId === me.id && p.status === 'published');
+        if (open.length >= OPEN_PLANS_MAX) {
+          fail(requestId, {
+            code: 'CONFLICT',
+            message: `At most ${OPEN_PLANS_MAX} open plans at a time.`,
+          });
+        }
+
+        const createdAt = now.toISOString();
+        const plan = PlanRecord.parse({
+          ...fields,
+          ...(timeEnd ? { timeEnd } : {}),
+          id: `plan-${state.plans.length + 1}`,
+          authorId: me.id,
+          isPublicPlace,
+          status: 'published',
+          createdAt,
+        });
+        // The plan's face in the feed carries its description and Темы.
+        const post = PostRecord.parse({
+          id: `post-${state.posts.length + 1}`,
+          authorId: me.id,
+          type: 'plan',
+          text: plan.description,
+          topics: [...new Set(topics)],
+          createdAt,
+          planId: plan.id,
+        });
+        await saveState({
+          ...state,
+          plans: [...state.plans, plan],
+          planKeys: { ...state.planKeys, [idempotencyKey]: plan.id },
+          posts: [...state.posts, post],
+        });
+        return planView(planById(plan.id)!, viewer);
+      }),
+
+    cancelPlan: (input) =>
+      respond('data', async (requestId) => {
+        const plan = requireOwnPlan(input, requestId);
+        if (plan.status === 'past') {
+          fail(requestId, { code: 'CONFLICT', message: 'The plan has already taken place.' });
+        }
+        // Cancelling twice is a no-op, so a retried request is safe.
+        if (plan.status !== 'cancelled') await setPlanStatus(plan, 'cancelled');
+        return planView(planById(plan.id)!, viewerOf(effectiveSession()));
+      }),
+
+    closePlan: (input) =>
+      respond('data', async (requestId) => {
+        const plan = requireOwnPlan(input, requestId);
+        if (plan.status !== 'published' && plan.status !== 'closed') {
+          fail(requestId, { code: 'CONFLICT', message: 'Only an open plan can be closed.' });
+        }
+        if (plan.status === 'published') await setPlanStatus(plan, 'closed');
+        return planView(planById(plan.id)!, viewerOf(effectiveSession()));
+      }),
     listPlanResponses: notImplemented('listPlanResponses'),
     respondToPlan: notImplemented('respondToPlan'),
     acceptPlanResponse: notImplemented('acceptPlanResponse'),

@@ -1,6 +1,7 @@
 import type { AuthorView, PlanSummary, PostView, Session } from '@/contracts';
 
-import type { MemberRecord, PlanRecord, PostRecord } from './records';
+import type { CurrentPlan } from './plans';
+import type { MemberRecord, PostRecord } from './records';
 
 /** Who is asking; decides how much of other people the response may contain. */
 export type Viewer = {
@@ -49,7 +50,7 @@ export function toAuthorView(member: MemberRecord, viewer: Viewer): AuthorView {
 }
 
 /** Guest-safe plan facts for the feed card; the exact place stays in plan detail. */
-export function toPlanSummary(plan: PlanRecord): PlanSummary {
+export function toPlanSummary(plan: CurrentPlan): PlanSummary {
   return {
     id: plan.id,
     city: plan.city,
@@ -70,7 +71,7 @@ export type PostCounters = { reactions: number; reposts: number; commentsCount: 
 export type ShapingContext = {
   viewer: Viewer;
   member(id: string): MemberRecord | undefined;
-  plan(id: string): PlanRecord | undefined;
+  plan(id: string): CurrentPlan | undefined;
   post(id: string): PostRecord | undefined;
   counters(postId: string): PostCounters;
   reactedByMe?(postId: string): boolean;

@@ -27,7 +27,7 @@ const plan = {
 
 describe('statuses', () => {
   it('match the spec', () => {
-    expect(PlanStatus.options).toEqual(['published', 'matched', 'closed', 'cancelled']);
+    expect(PlanStatus.options).toEqual(['published', 'matched', 'closed', 'cancelled', 'past']);
     expect(PlanResponseStatus.options).toEqual(['pending', 'accepted', 'declined', 'withdrawn']);
   });
 });

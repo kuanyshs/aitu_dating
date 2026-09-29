@@ -17,7 +17,8 @@ import {
   Id,
   IsoDate,
   IsoDateTime,
-  PlanStatus,
+  PlanResponseStatus,
+  StoredPlanStatus,
   PostType,
   TopicKey,
 } from '@/contracts';
@@ -84,10 +85,22 @@ export const PlanRecord = z.strictObject({
   goal: z.enum(meetingGoals),
   paymentPolicy: z.enum(paymentPolicies),
   description: z.string().max(500),
-  status: PlanStatus,
+  status: StoredPlanStatus,
   createdAt: IsoDateTime,
 });
 export type PlanRecord = z.infer<typeof PlanRecord>;
+
+/** An Отклик on a План. */
+export const PlanResponseRecord = z.strictObject({
+  id: Id,
+  planId: Id,
+  authorId: Id,
+  message: z.string().max(360).optional(),
+  status: PlanResponseStatus,
+  idempotencyKey: z.string().optional(),
+  createdAt: IsoDateTime,
+});
+export type PlanResponseRecord = z.infer<typeof PlanResponseRecord>;
 
 export const PostRecord = z.strictObject({
   id: Id,
