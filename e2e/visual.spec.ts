@@ -75,6 +75,8 @@ test.describe('visual baselines @visual', () => {
 
     await page.getByTestId('tab-profile').click();
     await expect(page.getByTestId('profile-name')).toHaveText('Айдана');
+    // The counters load on their own after the card.
+    await expect(page.getByTestId('profile-stat-followers')).toBeVisible();
     await snap(page, 'profile-member');
 
     await page.getByRole('button', { name: 'Выйти в preview' }).click();
@@ -203,6 +205,7 @@ test.describe('visual baselines @visual', () => {
     await page.getByTestId('tab-profile').click();
     const section = page.getByTestId('my-posts');
     await expect(section.getByRole('article')).toHaveCount(2);
+    await expect(page.getByTestId('profile-stat-followers')).toBeVisible();
     await section.getByRole('heading').scrollIntoViewIfNeeded();
     await snap(page, 'my-posts');
   });
