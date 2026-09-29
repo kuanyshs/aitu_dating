@@ -13,7 +13,7 @@ import { useTheme } from '@/ui/theme/ThemeProvider';
 import { iconStroke, minTouch, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
 
-export type CommentAction = 'like' | 'reply' | 'menu';
+export type CommentAction = 'like' | 'reply' | 'menu' | 'author';
 
 type Props = {
   comment: CommentView;
@@ -57,7 +57,22 @@ export const CommentRow = memo(function CommentRow({ comment, clock, onAction, c
       <View style={styles.content}>
         <View style={styles.headerRow}>
           <View style={styles.author}>
-            <AuthorRow author={comment.author} time={formatRelative(comment.createdAt, clock)} />
+            {/* Only the full view carries an id; a safe author cannot be opened. */}
+            {name ? (
+              <Pressable
+                role="link"
+                aria-label={strings.post.openAuthor(name)}
+                onPress={() => onAction('author', comment)}
+                testID="comment-author"
+              >
+                <AuthorRow
+                  author={comment.author}
+                  time={formatRelative(comment.createdAt, clock)}
+                />
+              </Pressable>
+            ) : (
+              <AuthorRow author={comment.author} time={formatRelative(comment.createdAt, clock)} />
+            )}
           </View>
           {/* Own comments can be deleted; anyone else's reported or their author blocked. */}
           <Pressable

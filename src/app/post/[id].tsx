@@ -103,6 +103,10 @@ export default function PostScreen() {
       // The menu is open to everyone: own comments are managed also with an expired
       // membership, and anyone, a guest too, may report someone else's.
       if (action === 'menu') return setSheet({ step: 'menu', target: 'comment', comment });
+      if (action === 'author') {
+        if (comment.author.view === 'member') router.push(`/member/${comment.author.id}`);
+        return;
+      }
       if (!allow()) return;
       if (action === 'reply') return openReply(comment.id);
       likeComment(

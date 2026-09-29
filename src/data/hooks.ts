@@ -21,6 +21,7 @@ import type {
   PartialAnswers,
   PostView,
   ProfileStepInput,
+  ProfileView,
   ReportStatus,
   ResolveReportInput,
   RenewMembershipInput,
@@ -44,6 +45,7 @@ export const queryKeys = {
   profilePosts: (memberId: string) => ['profile-posts', memberId] as const,
   myReports: ['my-reports'] as const,
   blocked: ['blocked'] as const,
+  profile: (memberId: string) => ['profile', memberId] as const,
   moderation: (status: ReportStatus) => ['moderation', status] as const,
 };
 
@@ -524,7 +526,7 @@ export function useSetBlock() {
     mutationFn: (input: SetBlockInput) => repository.setBlock(input),
     onSuccess: () =>
       Promise.all(
-        ['feed', 'post', 'comments', 'profile-posts', 'blocked'].map((key) =>
+        ['feed', 'post', 'comments', 'profile', 'profile-posts', 'follows', 'blocked'].map((key) =>
           client.invalidateQueries({ queryKey: [key] }),
         ),
       ),
@@ -683,4 +685,64 @@ export function useResolveReport() {
         ),
       ),
   });
+}
+
+/** Another member's profile, in the view the session may see. */
+export function useProfile(memberId: string, { enabled = true }: { enabled?: boolean } = {}) {
+  const repository = useRepository();
+  return useQuery({
+    queryKey: queryKeys.profile(memberId),
+    queryFn: () => repository.getProfile({ memberId }),
+    enabled,
+  });
+}
+
+/**
+ * Подписка on or off. The button and the follower count answer at once; a failure puts
+ * them back. The «Подписки» feed and the lists reload afterwards.
+ */
+export function useSetFollow() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { memberId: string; active: boolean }) => repository.setFollow(input),
+    onMutate: async ({ memberId, active }) => {
+      const key = queryKeys.profile(memberId);
+      await client.cancelQueries({ queryKey: key });
+      const before = client.getQueryData<ProfileView>(key);
+      if (before?.relation && before.relation.following !== active) {
+        client.setQueryData<ProfileView>(key, {
+          ...before,
+          relation: { ...before.relation, following: active },
+          stats: {
+            ...before.stats,
+            followers: Math.max(0, before.stats.followers + (active ? 1 : -1)),
+          },
+        });
+      }
+      return { before };
+    },
+    onError: (_error, { memberId }, context) => {
+      if (context?.before) client.setQueryData(queryKeys.profile(memberId), context.before);
+    },
+    onSuccess: (result) => {
+      client.setQueryData<ProfileView>(queryKeys.profile(result.memberId), (profile) =>
+        profile?.relation
+          ? {
+              ...profile,
+              relation: { ...profile.relation, following: result.following },
+              stats: { ...profile.stats, followers: result.followers },
+            }
+          : profile,
+      );
+      void client.invalidateQueries({ queryKey: ['feed', 'following'] });
+      void client.invalidateQueries({ queryKey: ['follows'] });
+    },
+  });
+}
+
+/** A profile already loaded by its screen; never fetches on its own. */
+export function useCachedProfile(memberId: string): ProfileView | undefined {
+  const client = useQueryClient();
+  return memberId ? client.getQueryData<ProfileView>(queryKeys.profile(memberId)) : undefined;
 }

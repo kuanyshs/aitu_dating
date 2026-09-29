@@ -279,4 +279,13 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('moderation-report5')).toHaveCount(0);
     await snap(page, 'moderation-confirm');
   });
+
+  test('Профиль: another member in full', async ({ page }) => {
+    test.setTimeout(90_000);
+    await joinAsMadina(page);
+    await page.goto('/member/m01');
+    await expect(page.getByTestId('member-card')).toBeVisible();
+    await expect(page.getByTestId('member-posts').getByRole('article').first()).toBeVisible();
+    await snap(page, 'member-profile');
+  });
 });

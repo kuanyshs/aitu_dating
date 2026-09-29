@@ -15,15 +15,25 @@ import { createStyles } from '@/ui/theme/useStyles';
 
 /**
  * «Мои публикации» on the Profile tab: the member's own posts, newest first. A post
- * opens its screen, where «•••» deletes it; the list then loads afresh.
+ * opens its screen, where «•••» deletes it; the list then loads afresh. With `other`, the
+ * same list on another member's profile, under «Публикации».
  */
-export function MyPosts({ memberId, canWrite }: { memberId: string; canWrite: boolean }) {
+export function MyPosts({
+  memberId,
+  canWrite,
+  other,
+}: {
+  memberId: string;
+  canWrite: boolean;
+  other?: boolean;
+}) {
   const styles = useStyles();
   const router = useRouter();
   const clock = useClock();
   const posts = useMyPosts(memberId);
   const { onAction, onOpen } = usePostActions();
-  const t = strings.myPosts;
+  const t = other ? { ...strings.myPosts, ...strings.memberPosts } : strings.myPosts;
+  const id = other ? 'member-posts' : 'my-posts';
   const items = posts.data?.pages.flatMap((p) => p.items) ?? [];
 
   let body: React.ReactNode;
@@ -31,21 +41,21 @@ export function MyPosts({ memberId, canWrite }: { memberId: string; canWrite: bo
   else if (posts.isError && items.length === 0)
     body = (
       <ErrorState
-        testID="my-posts-error"
+        testID={`${id}-error`}
         title={t.errorTitle}
         text={t.errorText}
-        action={{ label: t.retry, onPress: () => posts.refetch(), testID: 'my-posts-retry' }}
+        action={{ label: t.retry, onPress: () => posts.refetch(), testID: `${id}-retry` }}
       />
     );
   else if (items.length === 0)
     body = (
       <EmptyState
-        testID="my-posts-empty"
+        testID={`${id}-empty`}
         title={t.emptyTitle}
         text={t.emptyText}
         action={
-          canWrite
-            ? { label: t.write, onPress: () => router.push('/compose'), testID: 'my-posts-write' }
+          canWrite && !other
+            ? { label: t.write, onPress: () => router.push('/compose'), testID: `${id}-write` }
             : undefined
         }
       />
@@ -63,14 +73,14 @@ export function MyPosts({ memberId, canWrite }: { memberId: string; canWrite: bo
             label={t.more}
             loading={posts.isFetchingNextPage}
             onPress={() => posts.fetchNextPage()}
-            testID="my-posts-more"
+            testID={`${id}-more`}
           />
         ) : null}
       </View>
     );
 
   return (
-    <View style={styles.section} testID="my-posts">
+    <View style={styles.section} testID={id}>
       <AppText variant="title" role="heading">
         {t.title}
       </AppText>

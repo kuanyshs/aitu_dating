@@ -14,6 +14,7 @@ import {
 import {
   useCachedCommentById,
   useCachedPost,
+  useCachedProfile,
   useCreateReport,
   usePost,
   useSession,
@@ -93,12 +94,15 @@ function ReportForm({ target, leave }: { target: ReportTarget; leave: () => void
   const post = target.type === 'post' ? (cachedPost ?? fetchedPost.data) : undefined;
   const comment = useCachedCommentById(target.type === 'comment' ? target.id : '');
   const context = post ?? comment;
+  // A person reported from their profile, as that profile showed them.
+  const person = useCachedProfile(target.type === 'user' ? target.id : '')?.person;
+  const author = context?.author ?? person;
 
   const accessState = session.data?.accessState;
   // Members, expired ones too, may block the author afterwards; guests may not.
   const canBlock =
-    !!context &&
-    !context.mine &&
+    !!author &&
+    !context?.mine &&
     (accessState === 'ACTIVE_MEMBER' || accessState === 'ACTIVE_MEMBER_EXPIRED');
 
   if (receipt) {
@@ -107,7 +111,7 @@ function ReportForm({ target, leave }: { target: ReportTarget; leave: () => void
         receipt={receipt}
         target={target}
         guest={accessState === 'GUEST_PREVIEW'}
-        blockAuthor={canBlock && context ? context.author : undefined}
+        blockAuthor={canBlock ? author : undefined}
         onDone={leave}
       />
     );
@@ -165,6 +169,8 @@ function ReportForm({ target, leave }: { target: ReportTarget; leave: () => void
                   {context.text}
                 </AppText>
               </>
+            ) : person ? (
+              <AuthorRow author={person} />
             ) : null}
           </View>
 
@@ -245,14 +251,14 @@ function Sent({
   const setBlock = useSetBlock();
   const repeat = receipt.alreadyReported;
   const block = () => {
-    if (target.type !== 'post' && target.type !== 'comment') return;
+    if (target.type !== 'post' && target.type !== 'comment' && target.type !== 'user') return;
     setBlock.mutate(
       { target: { type: target.type, id: target.id }, active: true },
       {
         onSuccess: () => {
           toast(strings.block.done);
-          // The author's post is gone for the member now: its screen closes as well.
-          if (target.type === 'post') router.dismissTo('/');
+          // The author's post or profile is gone for the member now: its screen closes too.
+          if (target.type !== 'comment') router.dismissTo('/');
           else onDone();
         },
         onError: () => toast(strings.block.failed),
