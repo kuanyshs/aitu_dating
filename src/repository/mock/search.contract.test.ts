@@ -167,14 +167,64 @@ describe('Поиск публикаций', () => {
     ).not.toContain('p14');
   });
 
-  it('needs two characters or a Тема; plans come with their own spec', async () => {
+  it('needs two characters or a Тема', async () => {
     const repo = on(createMemoryStore(), as('m02'));
     await expect(repo.search({ kind: 'posts', text: 'к' })).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
       fieldErrors: { text: 'too_short' },
     });
-    await expect(repo.search({ kind: 'plans', text: 'кофе' })).rejects.toMatchObject({
-      code: 'NOT_IMPLEMENTED',
+  });
+});
+
+describe('searching plans', () => {
+  const planIds = (page: SearchPage) =>
+    page.items.map((hit) => (hit.kind === 'plan' ? hit.plan.id : `not-a-plan:${hit.kind}`));
+
+  it('finds open future plans by the description, nearest first', async () => {
+    const guest = on();
+    const found = SearchPage.parse(await guest.search({ kind: 'plans', text: 'КОФЕ' }));
+    expect(planIds(found)).toEqual(['plan1', 'plan5']);
+    // A guest sees no exact place, a member does.
+    const first = found.items[0];
+    expect(first?.kind === 'plan' && first.plan.place).toBeFalsy();
+    const member = await on(createMemoryStore(), as('m02')).search({ kind: 'plans', text: 'кофе' });
+    const hit = member.items[0];
+    expect(hit?.kind === 'plan' && hit.plan.place).toBe('Кофейня на Панфилова');
+  });
+
+  it('lists every open plan without text; a Встреча is not open', async () => {
+    const all = await on(createMemoryStore(), as('m02')).search({ kind: 'plans' });
+    expect(planIds(all)).toEqual(['plan1', 'plan2', 'plan3', 'plan5', 'plan6']);
+  });
+
+  it('narrows by city, goal and format', async () => {
+    const repo = on(createMemoryStore(), as('m02'));
+    expect(planIds(await repo.search({ kind: 'plans', city: 'astana' }))).toEqual([
+      'plan2',
+      'plan5',
+    ]);
+    expect(planIds(await repo.search({ kind: 'plans', goal: 'talk' }))).toEqual(['plan3', 'plan5']);
+    expect(
+      planIds(await repo.search({ kind: 'plans', city: 'karaganda', format: 'walk' })),
+    ).toEqual(['plan3', 'plan6']);
+  });
+
+  it('leaves out own, closed, past and hidden plans', async () => {
+    const store = createMemoryStore();
+    expect(planIds(await on(store, as('m06')).search({ kind: 'plans' }))).not.toContain('plan1');
+    await on(store, as('m03')).closePlan({ planId: 'plan2' });
+    await on(store, as('m02')).setBlock({ target: { type: 'user', id: 'm04' }, active: true });
+    expect(planIds(await on(store, as('m02')).search({ kind: 'plans' }))).toEqual([
+      'plan1',
+      'plan5',
+      'plan6',
+    ]);
+    // 2026-09-27 11:00 in Almaty: plan1 has started.
+    const later = createMockRepository({
+      clock: fixedClock('2026-09-27T06:00:00Z'),
+      latency: 0,
+      store: createMemoryStore(),
     });
+    expect(planIds(await later.search({ kind: 'plans' }))).not.toContain('plan1');
   });
 });

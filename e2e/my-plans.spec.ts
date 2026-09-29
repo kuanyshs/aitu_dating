@@ -37,11 +37,11 @@ test.describe('Мои планы и отклики', () => {
 
     await openProfile(page, 'm02');
     await page.getByTestId('my-plans-tab-responses').click();
-    await expect(page.getByTestId('my-plan-status-plan1')).toHaveText('Отклик ждёт ответа');
+    await expect(page.getByTestId('my-plan-plan1-status')).toHaveText('Отклик ждёт ответа');
 
     // The author sees the waiting count in the profile and on the feed card.
     await openProfile(page, 'm06');
-    await expect(page.getByTestId('my-plan-status-plan1')).toHaveText('Ждут ответа: 1');
+    await expect(page.getByTestId('my-plan-plan1-status')).toHaveText('Ждут ответа: 1');
     await page.goto('/');
     await page.getByTestId('feed-tab-plans').click();
     await expect(page.getByTestId('post-p-plan1').getByTestId('plan-card-waiting')).toHaveText(
@@ -55,7 +55,7 @@ test.describe('Мои планы и отклики', () => {
 
     await openProfile(page, 'm02');
     await page.getByTestId('my-plans-tab-responses').click();
-    await expect(page.getByTestId('my-plan-status-plan1')).toHaveText('Встреча договорена');
+    await expect(page.getByTestId('my-plan-plan1-status')).toHaveText('Встреча договорена');
     await page.getByTestId('my-plan-plan1').click();
     await expect(page.getByTestId('plan-matched')).toBeVisible();
 

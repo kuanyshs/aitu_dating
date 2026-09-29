@@ -189,7 +189,6 @@ export const strings = {
     create: 'Создать план',
     responsesEmptyTitle: 'Откликов пока нет',
     responsesEmptyText: 'Откликнуться можно на план в ленте, во вкладке «Планы».',
-    open: 'Открыть план',
     responseStatus: {
       pending: 'Отклик ждёт ответа',
       accepted: 'Встреча договорена',
@@ -213,11 +212,18 @@ export const strings = {
   },
   search: {
     title: 'Поиск',
-    placeholder: { people: 'Имя, интерес или слово из «О себе»', posts: 'Слово из публикации' },
+    placeholder: {
+      people: 'Имя, интерес или слово из «О себе»',
+      posts: 'Слово из публикации',
+      plans: 'Слово из описания встречи',
+    },
     inputLabel: 'Что ищем',
     clear: 'Очистить',
     kindsLabel: 'Что искать',
-    kinds: { people: 'Люди', posts: 'Публикации' },
+    kinds: { people: 'Люди', posts: 'Публикации', plans: 'Планы' },
+    goal: 'Цель встречи',
+    format: 'Формат',
+    plansNote: 'Открытые планы, ближайшие первыми.',
     filters: 'Фильтры',
     filtersCount: (n: number) => `Фильтры · ${n}`,
     reset: 'Сбросить',

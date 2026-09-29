@@ -9,16 +9,23 @@ import {
   datingIntents,
   interestLabels,
   interests,
+  meetingFormatLabels,
+  meetingFormats,
+  meetingGoalLabels,
+  meetingGoals,
   topicLabels,
   topics,
   type City,
   type DatingIntent,
   type Interest,
+  type MeetingFormat,
+  type MeetingGoal,
   type Topic,
 } from '@/catalogs';
 import type { SearchHit, SearchKind } from '@/contracts';
 import { useSearch, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
+import { PlanRow } from '@/features/plan/PlanRow';
 import { usePostActions } from '@/features/post/usePostActions';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { Avatar } from '@/ui/components/Avatar';
@@ -39,17 +46,20 @@ import { createStyles } from '@/ui/theme/useStyles';
 import { useDebouncedValue } from '@/ui/useDebouncedValue';
 
 const t = strings.search;
-type Kind = Exclude<SearchKind, 'plans'>;
-const kinds: Kind[] = ['people', 'posts'];
+type Kind = SearchKind;
+const kinds: Kind[] = ['people', 'posts', 'plans'];
 const MAX_INTERESTS = 5;
 const MAX_TOPICS = 4;
 
 type PeopleFilters = { city?: City; interests: Interest[]; intent?: DatingIntent };
 const noFilters: PeopleFilters = { interests: [] };
 
+type PlanFilters = { city?: City; goal?: MeetingGoal; format?: MeetingFormat };
+
 /**
- * Поиск: people (active members only) and posts (anyone who reads). The text settles for
- * 300 ms before a request; people without text or filters are those of one's own city.
+ * Поиск: people (active members only), posts and plans (anyone who reads). The text
+ * settles for 300 ms before a request; people without text or filters are those of one's
+ * own city, plans without them are every open one.
  */
 export default function SearchScreen() {
   const styles = useStyles();
@@ -64,9 +74,15 @@ export default function SearchScreen() {
   const [filters, setFilters] = useState<PeopleFilters>(noFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [topicFilter, setTopicFilter] = useState<Topic[]>([]);
+  const [planFilters, setPlanFilters] = useState<PlanFilters>({});
   const settled = useDebouncedValue(text.trim(), 300);
 
-  const filterCount = (filters.city ? 1 : 0) + (filters.intent ? 1 : 0) + filters.interests.length;
+  const filterCount =
+    kind === 'plans'
+      ? Object.values(planFilters).filter(Boolean).length
+      : (filters.city ? 1 : 0) + (filters.intent ? 1 : 0) + filters.interests.length;
+  const pick = <K extends keyof PlanFilters>(key: K, value: PlanFilters[K]) =>
+    setPlanFilters((f) => ({ ...f, [key]: f[key] === value ? undefined : value }));
   const toggle = <T,>(list: T[], item: T) =>
     list.includes(item) ? list.filter((i) => i !== item) : [...list, item];
 
@@ -111,7 +127,7 @@ export default function SearchScreen() {
         ))}
       </View>
 
-      {kind === 'people' && isMember ? (
+      {(kind === 'people' && isMember) || kind === 'plans' ? (
         <View style={styles.filters}>
           <View style={styles.filterBar}>
             <TextButton
@@ -122,12 +138,48 @@ export default function SearchScreen() {
             {filterCount ? (
               <TextButton
                 label={t.reset}
-                onPress={() => setFilters(noFilters)}
+                onPress={() => (kind === 'plans' ? setPlanFilters({}) : setFilters(noFilters))}
                 testID="search-reset"
               />
             ) : null}
           </View>
-          {filtersOpen ? (
+          {filtersOpen && kind === 'plans' ? (
+            <View style={styles.filterPanel} testID="search-filter-panel">
+              <FilterGroup title={t.city}>
+                {cities.map((c) => (
+                  <Chip
+                    key={c}
+                    label={cityLabels[c]}
+                    selected={planFilters.city === c}
+                    onPress={() => pick('city', c)}
+                    testID={`search-plan-city-${c}`}
+                  />
+                ))}
+              </FilterGroup>
+              <FilterGroup title={t.goal}>
+                {meetingGoals.map((g) => (
+                  <Chip
+                    key={g}
+                    label={meetingGoalLabels[g]}
+                    selected={planFilters.goal === g}
+                    onPress={() => pick('goal', g)}
+                    testID={`search-goal-${g}`}
+                  />
+                ))}
+              </FilterGroup>
+              <FilterGroup title={t.format}>
+                {meetingFormats.map((f) => (
+                  <Chip
+                    key={f}
+                    label={meetingFormatLabels[f]}
+                    selected={planFilters.format === f}
+                    onPress={() => pick('format', f)}
+                    testID={`search-format-${f}`}
+                  />
+                ))}
+              </FilterGroup>
+            </View>
+          ) : filtersOpen ? (
             <View style={styles.filterPanel} testID="search-filter-panel">
               <FilterGroup title={t.city}>
                 {cities.map((c) => (
@@ -191,7 +243,9 @@ export default function SearchScreen() {
         </View>
       ) : null}
 
-      {kind === 'people' ? (
+      {kind === 'plans' ? (
+        <PlanResults text={settled} filters={planFilters} />
+      ) : kind === 'people' ? (
         isMember ? (
           <PeopleResults text={settled} filters={filters} nearby={!settled && !filterCount} />
         ) : state === 'ACTIVE_MEMBER_EXPIRED' ? (
@@ -371,6 +425,38 @@ function PostResults({ text, topics: chosen }: { text: string; topics: Topic[] }
   );
 }
 
+function PlanResults({ text, filters }: { text: string; filters: PlanFilters }) {
+  const styles = useStyles();
+  const results = useSearch(
+    {
+      kind: 'plans',
+      ...(text ? { text } : {}),
+      ...(filters.city ? { city: filters.city } : {}),
+      ...(filters.goal ? { goal: filters.goal } : {}),
+      ...(filters.format ? { format: filters.format } : {}),
+    },
+    true,
+  );
+  return (
+    <View style={styles.results}>
+      <AppText variant="caption" tone="textMuted">
+        {t.plansNote}
+      </AppText>
+      <ResultStates results={results}>
+        {(hits) => (
+          <View style={styles.plans}>
+            {hits.map((hit) =>
+              hit.kind === 'plan' ? (
+                <PlanRow key={hit.plan.id} plan={hit.plan} testID={`search-plan-${hit.plan.id}`} />
+              ) : null,
+            )}
+          </View>
+        )}
+      </ResultStates>
+    </View>
+  );
+}
+
 const useStyles = createStyles((colors) => ({
   field: {
     flexDirection: 'row',
@@ -405,6 +491,7 @@ const useStyles = createStyles((colors) => ({
   group: { gap: spacing.xs },
   locked: { gap: spacing.md },
   results: { gap: spacing.xs },
+  plans: { gap: spacing.sm },
   // Post rows carry their own side padding, as in the feed: span the screen's padding.
   posts: { marginHorizontal: -spacing.lg },
   person: {

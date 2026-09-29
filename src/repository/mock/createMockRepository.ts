@@ -83,7 +83,7 @@ import {
 } from './demo';
 import { buildThreads } from './comments';
 import { almatyDate, currentStatus, planStartsAt, type CurrentPlan } from './plans';
-import { matchPeople, matchPosts } from './search';
+import { matchPeople, matchPlans, matchPosts } from './search';
 import { selectFeed } from './feed';
 import {
   BlockRecord,
@@ -1355,10 +1355,21 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const limit = query.limit ?? DEFAULT_PAGE_SIZE;
 
         if (query.kind === 'plans') {
-          fail(requestId, {
-            code: 'NOT_IMPLEMENTED',
-            message: 'Plans are searched with the plans spec.',
-          });
+          // Someone else's open plans the viewer may see; a guest gets them without the place.
+          const shown = allPlans().filter(
+            (p) => p.authorId !== viewer.userId && isShown(member(p.authorId)),
+          );
+          return SearchPage.parse(
+            page(
+              matchPlans(shown, query).map((plan) => ({
+                kind: 'plan' as const,
+                plan: planView(plan, viewer),
+              })),
+              query.cursor,
+              limit,
+              requestId,
+            ),
+          );
         }
 
         if (query.kind === 'people') {

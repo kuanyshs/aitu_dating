@@ -1,19 +1,16 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
-import { cityLabels, meetingFormatLabels, meetingGoalLabels } from '@/catalogs';
-import type { PlanView } from '@/contracts';
 import { useMyPlans, useMyResponses } from '@/data/hooks';
-import { useClock } from '@/data/RepositoryProvider';
 import { SecondaryButton } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
 import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
+import { PlanRow } from '@/features/plan/PlanRow';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
-import { formatPlanDate } from '@/ui/format';
 import { strings } from '@/ui/strings';
-import { radius, spacing } from '@/ui/theme/tokens';
+import { spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
 
 const t = strings.myPlans;
@@ -75,7 +72,7 @@ function OwnPlans({ canCreate }: { canCreate: boolean }) {
       }
     >
       {items.map((plan) => (
-        <PlanRow key={plan.id} plan={plan} />
+        <PlanRow key={plan.id} plan={plan} testID={`my-plan-${plan.id}`} />
       ))}
     </ListBody>
   );
@@ -98,7 +95,12 @@ function OwnResponses() {
       }
     >
       {items.map(({ response, plan }) => (
-        <PlanRow key={response.id} plan={plan} note={t.responseStatus[response.status]} />
+        <PlanRow
+          key={response.id}
+          plan={plan}
+          note={t.responseStatus[response.status]}
+          testID={`my-plan-${plan.id}`}
+        />
       ))}
     </ListBody>
   );
@@ -142,51 +144,8 @@ function ListBody({
   );
 }
 
-/** A plan in a line: what, when, where, and its status or the Отклик's. */
-function PlanRow({ plan, note }: { plan: PlanView; note?: string }) {
-  const styles = useStyles();
-  const router = useRouter();
-  const clock = useClock();
-  const status =
-    note ??
-    (plan.status === 'published'
-      ? plan.pendingResponses
-        ? strings.planScreen.waiting(plan.pendingResponses)
-        : undefined
-      : strings.planScreen.status[plan.status]);
-  return (
-    <Pressable
-      role="link"
-      aria-label={t.open}
-      onPress={() => router.push(`/plan/${plan.id}`)}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-      testID={`my-plan-${plan.id}`}
-    >
-      <AppText variant="bodyStrong">
-        {`${meetingFormatLabels[plan.format]} · ${meetingGoalLabels[plan.goal]}`}
-      </AppText>
-      <AppText tone="textMuted">
-        {`${formatPlanDate(plan.date, clock)} · ${plan.timeStart} · ${cityLabels[plan.city]}`}
-      </AppText>
-      {status ? (
-        <AppText variant="caption" testID={`my-plan-status-${plan.id}`}>
-          {status}
-        </AppText>
-      ) : null}
-    </Pressable>
-  );
-}
-
-const useStyles = createStyles((colors) => ({
+const useStyles = createStyles(() => ({
   section: { gap: spacing.sm, marginTop: spacing.xl },
   tabs: { flexDirection: 'row', gap: spacing.xs },
   list: { gap: spacing.sm },
-  row: {
-    gap: 2,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  pressed: { backgroundColor: colors.surfacePressed },
 }));

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { datingIntents, interests, topics } from '@/catalogs';
+import { datingIntents, interests, meetingFormats, meetingGoals, topics } from '@/catalogs';
 
 import { Page } from './common';
 import { AuthorView, CityKey } from './people';
@@ -18,6 +18,8 @@ export type SearchKind = z.infer<typeof SearchKind>;
  *   viewer's city.
  * - posts (anyone who reads): text and Тема labels, newest first; `topics` keeps posts
  *   with any of them. Text shorter than 2 characters needs `topics`.
+ * - plans (anyone who reads): the description, open future plans only, nearest first;
+ *   `city`, `goal` and `format` narrow them. The exact place reaches active members only.
  * Nobody hidden from the viewer shows up, and never the viewer among people.
  */
 export const SearchQuery = z.strictObject({
@@ -27,6 +29,8 @@ export const SearchQuery = z.strictObject({
   interests: z.array(z.enum(interests)).max(5).optional(),
   intent: z.enum(datingIntents).optional(),
   topics: z.array(z.enum(topics)).max(4).optional(),
+  goal: z.enum(meetingGoals).optional(),
+  format: z.enum(meetingFormats).optional(),
   cursor: z.string().optional(),
   limit: z.number().int().min(1).max(50).optional(),
 });

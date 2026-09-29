@@ -1,6 +1,7 @@
 import { interestLabels, topicLabels } from '@/catalogs';
 import type { SearchQuery } from '@/contracts';
 
+import { planStartsAt, type CurrentPlan } from './plans';
 import type { MemberRecord, PostRecord } from './records';
 
 // «ё» (U+0451) reads as «е» (U+0435); code points keep Cyrillic literals out of the code.
@@ -57,4 +58,18 @@ export function matchPosts(posts: readonly PostRecord[], query: SearchQuery): Po
         .some((field) => field.includes(text));
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** Open future plans matching the description and filters, nearest first. */
+export function matchPlans(plans: readonly CurrentPlan[], query: SearchQuery): CurrentPlan[] {
+  const text = normalize(query.text ?? '');
+  return plans
+    .filter((plan) => {
+      if (plan.status !== 'published') return false;
+      if (query.city && plan.city !== query.city) return false;
+      if (query.goal && plan.goal !== query.goal) return false;
+      if (query.format && plan.format !== query.format) return false;
+      return !text || normalize(plan.description).includes(text);
+    })
+    .sort((a, b) => planStartsAt(a).getTime() - planStartsAt(b).getTime());
 }

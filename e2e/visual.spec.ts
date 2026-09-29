@@ -358,4 +358,11 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('new-plan-time-18:00')).toHaveAttribute('aria-checked', 'true');
     await snap(page, 'plan-new');
   });
+
+  test('Поиск: open plans', async ({ page }) => {
+    await page.goto('/search');
+    await page.getByTestId('search-kind-plans').click();
+    await expect(page.getByTestId('search-results').getByRole('link')).toHaveCount(5);
+    await snap(page, 'search-plans');
+  });
 });
