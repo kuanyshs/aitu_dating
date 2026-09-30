@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -8,13 +7,13 @@ import { useBlocked, useMyReports, useSession, useSetBlock } from '@/data/hooks'
 import { useClock } from '@/data/RepositoryProvider';
 import { ActionSheet } from '@/ui/components/ActionSheet';
 import { Avatar } from '@/ui/components/Avatar';
-import { IconAction, SecondaryButton, TextButton } from '@/ui/components/buttons';
+import { SecondaryButton, TextButton } from '@/ui/components/buttons';
 import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
 import { Screen } from '@/ui/components/Screen';
+import { SheetHeader } from '@/ui/components/SheetHeader';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
 import { formatRelative } from '@/ui/format';
-import { X } from '@/ui/icons';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { radius, spacing } from '@/ui/theme/tokens';
@@ -28,7 +27,6 @@ const t = strings.safety;
  */
 export default function SafetyScreen() {
   const styles = useStyles();
-  const router = useRouter();
   const session = useSession();
   const toast = useToast((s) => s.show);
   const state = session.data?.accessState;
@@ -36,17 +34,7 @@ export default function SafetyScreen() {
 
   return (
     <Screen testID="screen-safety" withTabBar={false}>
-      <View style={styles.header}>
-        <AppText variant="display" role="heading">
-          {t.title}
-        </AppText>
-        <IconAction
-          icon={X}
-          accessibilityLabel={t.close}
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          testID="safety-close"
-        />
-      </View>
+      <SheetHeader title={t.title} closeLabel={t.close} testID="safety-close" />
 
       <Section title={t.tipsTitle} testID="safety-tips">
         <View style={styles.card}>
@@ -273,7 +261,6 @@ function ReportRow({
 }
 
 const useStyles = createStyles((colors) => ({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   section: { gap: spacing.sm, marginTop: spacing.md },
   card: {
     borderRadius: radius.md,
