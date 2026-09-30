@@ -363,4 +363,12 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('search-results').getByRole('link')).toHaveCount(5);
     await snap(page, 'search-plans');
   });
+
+  test('Сообщения: the chat list', async ({ page }) => {
+    await signInAs(page, 'm01');
+    await page.goto('/chats');
+    await expect(page.getByTestId('chat-row-chat1-unread')).toBeVisible();
+    await expect(page.getByTestId('chat-row-chat2-context')).toBeVisible();
+    await snap(page, 'chats-list');
+  });
 });

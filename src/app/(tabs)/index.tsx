@@ -6,7 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cities, cityLabels, type City } from '@/catalogs';
 import { isRepositoryError, type FeedTab, type PostView } from '@/contracts';
-import { useDemoFlags, useHomeFeed, useLogin, useMyProfile, useSession } from '@/data/hooks';
+import {
+  useDemoFlags,
+  useHomeFeed,
+  useLogin,
+  useMyProfile,
+  useSession,
+  useUnreadMessages,
+} from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { usePostActions } from '@/features/post/usePostActions';
 import { IconAction, PrimaryButton } from '@/ui/components/buttons';
@@ -21,7 +28,7 @@ import { useTabBarInset } from '@/ui/navigation/tabBarInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
-import { spacing } from '@/ui/theme/tokens';
+import { radius, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
 
 const guestTabs: FeedTab[] = ['for_you', 'popular', 'city', 'plans'];
@@ -37,6 +44,7 @@ export default function HomeScreen() {
 
   const session = useSession();
   const isMember = session.data?.accessState === 'ACTIVE_MEMBER';
+  const unread = useUnreadMessages(isMember);
   const isExpired = session.data?.accessState === 'ACTIVE_MEMBER_EXPIRED';
   const tabs = isMember ? memberTabs : guestTabs;
 
@@ -102,12 +110,23 @@ export default function HomeScreen() {
           </AppText>
         </View>
         {isMember ? (
-          <IconAction
-            icon={MessageCircle}
-            accessibilityLabel={strings.home.messages}
-            onPress={() => router.push('/chats')}
-            testID="home-messages"
-          />
+          <View>
+            <IconAction
+              icon={MessageCircle}
+              accessibilityLabel={
+                unread ? strings.home.messagesUnread(unread) : strings.home.messages
+              }
+              onPress={() => router.push('/chats')}
+              testID="home-messages"
+            />
+            {unread ? (
+              <View style={styles.unread} pointerEvents="none" testID="home-messages-unread">
+                <AppText variant="caption" tone="onPrimary">
+                  {String(unread)}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
         ) : isExpired ? (
           <PrimaryButton
             label={strings.renew.short}
@@ -275,6 +294,18 @@ const useStyles = createStyles((colors) => ({
   brand: { flex: 1, alignItems: 'center' },
   banner: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   join: { minHeight: 40, paddingHorizontal: spacing.lg },
+  unread: {
+    position: 'absolute',
+    top: 2,
+    right: 0,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
   chips: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
   divider: { height: 1, backgroundColor: colors.line },
   footer: { paddingVertical: spacing.xl },

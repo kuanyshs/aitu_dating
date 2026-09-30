@@ -56,6 +56,7 @@ export const queryKeys = {
   planResponses: (planId: string) => ['plan-responses', planId] as const,
   myPlans: ['my-plans'] as const,
   myResponses: ['my-responses'] as const,
+  chats: ['chats'] as const,
 };
 
 /** Everything a plan or an Отклик shows up in. */
@@ -554,6 +555,7 @@ export function useSetBlock() {
           'profile-posts',
           'follows',
           'blocked',
+          'chats',
           ...planKeys,
         ].map((key) => client.invalidateQueries({ queryKey: [key] })),
       ),
@@ -820,11 +822,12 @@ export function useUpdateMyCard() {
 }
 
 /** A План in the view the session may see. */
-export function usePlan(planId: string) {
+export function usePlan(planId: string, enabled = true) {
   const repository = useRepository();
   return useQuery({
     queryKey: queryKeys.plan(planId),
     queryFn: () => repository.getPlan({ planId }),
+    enabled,
   });
 }
 
@@ -914,4 +917,22 @@ export function useMyResponses(enabled: boolean) {
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled,
   });
+}
+
+/** The member's chats, latest message first. */
+export function useChats(enabled: boolean) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: queryKeys.chats,
+    queryFn: ({ pageParam }) => repository.listChats({ cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
+  });
+}
+
+/** Unread messages across the loaded chats, for the badge on Home. */
+export function useUnreadMessages(enabled: boolean): number {
+  const chats = useChats(enabled);
+  return (chats.data?.pages ?? []).flatMap((p) => p.items).reduce((n, c) => n + c.unreadCount, 0);
 }

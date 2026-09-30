@@ -46,6 +46,11 @@ export default function MenuScreen() {
       {isMember ? (
         <>
           <MenuRow
+            label={strings.menu.messages}
+            onPress={() => go('/chats')}
+            testID="menu-messages"
+          />
+          <MenuRow
             label={strings.menu.membership}
             onPress={() => go('/membership')}
             testID="menu-membership"

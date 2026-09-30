@@ -429,10 +429,12 @@ export const strings = {
     membership: 'Membership',
     notifications: 'Уведомления',
     safety: 'Безопасность',
+    messages: 'Сообщения',
   },
   home: {
     brand: 'aitu dating',
     messages: 'Сообщения',
+    messagesUnread: (n: number) => `Сообщения, непрочитанных: ${n}`,
     descriptorGuest: 'preview сообщества',
     descriptorMember: 'verified conversations',
     descriptorExpired: 'membership истёк',
@@ -487,6 +489,30 @@ export const strings = {
     open: 'Открыть план',
     minutes: (n: number) => `${n} мин`,
     publicPlace: 'Публичное место',
+  },
+  chats: {
+    title: 'Сообщения',
+    back: 'Назад',
+    open: (name: string) => `Открыть чат: ${name}`,
+    context: {
+      comment: 'Из комментария',
+      mutual_follow: 'Взаимная подписка',
+      plan_response: 'Встреча',
+    },
+    meeting: (what: string) => `Встреча: ${what}`,
+    you: 'Вы: ',
+    failed: 'Не отправлено',
+    noMessages: 'Пока без сообщений',
+    unread: (n: number) => `Непрочитанных: ${n}`,
+    emptyTitle: 'Пока нет разговоров',
+    emptyText:
+      'Чат начинается из комментария, при взаимной подписке или после договорённой встречи.',
+    readOnly: 'Писать можно после продления membership.',
+    guest: 'Сообщения доступны участникам клуба.',
+    errorTitle: 'Не удалось загрузить сообщения',
+    errorText: 'Проверьте соединение и попробуйте ещё раз.',
+    retry: 'Повторить',
+    more: 'Показать ещё',
   },
   planNew: {
     title: 'Новый план',
@@ -758,10 +784,6 @@ export const strings = {
     notifications: {
       title: 'Уведомления',
       text: 'Здесь можно будет выбрать, о чём сообщать: сообщения, комментарии, упоминания, подписки и отклики.',
-    },
-    chats: {
-      title: 'Сообщения',
-      text: 'Здесь появятся контекстные чаты: из комментариев, взаимных подписок и принятых откликов на планы.',
     },
     access: {
       title: 'Вступление',
