@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fixedClock } from '@/clock';
+import { anchoredClock, fixedClock, SEED_NOW } from '@/clock';
+import type { Session } from '@/contracts';
 import { createMemoryStore, storageKeys } from '@/storage';
 
 import { createMockRepository } from './createMockRepository';
@@ -112,5 +113,55 @@ describe('resetDemo', () => {
     });
     expect(store.snapshot()[storageKeys.state]).toBeUndefined();
     expect(store.snapshot()[storageKeys.session]).toBeUndefined();
+  });
+});
+
+describe('demo clock', () => {
+  const member: Session = { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' };
+  const start = new Date('2030-01-01T00:00:00Z');
+  const load = (store: ReturnType<typeof createMemoryStore>) => {
+    const demoClock = anchoredClock();
+    return {
+      demoClock,
+      repo: createMockRepository({ clock: demoClock, latency: 0, store, session: member }),
+    };
+  };
+  const post = (repo: ReturnType<typeof load>['repo'], key: string) =>
+    repo.createPost({ type: 'post', text: 'Запись для порядка', topics: [], idempotencyKey: key });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(start);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('goes on after a reload, so later records stay later', async () => {
+    const store = createMemoryStore();
+    const before = load(store);
+    vi.advanceTimersByTime(60 * 60 * 1000);
+    const first = await post(before.repo, 'clock-key-1');
+
+    // A reload: a new clock starts from the seed time again, then resumes.
+    vi.setSystemTime(start);
+    const after = load(store);
+    const second = await post(after.repo, 'clock-key-2');
+    expect(new Date(second.createdAt).getTime()).toBeGreaterThanOrEqual(
+      new Date(first.createdAt).getTime(),
+    );
+    expect(after.demoClock.now().getTime()).toBeGreaterThan(new Date(SEED_NOW).getTime());
+  });
+
+  it('goes back to the seed time with «Сбросить демо»', async () => {
+    const store = createMemoryStore();
+    const { demoClock, repo } = load(store);
+    vi.advanceTimersByTime(60 * 60 * 1000);
+    await post(repo, 'clock-key-3');
+    await repo.resetDemo();
+    expect(demoClock.now().toISOString()).toBe(new Date(SEED_NOW).toISOString());
+    expect(store.snapshot()[storageKeys.clock]).toBeUndefined();
+
+    const reloaded = load(store);
+    await reloaded.repo.getSession();
+    expect(reloaded.demoClock.now().toISOString()).toBe(new Date(SEED_NOW).toISOString());
   });
 });

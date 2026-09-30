@@ -22,6 +22,13 @@ test.describe('Membership', () => {
     await expect(page.getByTestId('renew-choose')).toBeVisible();
   });
 
+  test('a reload does not turn the demo clock back', async ({ page }) => {
+    await joinAsMadina(page);
+    await page.goto('/membership');
+    // The clock goes on from the join, so a full year is left, not a day more.
+    await expect(page.getByTestId('membership-left')).toHaveText('365 дней');
+  });
+
   test('an expired member is offered «Продлить»', async ({ page }) => {
     await joinAsMadina(page);
     await openDemoPanel(page);

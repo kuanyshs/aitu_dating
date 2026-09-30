@@ -1,4 +1,4 @@
-import type { Clock } from '@/clock';
+import { isResumable, type Clock } from '@/clock';
 import {
   AccessFlowState,
   ActivityItem,
@@ -28,6 +28,7 @@ import {
   CreateReportInput,
   FollowListQuery,
   FollowState,
+  IsoDateTime,
   ListQuery,
   MemberPage,
   ConfirmPaymentInput,
@@ -162,13 +163,28 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     defaults: defaultMockState,
   });
 
+  // The demo clock goes on from the last save, so a reload never goes back in time.
+  const resumable = isResumable(clock) ? clock : undefined;
+  const clockSlot = createSlot({
+    store,
+    key: storageKeys.clock,
+    schema: IsoDateTime.nullable(),
+    version: 1,
+    defaults: () => null,
+  });
+
   let session: Session = guestSession();
   let state: MockState = defaultMockState();
   let resetNotice: ResetNotice | undefined;
 
   // Persisted state loads once, before the first request is answered.
   const ready = (async () => {
-    const [loadedSession, loadedState] = await Promise.all([sessionSlot.load(), stateSlot.load()]);
+    const [loadedSession, loadedState, loadedClock] = await Promise.all([
+      sessionSlot.load(),
+      stateSlot.load(),
+      resumable ? clockSlot.load() : undefined,
+    ]);
+    if (loadedClock?.data) resumable?.resumeFrom(loadedClock.data);
     session = loadedSession.data;
     state = loadedState.data;
     resetNotice = loadedSession.reset ?? loadedState.reset;
@@ -176,7 +192,10 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
   async function saveState(next: MockState): Promise<void> {
     state = next;
-    await stateSlot.save(next);
+    await Promise.all([
+      stateSlot.save(next),
+      resumable ? clockSlot.save(clock.now().toISOString()) : undefined,
+    ]);
   }
 
   const seedMembersById = new Map(data.members.map((m) => [m.id, m]));
@@ -2560,7 +2579,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
     async resetDemo() {
       await ready;
-      await Promise.all([sessionSlot.clear(), stateSlot.clear()]);
+      await Promise.all([sessionSlot.clear(), stateSlot.clear(), clockSlot.clear()]);
+      resumable?.restart();
       session = guestSession();
       state = defaultMockState();
     },

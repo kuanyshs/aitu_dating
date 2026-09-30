@@ -11,4 +11,5 @@ export const storageKeys = {
   session: 'aitu.demo.session.v1',
   drafts: 'aitu.demo.drafts.v1',
   settings: 'aitu.demo.settings.v1',
+  clock: 'aitu.demo.clock.v1',
 } as const;
