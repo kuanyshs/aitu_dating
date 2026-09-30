@@ -44,6 +44,12 @@ export type ActivityQuery = z.infer<typeof ActivityQuery>;
 export const ActivityPage = Page(ActivityItem);
 export type ActivityPage = z.infer<typeof ActivityPage>;
 
-/** When the member last opened «Активность»: everything up to it reads as seen. */
-export const ActivitySeen = z.strictObject({ seenAt: IsoDateTime });
+/**
+ * When the member opened «Активность»: everything up to `seenAt` reads as seen. The look
+ * before it, if any, is `previousSeenAt`; for this visit whatever came after it is new.
+ */
+export const ActivitySeen = z.strictObject({
+  seenAt: IsoDateTime,
+  previousSeenAt: IsoDateTime.optional(),
+});
 export type ActivitySeen = z.infer<typeof ActivitySeen>;

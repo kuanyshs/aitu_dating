@@ -2050,8 +2050,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       respond('data', async (requestId) => {
         const me = requireOwnCard(requestId);
         const seenAt = clock.now().toISOString();
+        const previousSeenAt = state.activitySeenAt[me.id];
         await saveState({ ...state, activitySeenAt: { ...state.activitySeenAt, [me.id]: seenAt } });
-        return ActivitySeen.parse({ seenAt });
+        return ActivitySeen.parse({ seenAt, previousSeenAt });
       }),
     createReport: (input) =>
       respond('data', async (requestId) => {

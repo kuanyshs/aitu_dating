@@ -28,7 +28,8 @@ const categories = activityCategories.filter((c) => c !== 'mentions');
 
 /**
  * «Активность»: what happened around the member, newest first, by category. Opening the
- * tab marks everything so far as seen; what was new stays marked until the next load.
+ * tab marks everything so far as seen; for the rest of the visit whatever came after the
+ * previous look stays marked as new, in any category.
  */
 export default function ActivityScreen() {
   const styles = useStyles();
@@ -36,6 +37,7 @@ export default function ActivityScreen() {
   const state = session.data?.accessState;
   const isMember = state === 'ACTIVE_MEMBER' || state === 'ACTIVE_MEMBER_EXPIRED';
   const [category, setCategory] = useState<ActivityCategory>('all');
+  const since = useActivityVisit(isMember);
 
   if (state && !isMember) {
     return (
@@ -60,22 +62,47 @@ export default function ActivityScreen() {
           />
         ))}
       </View>
-      {isMember ? <ActivityList category={category} /> : null}
+      {isMember ? <ActivityList category={category} since={since} /> : null}
     </Screen>
   );
 }
 
-function ActivityList({ category }: { category: ActivityCategory }) {
-  const list = useActivity(category, true);
-  const items = list.data?.pages.flatMap((p) => p.items) ?? [];
-  const { mutate: markSeen } = useMarkActivitySeen();
-  const loaded = !!list.data;
-  // Marked seen once the list is on screen, so what was new still reads as new.
+/**
+ * The previous look for this visit: `null` on the very first one (everything is new),
+ * `undefined` until the tab has been marked seen (the list's own `read` applies).
+ * Every focus is a new visit.
+ */
+type Since = string | null | undefined;
+
+function useActivityVisit(isMember: boolean): Since {
+  const { mutateAsync: markSeen } = useMarkActivitySeen();
+  const [since, setSince] = useState<Since>(undefined);
   useFocusEffect(
     useCallback(() => {
-      if (loaded) markSeen();
-    }, [loaded, markSeen]),
+      if (!isMember) return;
+      let current = true;
+      markSeen().then(
+        (seen) => current && setSince(seen.previousSeenAt ?? null),
+        () => undefined,
+      );
+      return () => {
+        current = false;
+        setSince(undefined);
+      };
+    }, [isMember, markSeen]),
   );
+  return since;
+}
+
+function isNew(item: ActivityItem, since: Since): boolean {
+  if (since === undefined) return !item.read;
+  if (since === null) return true;
+  return new Date(item.createdAt).getTime() > new Date(since).getTime();
+}
+
+function ActivityList({ category, since }: { category: ActivityCategory; since: Since }) {
+  const list = useActivity(category, true);
+  const items = list.data?.pages.flatMap((p) => p.items) ?? [];
   if (list.isPending) return <FeedSkeleton rows={2} />;
   if (list.isError && items.length === 0)
     return (
@@ -91,7 +118,7 @@ function ActivityList({ category }: { category: ActivityCategory }) {
   return (
     <View testID="activity-list">
       {items.map((item) => (
-        <ActivityRow key={item.id} item={item} />
+        <ActivityRow key={item.id} item={item} fresh={isNew(item, since)} />
       ))}
       {list.hasNextPage ? (
         <SecondaryButton
@@ -114,7 +141,7 @@ function targetOf(item: ActivityItem): string | undefined {
   return undefined;
 }
 
-function ActivityRow({ item }: { item: ActivityItem }) {
+function ActivityRow({ item, fresh }: { item: ActivityItem; fresh: boolean }) {
   const styles = useStyles();
   const router = useRouter();
   const clock = useClock();
@@ -143,13 +170,13 @@ function ActivityRow({ item }: { item: ActivityItem }) {
         ) : (
           <AppText variant="bodyStrong">{`${t.system} · ${time}`}</AppText>
         )}
-        <AppText tone={item.read ? 'textMuted' : 'text'} testID={`activity-${item.id}-text`}>
+        <AppText tone={fresh ? 'text' : 'textMuted'} testID={`activity-${item.id}-text`}>
           {t.kind[item.kind]}
         </AppText>
       </View>
-      {item.read ? null : (
+      {fresh ? (
         <View style={styles.dot} aria-label={t.fresh} testID={`activity-${item.id}-new`} />
-      )}
+      ) : null}
     </Pressable>
   );
 }

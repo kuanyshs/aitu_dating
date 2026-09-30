@@ -69,8 +69,8 @@ describe('Активность', () => {
   it('marks everything so far as seen; later events are new', async () => {
     const store = createMemoryStore();
     expect((await all(store, 'm01')).every((i) => !i.read)).toBe(true);
-    const { seenAt } = await on(store, 'm01').markActivitySeen();
-    expect(seenAt).toBe(SEED_NOW.replace('Z', '.000Z'));
+    const first = await on(store, 'm01').markActivitySeen();
+    expect(first).toEqual({ seenAt: SEED_NOW.replace('Z', '.000Z') });
     expect((await all(store, 'm01')).every((i) => i.read)).toBe(true);
 
     const later = new Date(new Date(SEED_NOW).getTime() + 60_000).toISOString();
@@ -78,6 +78,10 @@ describe('Активность', () => {
     const items = await all(store, 'm01');
     expect(items[0]).toMatchObject({ kind: 'follow', read: false, actor: { id: 'm04' } });
     expect(items.slice(1).every((i) => i.read)).toBe(true);
+
+    // The next look tells when the one before it was.
+    const next = await on(store, 'm01', later).markActivitySeen();
+    expect(next).toEqual({ seenAt: later, previousSeenAt: first.seenAt });
   });
 
   it('tells the author of a plan about Отклики and the sender about decisions', async () => {
