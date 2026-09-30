@@ -1,6 +1,15 @@
 import type { Clock } from '@/clock';
 import {
   AccessFlowState,
+  ChatPage,
+  ChatRef,
+  ChatSummary,
+  MessagePage,
+  MessageRef,
+  MessagesQuery,
+  MessageView,
+  OpenChatInput,
+  SendMessageInput,
   BlockedPage,
   BlockState,
   CommentPage,
@@ -87,7 +96,9 @@ import { matchPeople, matchPlans, matchPosts } from './search';
 import { selectFeed } from './feed';
 import {
   BlockRecord,
+  ChatRecord,
   FollowRecord,
+  MessageRecord,
   PlanRecord,
   PlanResponseRecord,
   PostRecord,
@@ -712,6 +723,78 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           : state.planResponses,
     });
   }
+
+  /** Seed chats and those opened during the demo. */
+  function allChats(): ChatRecord[] {
+    return [...data.chats, ...state.chats];
+  }
+
+  function allMessages(): MessageRecord[] {
+    return [...data.messages, ...state.messages];
+  }
+
+  /** How far a member has read a chat: a demo mark wins over the seed one. */
+  function readMark(chatId: string, userId: string): string | undefined {
+    return (
+      state.chatReads[`${chatId}:${userId}`] ??
+      data.chatReads.find((r) => r.chatId === chatId && r.userId === userId)?.readAt
+    );
+  }
+
+  const peerIdOf = (chat: ChatRecord, me: string) =>
+    chat.memberIds[0] === me ? chat.memberIds[1] : chat.memberIds[0];
+
+  /** A chat of the viewer's whose other side they may see. */
+  function findChat(chatId: string, me: string, requestId: string): ChatRecord {
+    const chat = allChats().find((c) => c.id === chatId);
+    if (!chat || !chat.memberIds.includes(me) || !isShown(member(peerIdOf(chat, me)))) {
+      fail(requestId, { code: 'NOT_FOUND', message: 'Chat not found.' });
+    }
+    return chat;
+  }
+
+  function chatMessages(chatId: string): MessageRecord[] {
+    return allMessages()
+      .filter((m) => m.chatId === chatId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  function messageView(message: MessageRecord, chat: ChatRecord, me: string): MessageView {
+    const fromMe = message.authorId === me;
+    // Mine is read once the other side's mark reaches it; theirs once mine does.
+    const mark = readMark(chat.id, fromMe ? peerIdOf(chat, me) : me);
+    const read = !!mark && mark >= message.createdAt;
+    return MessageView.parse({
+      id: message.id,
+      chatId: chat.id,
+      fromMe,
+      text: message.text,
+      createdAt: message.createdAt,
+      status: message.status === 'failed' ? 'failed' : read ? 'read' : 'sent',
+    });
+  }
+
+  function chatSummary(chat: ChatRecord, viewer: Viewer): ChatSummary {
+    const me = viewer.userId!;
+    const peer = member(peerIdOf(chat, me))!;
+    const all = chatMessages(chat.id);
+    const last = all.at(-1);
+    const mark = readMark(chat.id, me);
+    return ChatSummary.parse({
+      id: chat.id,
+      context: chat.context,
+      peer: toAuthorView(peer, viewer),
+      ...(last ? { lastMessage: messageView(last, chat, me) } : {}),
+      unreadCount: all.filter(
+        (m) => m.authorId !== me && m.status === 'sent' && (!mark || m.createdAt > mark),
+      ).length,
+      // Expired members read their chats but cannot write.
+      readOnly: viewer.accessState !== 'ACTIVE_MEMBER',
+    });
+  }
+
+  const lastActivity = (chat: ChatRecord) =>
+    chatMessages(chat.id).at(-1)?.createdAt ?? chat.createdAt;
 
   /** Readers of community content: anyone but a restricted session. */
   function requireReader(requestId: string): Viewer {
@@ -1661,12 +1744,168 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           });
         return MyResponsePage.parse(page(items, cursor, limit ?? DEFAULT_PAGE_SIZE, requestId));
       }),
-    listChats: notImplemented('listChats'),
-    getChat: notImplemented('getChat'),
-    listMessages: notImplemented('listMessages'),
-    sendMessage: notImplemented('sendMessage'),
-    retryMessage: notImplemented('retryMessage'),
-    markChatRead: notImplemented('markChatRead'),
+    openChat: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const viewer = viewerOf(effectiveSession());
+        const opening = parseOrFail(OpenChatInput, input, requestId);
+        const conflict = (message: string) => fail(requestId, { code: 'CONFLICT', message });
+        const notFound = () => fail(requestId, { code: 'NOT_FOUND', message: 'Not found.' });
+
+        let peerId: string;
+        let context: ChatRecord['context'];
+        if (opening.kind === 'comment') {
+          const comment = allComments().find((c) => c.id === opening.commentId);
+          const post = comment ? postById(comment.postId) : undefined;
+          if (!comment || comment.deleted || !post || !isVisible(post)) return notFound();
+          if (!isShown(member(comment.authorId))) return notFound();
+          if (comment.authorId === me.id) return conflict('Nobody writes to themselves.');
+          peerId = comment.authorId;
+          context = { kind: 'comment', postId: post.id, commentId: comment.id };
+        } else if (opening.kind === 'mutual_follow') {
+          peerId = opening.memberId;
+          if (peerId === me.id) return conflict('Nobody writes to themselves.');
+          // Someone hidden is not found, whatever their Подписки were.
+          if (!isShown(member(peerId))) return notFound();
+          if (!isFollowing(me.id, peerId) || !isFollowing(peerId, me.id)) {
+            return conflict('Only a mutual follow opens a chat.');
+          }
+          context = { kind: 'mutual_follow' };
+        } else {
+          const response = state.planResponses.find((r) => r.id === opening.responseId);
+          const plan = response ? planById(response.planId) : undefined;
+          if (!response || !plan) return notFound();
+          if (response.status !== 'accepted')
+            return conflict('Only an accepted response opens a chat.');
+          if (me.id !== response.authorId && me.id !== plan.authorId) return notFound();
+          peerId = me.id === response.authorId ? plan.authorId : response.authorId;
+          context = { kind: 'plan_response', planId: plan.id, responseId: response.id };
+        }
+        if (!isShown(member(peerId))) return notFound();
+
+        // Two people share one chat: it keeps the context it started from.
+        const existing = allChats().find(
+          (c) => c.memberIds.includes(me.id) && c.memberIds.includes(peerId),
+        );
+        if (existing) return chatSummary(existing, viewer);
+        const chat = ChatRecord.parse({
+          id: `chat-${state.chats.length + 1}`,
+          memberIds: [me.id, peerId],
+          context,
+          createdAt: clock.now().toISOString(),
+        });
+        await saveState({ ...state, chats: [...state.chats, chat] });
+        return chatSummary(chat, viewer);
+      }),
+
+    listChats: (input) =>
+      respond('data', (requestId) => {
+        const me = requireOwnCard(requestId);
+        const viewer = viewerOf(effectiveSession());
+        const { cursor, limit } = parseOrFail(ListQuery, input ?? {}, requestId);
+        const mine = allChats()
+          .filter((c) => c.memberIds.includes(me.id) && isShown(member(peerIdOf(c, me.id))))
+          .sort((a, b) => lastActivity(b).localeCompare(lastActivity(a)));
+        return ChatPage.parse(
+          page(
+            mine.map((c) => chatSummary(c, viewer)),
+            cursor,
+            limit ?? DEFAULT_PAGE_SIZE,
+            requestId,
+          ),
+        );
+      }),
+
+    getChat: (input) =>
+      respond('data', (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { chatId } = parseOrFail(ChatRef, input, requestId);
+        return chatSummary(findChat(chatId, me.id, requestId), viewerOf(effectiveSession()));
+      }),
+
+    listMessages: (input) =>
+      respond('data', (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { chatId, cursor, limit } = parseOrFail(MessagesQuery, input, requestId);
+        const chat = findChat(chatId, me.id, requestId);
+        // Pages go back in time; inside a page the older messages come first.
+        const newestFirst = chatMessages(chat.id).reverse();
+        const result = page(newestFirst, cursor, limit ?? 30, requestId);
+        return MessagePage.parse({
+          ...result,
+          items: result.items.reverse().map((m) => messageView(m, chat, me.id)),
+        });
+      }),
+
+    sendMessage: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const parsed = SendMessageInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the message.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const { chatId, text, idempotencyKey } = parsed.data;
+        const chat = findChat(chatId, me.id, requestId);
+        // A retry of a request that already went through returns the same message.
+        const existing = state.messages.find((m) => m.idempotencyKey === idempotencyKey);
+        if (existing) return messageView(existing, chat, me.id);
+
+        // «Сбой отправки» (demo): the message stays in the chat as failed, to retry.
+        const failed = state.demoFlags.failedMessageOnce;
+        const message = MessageRecord.parse({
+          id: `message-${state.messages.length + 1}`,
+          chatId: chat.id,
+          authorId: me.id,
+          text,
+          createdAt: clock.now().toISOString(),
+          status: failed ? 'failed' : 'sent',
+          idempotencyKey,
+        });
+        await saveState({
+          ...state,
+          messages: [...state.messages, message],
+          demoFlags: { ...state.demoFlags, failedMessageOnce: false },
+        });
+        return messageView(message, chat, me.id);
+      }),
+
+    retryMessage: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const { messageId } = parseOrFail(MessageRef, input, requestId);
+        const message = state.messages.find((m) => m.id === messageId && m.authorId === me.id);
+        if (!message) fail(requestId, { code: 'NOT_FOUND', message: 'Message not found.' });
+        const chat = findChat(message.chatId, me.id, requestId);
+        if (message.status === 'failed') {
+          const sent = {
+            ...message,
+            status: 'sent' as const,
+            createdAt: clock.now().toISOString(),
+          };
+          await saveState({
+            ...state,
+            messages: state.messages.map((m) => (m.id === message.id ? sent : m)),
+          });
+          return messageView(sent, chat, me.id);
+        }
+        return messageView(message, chat, me.id);
+      }),
+
+    markChatRead: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { chatId } = parseOrFail(ChatRef, input, requestId);
+        const chat = findChat(chatId, me.id, requestId);
+        await saveState({
+          ...state,
+          chatReads: { ...state.chatReads, [`${chat.id}:${me.id}`]: clock.now().toISOString() },
+        });
+        return chatSummary(chat, viewerOf(effectiveSession()));
+      }),
     listActivity: notImplemented('listActivity'),
     createReport: (input) =>
       respond('data', async (requestId) => {

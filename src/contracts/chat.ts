@@ -68,3 +68,14 @@ export type SendMessageInput = z.infer<typeof SendMessageInput>;
 
 export const MessageRef = z.strictObject({ messageId: Id });
 export type MessageRef = z.infer<typeof MessageRef>;
+
+/**
+ * Where a chat is opened from: someone else's Комментарий, a mutual Подписка or an
+ * accepted Отклик. The server fills in the rest of the context; two people share one chat.
+ */
+export const OpenChatInput = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('comment'), commentId: Id }),
+  z.strictObject({ kind: z.literal('mutual_follow'), memberId: Id }),
+  z.strictObject({ kind: z.literal('plan_response'), responseId: Id }),
+]);
+export type OpenChatInput = z.infer<typeof OpenChatInput>;

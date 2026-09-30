@@ -12,6 +12,7 @@ import {
   questionnaire,
 } from '@/catalogs';
 import {
+  ChatContext,
   CityKey,
   GenderKey,
   Id,
@@ -179,6 +180,35 @@ export const BlockRecord = z.strictObject({
 });
 export type BlockRecord = z.infer<typeof BlockRecord>;
 
+/** A Контекстный чат between two members, with the context it started from. */
+export const ChatRecord = z.strictObject({
+  id: Id,
+  memberIds: z.tuple([Id, Id]),
+  context: ChatContext,
+  createdAt: IsoDateTime,
+});
+export type ChatRecord = z.infer<typeof ChatRecord>;
+
+export const MessageRecord = z.strictObject({
+  id: Id,
+  chatId: Id,
+  authorId: Id,
+  text: z.string().min(1).max(1000),
+  createdAt: IsoDateTime,
+  /** «Прочитано» is derived from the other side's read mark, never stored. */
+  status: z.enum(['sent', 'failed']),
+  idempotencyKey: z.string().optional(),
+});
+export type MessageRecord = z.infer<typeof MessageRecord>;
+
+/** How far a member has read a chat. */
+export const ChatReadRecord = z.strictObject({
+  chatId: Id,
+  userId: Id,
+  readAt: IsoDateTime,
+});
+export type ChatReadRecord = z.infer<typeof ChatReadRecord>;
+
 export const SeedData = z.strictObject({
   members: z.array(MemberRecord),
   posts: z.array(PostRecord),
@@ -189,5 +219,8 @@ export const SeedData = z.strictObject({
   commentReactions: z.array(CommentReactionRecord),
   reposts: z.array(RepostRecord),
   reports: z.array(ReportRecord),
+  chats: z.array(ChatRecord),
+  messages: z.array(MessageRecord),
+  chatReads: z.array(ChatReadRecord),
 });
 export type SeedData = z.infer<typeof SeedData>;

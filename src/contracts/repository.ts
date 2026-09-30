@@ -13,6 +13,7 @@ import type {
   MessagePage,
   MessageRef,
   MessagesQuery,
+  OpenChatInput,
   MessageView,
   SendMessageInput,
 } from './chat';
@@ -162,6 +163,8 @@ export interface AituRepository {
   listMyResponses(query: ListQuery): Promise<MyResponsePage>;
 
   // Контекстные чаты and Активность.
+  /** Opens the one chat with that person, or the existing one; it keeps its first context. */
+  openChat(input: OpenChatInput): Promise<ChatSummary>;
   listChats(query: ListQuery): Promise<ChatPage>;
   getChat(input: ChatRef): Promise<ChatSummary>;
   listMessages(query: MessagesQuery): Promise<MessagePage>;

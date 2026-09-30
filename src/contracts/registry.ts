@@ -15,6 +15,7 @@ import {
   MessagePage,
   MessageRef,
   MessagesQuery,
+  OpenChatInput,
   MessageView,
   SendMessageInput,
 } from './chat';
@@ -141,6 +142,7 @@ export const repositoryContract = {
   listMyPlans: { input: ListQuery, output: PlanPage },
   listMyResponses: { input: ListQuery, output: MyResponsePage },
 
+  openChat: { input: OpenChatInput, output: ChatSummary },
   listChats: { input: ListQuery, output: ChatPage },
   getChat: { input: ChatRef, output: ChatSummary },
   listMessages: { input: MessagesQuery, output: MessagePage },

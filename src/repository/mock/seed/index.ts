@@ -1,4 +1,5 @@
 import { SeedData } from '../records';
+import { chatReads, chats, messages } from './chats';
 import { members } from './members';
 import { plans } from './plans';
 import { posts } from './posts';
@@ -16,5 +17,8 @@ export function loadSeed(): SeedData {
     commentReactions,
     reposts,
     reports,
+    chats,
+    messages,
+    chatReads,
   });
 }

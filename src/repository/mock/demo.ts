@@ -12,10 +12,12 @@ import {
 
 import {
   BlockRecord,
+  ChatRecord,
   CommentReactionRecord,
   CommentRecord,
   FollowRecord,
   MemberRecord,
+  MessageRecord,
   PlanRecord,
   PlanResponseRecord,
   PostRecord,
@@ -117,10 +119,18 @@ export const MockState = z.strictObject({
   planUpdates: z.record(z.string(), z.strictObject({ status: StoredPlanStatus })),
   /** Отклики sent during the demo. */
   planResponses: z.array(PlanResponseRecord),
+  /** Chats opened during the demo, on top of the seed. */
+  chats: z.array(ChatRecord),
+  /** Messages written during the demo. */
+  messages: z.array(MessageRecord),
+  /** Read marks by `chatId:userId`, seed chats too. */
+  chatReads: z.record(z.string(), z.string()),
+  /** When each member last opened «Активность». */
+  activitySeenAt: z.record(z.string(), z.string()),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 15;
+export const MOCK_STATE_VERSION = 16;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -164,6 +174,14 @@ export const mockStateMigrations = [
     planUpdates: {},
     planResponses: [],
   }),
+  // v16 adds chats, messages, read marks and when «Активность» was last seen.
+  (v15: unknown) => ({
+    ...(v15 as object),
+    chats: [],
+    messages: [],
+    chatReads: {},
+    activitySeenAt: {},
+  }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -196,6 +214,10 @@ export const defaultMockState = (): MockState => ({
   planKeys: {},
   planUpdates: {},
   planResponses: [],
+  chats: [],
+  messages: [],
+  chatReads: {},
+  activitySeenAt: {},
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';
