@@ -23,7 +23,12 @@ function isTabName(name: string): name is TabName {
   return name in icons;
 }
 
-export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
+type Props = BottomTabBarProps & {
+  /** Tabs with something new, marked with a dot (Активность). */
+  dots?: Partial<Record<TabName, boolean>>;
+};
+
+export function FloatingTabBar({ state, navigation, dots }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
@@ -58,7 +63,9 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
             <Pressable
               key={route.key}
               role="tab"
-              aria-label={strings.tabs[name]}
+              aria-label={
+                dots?.[name] && name === 'activity' ? strings.activity.hasNew : strings.tabs[name]
+              }
               aria-selected={focused}
               testID={`tab-${name}`}
               onPress={onPress}
@@ -71,6 +78,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
                   color={focused ? colors.tabIconActive : colors.tabIcon}
                   strokeWidth={focused ? iconStroke.active : iconStroke.default}
                 />
+                {dots?.[name] ? <View style={styles.dot} testID={`tab-${name}-dot`} /> : null}
               </View>
             </Pressable>
           );
@@ -117,5 +125,14 @@ const useStyles = createStyles((colors) => ({
   },
   pillActive: {
     backgroundColor: colors.tabActive,
+  },
+  dot: {
+    position: 'absolute',
+    top: 6,
+    right: 14,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.danger,
   },
 }));

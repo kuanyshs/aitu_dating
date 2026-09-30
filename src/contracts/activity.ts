@@ -43,3 +43,7 @@ export type ActivityQuery = z.infer<typeof ActivityQuery>;
 
 export const ActivityPage = Page(ActivityItem);
 export type ActivityPage = z.infer<typeof ActivityPage>;
+
+/** When the member last opened «Активность»: everything up to it reads as seen. */
+export const ActivitySeen = z.strictObject({ seenAt: IsoDateTime });
+export type ActivitySeen = z.infer<typeof ActivitySeen>;

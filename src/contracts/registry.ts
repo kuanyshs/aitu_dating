@@ -6,7 +6,7 @@ import {
   MembershipSelection,
   PassportCandidate,
 } from './access';
-import { ActivityPage, ActivityQuery } from './activity';
+import { ActivityPage, ActivityQuery, ActivitySeen } from './activity';
 import {
   ChatPage,
   ChatRef,
@@ -150,6 +150,7 @@ export const repositoryContract = {
   retryMessage: { input: MessageRef, output: MessageView },
   markChatRead: { input: ChatRef, output: ChatSummary },
   listActivity: { input: ActivityQuery, output: ActivityPage },
+  markActivitySeen: { input: none, output: ActivitySeen },
 
   createReport: { input: CreateReportInput, output: ReportReceipt },
   listMyReports: { input: ListQuery, output: ReportPage },

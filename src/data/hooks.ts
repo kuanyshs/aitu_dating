@@ -15,6 +15,7 @@ import type {
   CommentView,
   CreatePostInput,
   CreateReportInput,
+  ActivityQuery,
   CreatePlanInput,
   FeedTab,
   PlanView,
@@ -1002,5 +1003,39 @@ export function useOpenChat() {
   return useMutation({
     mutationFn: (input: OpenChatInput) => repository.openChat(input),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.chats }),
+  });
+}
+
+/** «Активность» in one category, newest first. */
+export function useActivity(category: ActivityQuery['category'], enabled: boolean) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: ['activity', category],
+    queryFn: ({ pageParam }) => repository.listActivity({ category, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
+  });
+}
+
+/** Whether anything in «Активность» is new: the newest event is unseen. */
+export function useHasNewActivity(enabled: boolean): boolean {
+  const repository = useRepository();
+  const newest = useQuery({
+    queryKey: ['activity-new'],
+    queryFn: () => repository.listActivity({ category: 'all', limit: 1 }),
+    enabled,
+  });
+  const first = newest.data?.items[0];
+  return !!first && !first.read;
+}
+
+/** Opening «Активность» marks it seen; the dot on the tab goes away. */
+export function useMarkActivitySeen() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => repository.markActivitySeen(),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['activity-new'] }),
   });
 }

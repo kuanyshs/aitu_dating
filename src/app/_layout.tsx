@@ -58,7 +58,6 @@ export default function RootLayout() {
                 {/* Sheets. */}
                 <Stack.Screen name="safety" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="membership" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="report" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="menu" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="renew" options={{ presentation: 'modal' }} />

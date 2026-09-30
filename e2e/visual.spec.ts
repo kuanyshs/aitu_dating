@@ -387,4 +387,13 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('chat-context')).toBeVisible();
     await snap(page, 'chat-failed');
   });
+
+  test('Активность: new events of a seed author', async ({ page }) => {
+    await signInAs(page, 'm01');
+    await page.goto('/activity');
+    await expect(page.getByTestId('activity-list').getByRole('link').first()).toBeVisible();
+    // Opening the tab marks it seen: wait for the dot to go, or the snapshot catches it.
+    await expect(page.getByTestId('tab-activity-dot')).toHaveCount(0);
+    await snap(page, 'activity');
+  });
 });

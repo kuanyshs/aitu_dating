@@ -427,7 +427,7 @@ export const strings = {
     settings: 'Настройки',
     moderator: 'Модерация',
     membership: 'Membership',
-    notifications: 'Уведомления',
+    notifications: 'Активность',
     safety: 'Безопасность',
     messages: 'Сообщения',
   },
@@ -513,6 +513,32 @@ export const strings = {
     errorText: 'Проверьте соединение и попробуйте ещё раз.',
     retry: 'Повторить',
     more: 'Показать ещё',
+  },
+  activity: {
+    title: 'Активность',
+    categoriesLabel: 'Что показать',
+    kind: {
+      follow: 'Подписка на вас',
+      comment: 'Комментарий к вашей публикации',
+      reply: 'Ответ на ваш комментарий',
+      mention: 'Упоминание',
+      reaction: 'Отметка «нравится» вашей публикации',
+      repost: 'Репост вашей публикации',
+      plan_response: 'Отклик на ваш план',
+      response_accepted: 'Ваш отклик принят — встреча договорена',
+      response_declined: 'Автор выбрал другой вариант',
+      membership_expiring: 'Membership скоро закончится — продлите, чтобы не потерять доступ',
+      system: 'Сообщение от aitu dating',
+    },
+    system: 'aitu dating',
+    fresh: 'Новое',
+    emptyTitle: 'Пока тихо',
+    emptyText: 'Здесь появятся подписки, ответы, реакции и отклики на планы.',
+    errorTitle: 'Не удалось загрузить активность',
+    errorText: 'Проверьте соединение и попробуйте ещё раз.',
+    retry: 'Повторить',
+    more: 'Показать ещё',
+    hasNew: 'Активность, есть новое',
   },
   chat: {
     write: 'Написать',
@@ -804,10 +830,6 @@ export const strings = {
       title: 'Membership',
       text: 'Здесь появятся детали вашего membership: период, даты и история оплат.',
     },
-    notifications: {
-      title: 'Уведомления',
-      text: 'Здесь можно будет выбрать, о чём сообщать: сообщения, комментарии, упоминания, подписки и отклики.',
-    },
     access: {
       title: 'Вступление',
       text: 'Здесь появится вход через Aitu Passport, выбор membership и анкета.',
@@ -825,10 +847,6 @@ export const strings = {
     create: {
       title: 'Создать',
       text: 'Здесь можно будет создать пост или встречу один на один.',
-    },
-    activity: {
-      title: 'Активность',
-      text: 'Здесь появятся ответы, реакции, подписки и события планов.',
     },
     profile: {
       title: 'Профиль',

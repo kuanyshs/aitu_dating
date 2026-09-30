@@ -1,18 +1,178 @@
-import { useSession } from '@/data/hooks';
-import { AccessPrompt } from '@/ui/components/AccessPrompt';
-import { PlaceholderScreen } from '@/ui/components/PlaceholderScreen';
-import { Screen } from '@/ui/components/Screen';
-import { strings } from '@/ui/strings';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, View } from 'react-native';
 
+import { activityCategories, activityCategoryLabels, type ActivityCategory } from '@/catalogs';
+import type { ActivityItem } from '@/contracts';
+import { useActivity, useMarkActivitySeen, useSession } from '@/data/hooks';
+import { useClock } from '@/data/RepositoryProvider';
+import { AccessPrompt } from '@/ui/components/AccessPrompt';
+import { AuthorRow } from '@/ui/components/AuthorRow';
+import { Avatar } from '@/ui/components/Avatar';
+import { SecondaryButton } from '@/ui/components/buttons';
+import { Chip } from '@/ui/components/Chip';
+import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
+import { Screen } from '@/ui/components/Screen';
+import { EmptyState, ErrorState } from '@/ui/components/StateViews';
+import { AppText } from '@/ui/components/Text';
+import { formatRelative } from '@/ui/format';
+import { ShieldCheck } from '@/ui/icons';
+import { strings } from '@/ui/strings';
+import { useTheme } from '@/ui/theme/ThemeProvider';
+import { radius, spacing } from '@/ui/theme/tokens';
+import { createStyles } from '@/ui/theme/useStyles';
+
+const t = strings.activity;
+// There are no mentions in the product yet, so the category has no chip.
+const categories = activityCategories.filter((c) => c !== 'mentions');
+
+/**
+ * «Активность»: what happened around the member, newest first, by category. Opening the
+ * tab marks everything so far as seen; what was new stays marked until the next load.
+ */
 export default function ActivityScreen() {
+  const styles = useStyles();
   const session = useSession();
-  const { title, text } = strings.placeholder.activity;
-  if (session.data?.accessState !== 'ACTIVE_MEMBER') {
+  const state = session.data?.accessState;
+  const isMember = state === 'ACTIVE_MEMBER' || state === 'ACTIVE_MEMBER_EXPIRED';
+  const [category, setCategory] = useState<ActivityCategory>('all');
+
+  if (state && !isMember) {
     return (
       <Screen testID="screen-activity">
         <AccessPrompt text={strings.access.prompt.activity} testID="activity-access-prompt" />
       </Screen>
     );
   }
-  return <PlaceholderScreen title={title} text={text} testID="screen-activity" />;
+  return (
+    <Screen testID="screen-activity">
+      <AppText variant="display" role="heading">
+        {t.title}
+      </AppText>
+      <View role="radiogroup" aria-label={t.categoriesLabel} style={styles.chips}>
+        {categories.map((c) => (
+          <Chip
+            key={c}
+            label={activityCategoryLabels[c]}
+            selected={c === category}
+            onPress={() => setCategory(c)}
+            testID={`activity-category-${c}`}
+          />
+        ))}
+      </View>
+      {isMember ? <ActivityList category={category} /> : null}
+    </Screen>
+  );
 }
+
+function ActivityList({ category }: { category: ActivityCategory }) {
+  const list = useActivity(category, true);
+  const items = list.data?.pages.flatMap((p) => p.items) ?? [];
+  const { mutate: markSeen } = useMarkActivitySeen();
+  const loaded = !!list.data;
+  // Marked seen once the list is on screen, so what was new still reads as new.
+  useFocusEffect(
+    useCallback(() => {
+      if (loaded) markSeen();
+    }, [loaded, markSeen]),
+  );
+  if (list.isPending) return <FeedSkeleton rows={2} />;
+  if (list.isError && items.length === 0)
+    return (
+      <ErrorState
+        testID="activity-error"
+        title={t.errorTitle}
+        text={t.errorText}
+        action={{ label: t.retry, onPress: () => list.refetch(), testID: 'activity-retry' }}
+      />
+    );
+  if (items.length === 0)
+    return <EmptyState testID="activity-empty" title={t.emptyTitle} text={t.emptyText} />;
+  return (
+    <View testID="activity-list">
+      {items.map((item) => (
+        <ActivityRow key={item.id} item={item} />
+      ))}
+      {list.hasNextPage ? (
+        <SecondaryButton
+          label={t.more}
+          loading={list.isFetchingNextPage}
+          onPress={() => list.fetchNextPage()}
+          testID="activity-more"
+        />
+      ) : null}
+    </View>
+  );
+}
+
+/** Where an event leads: the post, the plan, the person or renewal. */
+function targetOf(item: ActivityItem): string | undefined {
+  if (item.kind === 'membership_expiring') return '/renew';
+  if (item.planId) return `/plan/${item.planId}`;
+  if (item.postId) return `/post/${item.postId}`;
+  if (item.actor?.view === 'member') return `/member/${item.actor.id}`;
+  return undefined;
+}
+
+function ActivityRow({ item }: { item: ActivityItem }) {
+  const styles = useStyles();
+  const router = useRouter();
+  const clock = useClock();
+  const { colors } = useTheme();
+  const target = targetOf(item);
+  const time = formatRelative(item.createdAt, clock);
+  return (
+    <Pressable
+      role="link"
+      aria-label={t.kind[item.kind]}
+      disabled={!target}
+      onPress={() => target && router.push(target)}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      testID={`activity-${item.id}`}
+    >
+      {item.actor ? (
+        <Avatar avatar={item.actor.avatar} size={40} />
+      ) : (
+        <View style={styles.systemIcon}>
+          <ShieldCheck size={20} color={colors.text} strokeWidth={1.75} aria-hidden />
+        </View>
+      )}
+      <View style={styles.grow}>
+        {item.actor ? (
+          <AuthorRow author={item.actor} time={time} />
+        ) : (
+          <AppText variant="bodyStrong">{`${t.system} · ${time}`}</AppText>
+        )}
+        <AppText tone={item.read ? 'textMuted' : 'text'} testID={`activity-${item.id}-text`}>
+          {t.kind[item.kind]}
+        </AppText>
+      </View>
+      {item.read ? null : (
+        <View style={styles.dot} aria-label={t.fresh} testID={`activity-${item.id}-new`} />
+      )}
+    </Pressable>
+  );
+}
+
+const useStyles = createStyles((colors) => ({
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  pressed: { backgroundColor: colors.surfacePressed },
+  grow: { flex: 1, gap: 2 },
+  systemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+}));

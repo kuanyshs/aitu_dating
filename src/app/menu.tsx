@@ -57,7 +57,8 @@ export default function MenuScreen() {
           />
           <MenuRow
             label={strings.menu.notifications}
-            onPress={() => go('/notifications')}
+            // A tab: close the menu and switch to it, not a second copy of the tabs.
+            onPress={() => router.dismissTo('/activity')}
             testID="menu-notifications"
           />
         </>

@@ -6,7 +6,6 @@ import { joinAsMadina } from './helpers';
 const stubs = [
   { path: '/about', testID: 'screen-about', title: 'О продукте' },
   { path: '/membership', testID: 'screen-membership', title: 'Membership' },
-  { path: '/notifications', testID: 'screen-notifications', title: 'Уведомления' },
 ] as const;
 
 test.describe('route stubs', () => {
@@ -50,12 +49,15 @@ test.describe('route stubs', () => {
     await expect(page.getByTestId('screen-member')).toBeVisible();
   });
 
-  test('the Home menu reaches safety, membership and notifications', async ({ page }) => {
+  test('the Home menu reaches safety, membership and Активность', async ({ page }) => {
     await joinAsMadina(page);
+    await page.getByTestId('home-menu').click();
+    await page.getByTestId('menu-notifications').click();
+    await expect(page.getByTestId('screen-activity')).toBeVisible();
+    await page.getByTestId('tab-index').click();
     for (const [item, screen] of [
       ['menu-safety', 'screen-safety'],
       ['menu-membership', 'screen-membership'],
-      ['menu-notifications', 'screen-notifications'],
     ] as const) {
       await page.getByTestId('home-menu').click();
       await page.getByTestId(item).click();

@@ -4,7 +4,7 @@ import type {
   MembershipSelection,
   PassportCandidate,
 } from './access';
-import type { ActivityPage, ActivityQuery } from './activity';
+import type { ActivityPage, ActivityQuery, ActivitySeen } from './activity';
 import type {
   ChatPage,
   ChatRef,
@@ -173,6 +173,8 @@ export interface AituRepository {
   retryMessage(input: MessageRef): Promise<MessageView>;
   markChatRead(input: ChatRef): Promise<ChatSummary>;
   listActivity(query: ActivityQuery): Promise<ActivityPage>;
+  /** Marks everything in «Активность» so far as seen. */
+  markActivitySeen(): Promise<ActivitySeen>;
 
   // Safety.
   createReport(input: CreateReportInput): Promise<ReportReceipt>;

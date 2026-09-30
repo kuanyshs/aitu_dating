@@ -100,6 +100,8 @@ export const PlanResponseRecord = z.strictObject({
   status: PlanResponseStatus,
   idempotencyKey: z.string().optional(),
   createdAt: IsoDateTime,
+  /** When the author accepted or declined it (Активность shows the decision then). */
+  decidedAt: IsoDateTime.optional(),
 });
 export type PlanResponseRecord = z.infer<typeof PlanResponseRecord>;
 

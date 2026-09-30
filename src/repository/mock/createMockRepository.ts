@@ -1,6 +1,10 @@
 import type { Clock } from '@/clock';
 import {
   AccessFlowState,
+  ActivityItem,
+  ActivityPage,
+  ActivityQuery,
+  ActivitySeen,
   ChatPage,
   ChatRef,
   ChatSummary,
@@ -73,7 +77,6 @@ import {
   UpdateSettingsInput,
   UserSettings,
   defaultUserSettings,
-  type RepositoryMethod,
   type AituRepository,
   type ApiError,
 } from '@/contracts';
@@ -717,7 +720,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         status === 'cancelled'
           ? state.planResponses.map((r) =>
               r.planId === plan.id && r.status === 'pending'
-                ? { ...r, status: 'declined' as const }
+                ? { ...r, status: 'declined' as const, decidedAt: clock.now().toISOString() }
                 : r,
             )
           : state.planResponses,
@@ -796,6 +799,136 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   const lastActivity = (chat: ChatRecord) =>
     chatMessages(chat.id).at(-1)?.createdAt ?? chat.createdAt;
 
+  const DAY = 24 * 60 * 60 * 1000;
+
+  /**
+   * Активность of a member, newest first, built from what the data already holds.
+   * People hidden from the viewer and gone posts leave no events.
+   */
+  function activityOf(me: MemberRecord, viewer: Viewer): ActivityItem[] {
+    const seen = state.activitySeenAt[me.id];
+    const events: Omit<ActivityItem, 'read'>[] = [];
+    const actor = (id: string) => {
+      const person = member(id);
+      return isShown(person) ? toAuthorView(person, viewer) : undefined;
+    };
+    const push = (event: Omit<ActivityItem, 'read' | 'actor'>, actorId?: string) => {
+      if (actorId === undefined) return events.push(event);
+      const view = actor(actorId);
+      if (view) events.push({ ...event, actor: view });
+    };
+    const myPost = (postId: string) => {
+      const post = postById(postId);
+      return !!post && post.authorId === me.id && isVisible(post);
+    };
+
+    for (const f of allFollows()) {
+      if (f.followingId === me.id) {
+        push(
+          { id: `follow-${f.followerId}`, kind: 'follow', createdAt: f.createdAt },
+          f.followerId,
+        );
+      }
+    }
+    const comments = allComments();
+    for (const c of comments) {
+      if (c.deleted || c.authorId === me.id) continue;
+      const parent = c.parentCommentId
+        ? comments.find((p) => p.id === c.parentCommentId)
+        : undefined;
+      const post = postById(c.postId);
+      if (!post || !isVisible(post)) continue;
+      if (parent ? parent.authorId === me.id : post.authorId === me.id) {
+        push(
+          {
+            id: `comment-${c.id}`,
+            kind: parent ? 'reply' : 'comment',
+            createdAt: c.createdAt,
+            postId: c.postId,
+            commentId: c.id,
+          },
+          c.authorId,
+        );
+      }
+    }
+    for (const r of [...data.reactions, ...state.reactions]) {
+      if (r.userId !== me.id && myPost(r.postId)) {
+        push(
+          {
+            id: `reaction-${r.postId}-${r.userId}`,
+            kind: 'reaction',
+            createdAt: r.createdAt,
+            postId: r.postId,
+          },
+          r.userId,
+        );
+      }
+    }
+    for (const r of [...data.reposts, ...state.reposts]) {
+      if (r.userId !== me.id && myPost(r.postId)) {
+        push(
+          {
+            id: `repost-${r.postId}-${r.userId}`,
+            kind: 'repost',
+            createdAt: r.createdAt,
+            postId: r.postId,
+          },
+          r.userId,
+        );
+      }
+    }
+    for (const r of state.planResponses) {
+      const plan = planById(r.planId);
+      if (!plan) continue;
+      if (plan.authorId === me.id && r.status !== 'withdrawn') {
+        push(
+          {
+            id: `response-${r.id}`,
+            kind: 'plan_response',
+            createdAt: r.createdAt,
+            planId: plan.id,
+          },
+          r.authorId,
+        );
+      }
+      if (r.authorId === me.id && (r.status === 'accepted' || r.status === 'declined')) {
+        push(
+          {
+            id: `decision-${r.id}`,
+            kind: r.status === 'accepted' ? 'response_accepted' : 'response_declined',
+            createdAt: r.decidedAt ?? r.createdAt,
+            planId: plan.id,
+          },
+          plan.authorId,
+        );
+      }
+    }
+    // A Membership ending within a week: the event appears a week before its end.
+    const endsAt = new Date(me.membership.endsAt).getTime();
+    const now = clock.now().getTime();
+    if (!isExpired(me) && endsAt - now <= 7 * DAY) {
+      push({
+        id: `membership-${me.membership.endsAt}`,
+        kind: 'membership_expiring',
+        createdAt: new Date(endsAt - 7 * DAY).toISOString(),
+      });
+    }
+
+    return events
+      .map((e) => ActivityItem.parse({ ...e, read: !!seen && e.createdAt <= seen }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  const activityKinds: Record<ActivityQuery['category'], ActivityItem['kind'][] | undefined> = {
+    all: undefined,
+    follows: ['follow'],
+    conversations: ['comment', 'reply', 'mention'],
+    mentions: ['mention'],
+    reactions: ['reaction', 'repost'],
+    plans: ['plan_response', 'response_accepted', 'response_declined'],
+    system: ['membership_expiring', 'system'],
+  };
+
   /** Readers of community content: anyone but a restricted session. */
   function requireReader(requestId: string): Viewer {
     const viewer = viewerOf(effectiveSession());
@@ -849,15 +982,6 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       fail(requestId, { code: 'VALIDATION_ERROR', message: parsed.error.message });
     return parsed.data;
   }
-
-  /** Part of the frozen contract; the behaviour lands with its own spec. */
-  const notImplemented = (method: RepositoryMethod) => () =>
-    respond('local', (requestId) =>
-      fail(requestId, {
-        code: 'NOT_IMPLEMENTED',
-        message: `${method} is not implemented in the mock yet.`,
-      }),
-    );
 
   return {
     getSession: () => respond('local', () => publicSession()),
@@ -1664,9 +1788,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           await saveResponses(
             (r) =>
               r.id === response.id
-                ? { ...r, status: 'accepted' }
+                ? { ...r, status: 'accepted', decidedAt: clock.now().toISOString() }
                 : r.planId === plan.id && r.status === 'pending'
-                  ? { ...r, status: 'declined' }
+                  ? { ...r, status: 'declined', decidedAt: clock.now().toISOString() }
                   : r,
             { planUpdates: { ...state.planUpdates, [plan.id]: { status: 'matched' } } },
           );
@@ -1680,7 +1804,11 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const { response, plan } = findResponse(input, requestId);
         requireOwnPlan({ planId: plan.id }, requestId);
         if (response.status === 'pending') {
-          await saveResponses((r) => (r.id === response.id ? { ...r, status: 'declined' } : r));
+          await saveResponses((r) =>
+            r.id === response.id
+              ? { ...r, status: 'declined', decidedAt: clock.now().toISOString() }
+              : r,
+          );
         } else if (response.status !== 'declined') {
           fail(requestId, { code: 'CONFLICT', message: 'This response cannot be declined.' });
         }
@@ -1906,7 +2034,24 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         });
         return chatSummary(chat, viewerOf(effectiveSession()));
       }),
-    listActivity: notImplemented('listActivity'),
+    listActivity: (input) =>
+      respond('data', (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { category, cursor, limit } = parseOrFail(ActivityQuery, input, requestId);
+        const kinds = activityKinds[category];
+        const items = activityOf(me, viewerOf(effectiveSession())).filter(
+          (e) => !kinds || kinds.includes(e.kind),
+        );
+        return ActivityPage.parse(page(items, cursor, limit ?? DEFAULT_PAGE_SIZE, requestId));
+      }),
+
+    markActivitySeen: () =>
+      respond('data', async (requestId) => {
+        const me = requireOwnCard(requestId);
+        const seenAt = clock.now().toISOString();
+        await saveState({ ...state, activitySeenAt: { ...state.activitySeenAt, [me.id]: seenAt } });
+        return ActivitySeen.parse({ seenAt });
+      }),
     createReport: (input) =>
       respond('data', async (requestId) => {
         // Guests report anonymously; a restricted session cannot report.
