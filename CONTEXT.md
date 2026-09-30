@@ -126,7 +126,7 @@ The single conversation between two **Участники**, opened from someone 
 _Avoid_: DM, direct message
 
 **Активность** (`Activity`):
-What happened around the **Участник**, built from the data rather than stored: new **Подписки** on them, **Комментарии** on their **Посты** and **Ответы** to their **Комментарии**, reactions and **Репосты** of their **Посты**, **Отклики** on their **Планы** and decisions on their own **Отклики**, and a **Membership** ending within 7 days. Messages stay in the chats. Opening the tab marks everything so far as seen. People hidden from the viewer leave no events.
+What happened around the **Участник**, built from the data rather than stored: new **Подписки** on them, **Комментарии** on their **Посты** and **Ответы** to their **Комментарии**, reactions and **Репосты** of their **Посты**, **Отклики** on their **Планы** and decisions on their own **Отклики**, and a **Membership** ending within 7 days. Messages stay in the chats. Opening the tab marks everything so far as seen; for the rest of that visit, whatever came after the previous look still reads as new, in any category. People hidden from the viewer leave no events.
 _Avoid_: notifications, feed (reserved for Home)
 
 ### Meetings
