@@ -515,6 +515,8 @@ export const strings = {
     more: 'Показать ещё',
   },
   chat: {
+    write: 'Написать',
+    writeFailed: 'Не удалось открыть чат. Попробуйте ещё раз.',
     back: 'Назад',
     menu: 'Действия с чатом',
     openPeer: (name: string) => `Открыть профиль: ${name}`,

@@ -19,6 +19,7 @@ import {
   useSetCommentReaction,
 } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
+import { useWriteTo } from '@/features/chat/useWriteTo';
 import type { CommentAction } from '@/features/post/CommentRow';
 import { CommentThreadView } from '@/features/post/CommentThreadView';
 import { PostFooter } from '@/features/post/PostFooter';
@@ -91,6 +92,7 @@ export default function PostScreen() {
   const deleteComment = useDeleteComment(postId);
   const deletePost = useDeletePost();
   const setBlock = useSetBlock();
+  const { write } = useWriteTo();
   // «•••» opens a menu; «Удалить» and «Заблокировать» ask for confirmation in a second sheet.
   type Step = 'menu' | 'confirm' | 'block';
   type Sheet =
@@ -287,6 +289,19 @@ export default function PostScreen() {
   function othersMenu(current: Sheet): SheetAction[] {
     const targetId = current.target === 'comment' ? current.comment.id : postId;
     return [
+      // Someone else's comment opens a chat with its author, for active members.
+      ...(current.target === 'comment' && isMember && current.comment.author.view === 'member'
+        ? [
+            {
+              label: strings.chat.write,
+              onPress: () => {
+                closeSheet();
+                void write({ kind: 'comment', commentId: current.comment.id });
+              },
+              testID: 'sheet-write',
+            },
+          ]
+        : []),
       {
         label: t.report,
         onPress: () => {

@@ -29,6 +29,7 @@ import {
 } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { newIdempotencyKey } from '@/features/access/steps';
+import { useWriteTo } from '@/features/chat/useWriteTo';
 import { useSocialGate } from '@/features/post/usePostActions';
 import { ActionSheet, type SheetAction } from '@/ui/components/ActionSheet';
 import { AuthorRow } from '@/ui/components/AuthorRow';
@@ -332,8 +333,8 @@ function AuthorLink({ author }: { author: AuthorView }) {
 
 /** What a visitor who is not the author can do: respond, follow up or withdraw. */
 function RespondArea({ plan }: { plan: PlanView }) {
+  const { write } = useWriteTo();
   const styles = useStyles();
-  const router = useRouter();
   const toast = useToast((s) => s.show);
   const { isMember, isExpired, allow } = useSocialGate();
   const respond = useRespondToPlan();
@@ -350,7 +351,7 @@ function RespondArea({ plan }: { plan: PlanView }) {
         <AppText tone="textMuted">{t.matchedText}</AppText>
         <PrimaryButton
           label={t.write}
-          onPress={() => router.push({ pathname: '/chats/[id]', params: { id: plan.id } })}
+          onPress={() => void write({ kind: 'plan_response', responseId: mine.id })}
           testID="plan-write"
         />
       </View>
@@ -438,8 +439,8 @@ function RespondArea({ plan }: { plan: PlanView }) {
 
 /** The author's side: Отклики, waiting ones first, with «Принять» and «Отклонить». */
 function Responses({ plan }: { plan: PlanView }) {
+  const { write } = useWriteTo();
   const styles = useStyles();
-  const router = useRouter();
   const toast = useToast((s) => s.show);
   const list = usePlanResponses(plan.id, true);
   const accept = useAcceptResponse();
@@ -497,7 +498,7 @@ function Responses({ plan }: { plan: PlanView }) {
         {response.status === 'accepted' ? (
           <PrimaryButton
             label={t.write}
-            onPress={() => router.push({ pathname: '/chats/[id]', params: { id: plan.id } })}
+            onPress={() => void write({ kind: 'plan_response', responseId: response.id })}
             testID="plan-write"
           />
         ) : null}

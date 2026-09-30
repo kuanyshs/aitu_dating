@@ -19,6 +19,7 @@ import type {
   FeedTab,
   PlanView,
   RespondToPlanInput,
+  OpenChatInput,
   SetBlockInput,
   SendMessageInput,
   MembershipSelection,
@@ -992,4 +993,14 @@ export function useRetryMessage(chatId: string) {
 export function useMarkChatRead(chatId: string) {
   const repository = useRepository();
   return useChatMutation(chatId, () => repository.markChatRead({ chatId }));
+}
+
+/** Opens the one chat with someone (or the existing one); the chat list reloads. */
+export function useOpenChat() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: OpenChatInput) => repository.openChat(input),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.chats }),
+  });
 }

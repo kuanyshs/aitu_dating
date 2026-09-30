@@ -11,6 +11,7 @@ import {
 } from '@/catalogs';
 import { isRepositoryError, type ProfileView } from '@/contracts';
 import { useProfile, useSession, useSetBlock, useSetFollow } from '@/data/hooks';
+import { useWriteTo } from '@/features/chat/useWriteTo';
 import { MyPosts } from '@/features/profile/MyPosts';
 import { ProfileStats } from '@/features/profile/ProfileStats';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
@@ -248,6 +249,7 @@ function FollowButton({
   const styles = useStyles();
   const toast = useToast((s) => s.show);
   const follow = useSetFollow();
+  const { write, isPending } = useWriteTo();
   const toggle = () =>
     follow.mutate(
       { memberId, active: !relation.following },
@@ -261,9 +263,18 @@ function FollowButton({
         <PrimaryButton label={t.follow} onPress={toggle} testID="member-follow" />
       )}
       {relation.following && relation.followsMe ? (
-        <View style={styles.badge} testID="member-mutual">
-          <AppText variant="caption">{t.mutual}</AppText>
-        </View>
+        <>
+          <View style={styles.badge} testID="member-mutual">
+            <AppText variant="caption">{t.mutual}</AppText>
+          </View>
+          {/* A mutual Подписка opens a chat. */}
+          <SecondaryButton
+            label={strings.chat.write}
+            loading={isPending}
+            onPress={() => void write({ kind: 'mutual_follow', memberId })}
+            testID="member-write"
+          />
+        </>
       ) : null}
     </View>
   );
