@@ -122,8 +122,12 @@ What another **Участник**'s profile reads when they are in a **Блок�
 _Avoid_: deleted account
 
 **Контекстный чат** (`Chat`):
-The single conversation between two **Участники**, opened from a **Комментарий**, a mutual **Подписка** or an accepted **Отклик**; it keeps the context it started from.
+The single conversation between two **Участники**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Отклик** (by its two people only); it keeps the context it started from, and opening it again from anywhere returns the same one. Only an active **Участник** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. Text only; a message is sent, read, or failed with «Повторить» — nothing is resent behind the user's back.
 _Avoid_: DM, direct message
+
+**Активность** (`Activity`):
+What happened around the **Участник**, built from the data rather than stored: new **Подписки** on them, **Комментарии** on their **Посты** and **Ответы** to their **Комментарии**, reactions and **Репосты** of their **Посты**, **Отклики** on their **Планы** and decisions on their own **Отклики**, and a **Membership** ending within 7 days. Messages stay in the chats. Opening the tab marks everything so far as seen. People hidden from the viewer leave no events.
+_Avoid_: notifications, feed (reserved for Home)
 
 ### Meetings
 
@@ -153,7 +157,7 @@ A **План** whose author accepted an **Отклик**, after a confirmation; 
 - A **Репост** adds nothing to the original **Пост** but its count; a **Цитата** is a separate **Пост** of its own.
 - A **Цитата** points to exactly one **Пост**; when that one is deleted or hidden, the **Цитата** stays and shows «Публикация недоступна» in its place.
 - A **План** has many **Отклики** and at most one accepted, which turns it into a **Встреча**; a **Участник** has at most one standing **Отклик** per **План**.
-- Two **Участники** share at most one **Контекстный чат**; an accepted **Отклик** creates it if it does not exist.
+- Two **Участники** share at most one **Контекстный чат**; a **Комментарий**, a mutual **Подписка** or an accepted **Отклик** opens it if it does not exist.
 - A **Блокировка** is between two **Участники**; an **Ограничение** is between moderation and one person.
 - A **Жалоба** targets exactly one person or piece of content; many **Жалобы** on one target share one **Итог жалобы**.
 
