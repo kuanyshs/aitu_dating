@@ -65,7 +65,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   const { colors } = useTheme();
   const toast = useToast((s) => s.show);
   const t = strings.compose;
-  const params = useLocalSearchParams<{ quote?: string }>();
+  const params = useLocalSearchParams<{ quote?: string; type?: string }>();
   const quotedPostId = params.quote ? String(params.quote) : undefined;
   // The card comes from what the feed or the post screen already loaded; a direct link
   // fetches it. A quoted post that is gone cannot be quoted.
@@ -83,7 +83,10 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   const reportFooter = useReportFooter();
   const opening = draftOnOpen(stored, { quotedPostId });
   const initial = opening === 'restore' ? stored : undefined;
-  const [kind, setKind] = useState<Kind>(initial?.type === 'question' ? 'question' : 'post');
+  // A restored draft keeps its own type; otherwise «Создать» may ask for a question.
+  const [kind, setKind] = useState<Kind>(
+    (initial ? initial.type : params.type) === 'question' ? 'question' : 'post',
+  );
   const [topics, setTopics] = useState<Topic[]>(initial?.topics ?? []);
   const [text, setText] = useState(initial?.text ?? '');
   const [idempotencyKey, setKey] = useState(newIdempotencyKey);

@@ -331,8 +331,6 @@ export const strings = {
       too_many: 'Выберите не больше четырёх тем.',
       gone: 'Цитируемая публикация недоступна — её удалили или скрыли.',
     },
-    write: 'Написать',
-    writeText: 'Пост, вопрос или план встречи — всё начинается здесь.',
     draft: {
       leaveTitle: 'Сохранить черновик?',
       leaveText: 'Он откроется, когда вы снова начнёте писать.',
@@ -427,7 +425,7 @@ export const strings = {
     settings: 'Настройки',
     moderator: 'Модерация',
     membership: 'Membership',
-    notifications: 'Активность',
+    activity: 'Активность',
     safety: 'Безопасность',
     messages: 'Сообщения',
   },
@@ -824,6 +822,15 @@ export const strings = {
     editCard: 'Редактировать карточку',
     ageCity: (age: number, city: string) => `${age} · ${city}`,
   },
+  create: {
+    title: 'Создать',
+    intro: 'С чего начнём разговор?',
+    options: {
+      post: { title: 'Пост', text: 'Мысль, история или наблюдение.' },
+      question: { title: 'Вопрос', text: 'Ответы придут в комментариях.' },
+      plan: { title: 'План', text: 'Встреча один на один в публичном месте.' },
+    },
+  },
   about: {
     title: 'О продукте',
     close: 'Закрыть',
@@ -884,20 +891,6 @@ export const strings = {
     errorTitle: 'Не удалось загрузить membership',
     errorText: 'Проверьте соединение и попробуйте ещё раз.',
     retry: 'Повторить',
-  },
-  placeholder: {
-    home: {
-      title: 'Главная',
-      text: 'Здесь появится лента разговоров, вопросов и планов.',
-    },
-    create: {
-      title: 'Создать',
-      text: 'Здесь можно будет создать пост или встречу один на один.',
-    },
-    profile: {
-      title: 'Профиль',
-      text: 'Здесь появятся ваша карточка, публикации, планы и настройки.',
-    },
   },
   uiKit: {
     title: 'Компоненты',

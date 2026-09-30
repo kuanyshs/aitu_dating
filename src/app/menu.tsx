@@ -56,10 +56,10 @@ export default function MenuScreen() {
             testID="menu-membership"
           />
           <MenuRow
-            label={strings.menu.notifications}
+            label={strings.menu.activity}
             // A tab: close the menu and switch to it, not a second copy of the tabs.
             onPress={() => router.dismissTo('/activity')}
-            testID="menu-notifications"
+            testID="menu-activity"
           />
         </>
       ) : null}

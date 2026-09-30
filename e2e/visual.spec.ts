@@ -403,6 +403,13 @@ test.describe('visual baselines @visual', () => {
     await snap(page, 'membership');
   });
 
+  test('Создать: the choice of what to publish', async ({ page }) => {
+    await joinAsMadina(page);
+    await page.goto('/create');
+    await expect(page.getByTestId('create-plan')).toBeVisible();
+    await snap(page, 'create');
+  });
+
   test('Активность: new events of a seed author', async ({ page }) => {
     await signInAs(page, 'm01');
     await page.goto('/activity');

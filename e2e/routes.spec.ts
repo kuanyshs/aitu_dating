@@ -34,7 +34,7 @@ test.describe('routes', () => {
   test('the Home menu reaches safety, membership and Активность', async ({ page }) => {
     await joinAsMadina(page);
     await page.getByTestId('home-menu').click();
-    await page.getByTestId('menu-notifications').click();
+    await page.getByTestId('menu-activity').click();
     await expect(page.getByTestId('screen-activity')).toBeVisible();
     await page.getByTestId('tab-index').click();
     for (const [item, screen] of [
