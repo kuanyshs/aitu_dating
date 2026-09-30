@@ -87,6 +87,7 @@ export const MyProfile = z.strictObject({
     tier: z.enum(membershipTiers),
     periodMonths: z.number().int(),
     status: z.enum(['active', 'expired']),
+    startsAt: IsoDateTime,
     endsAt: IsoDateTime,
   }),
 });

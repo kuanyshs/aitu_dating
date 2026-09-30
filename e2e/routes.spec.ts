@@ -2,28 +2,10 @@ import { expect, test } from '@playwright/test';
 
 import { joinAsMadina } from './helpers';
 
-/** Every surface on the screen map that is not built yet: a named stub with «Назад». */
-const stubs = [
-  { path: '/about', testID: 'screen-about', title: 'О продукте' },
-  { path: '/membership', testID: 'screen-membership', title: 'Membership' },
-] as const;
-
-test.describe('route stubs', () => {
+test.describe('routes', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'light', 'routing does not depend on the theme');
   });
-
-  for (const stub of stubs) {
-    test(`${stub.path} opens by link and closes`, async ({ page }) => {
-      await page.goto(stub.path);
-      const screen = page.getByTestId(stub.testID);
-      await expect(screen).toBeVisible();
-      await expect(screen.getByRole('heading', { name: stub.title })).toBeVisible();
-      await expect(page.getByTestId('tab-index')).toBeHidden();
-      await screen.getByTestId('stub-back').click();
-      await expect(page.getByTestId('screen-home')).toBeVisible();
-    });
-  }
 
   test('the feed opens a post and a plan, and «Назад» returns to it', async ({ page }) => {
     await page.goto('/');
@@ -64,7 +46,7 @@ test.describe('route stubs', () => {
       await expect(page.getByTestId(screen)).toBeVisible();
       await page
         .getByTestId(screen)
-        .getByTestId(screen === 'screen-safety' ? 'safety-close' : 'stub-back')
+        .getByTestId(screen === 'screen-safety' ? 'safety-close' : 'membership-close')
         .click();
       await expect(page.getByTestId('screen-home')).toBeVisible();
     }

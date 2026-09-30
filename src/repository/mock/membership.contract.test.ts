@@ -170,6 +170,7 @@ describe('renewal', () => {
       tier: 'paid',
       periodMonths: 3,
       status: 'active',
+      startsAt: '2026-09-26T12:00:00.000Z',
       endsAt: '2026-12-26T12:00:00.000Z',
     });
     expect(await repo.getSession()).toMatchObject({ accessState: 'ACTIVE_MEMBER' });

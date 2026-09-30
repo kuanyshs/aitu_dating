@@ -57,6 +57,7 @@ export default function RootLayout() {
                 <Stack.Screen name="chats/[id]" options={{ presentation: 'fullScreenModal' }} />
                 {/* Sheets. */}
                 <Stack.Screen name="safety" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="rules" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="membership" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="report" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="menu" options={{ presentation: 'modal' }} />

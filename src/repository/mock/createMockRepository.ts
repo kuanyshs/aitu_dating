@@ -548,6 +548,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         tier: record.membership.tier,
         periodMonths: record.membership.periodMonths,
         status: expired ? 'expired' : 'active',
+        startsAt: record.membership.startsAt,
         endsAt: record.membership.endsAt,
       },
     });

@@ -3,6 +3,7 @@ export { default as BadgeCheck } from 'lucide-react-native/icons/badge-check';
 export { default as Calendar } from 'lucide-react-native/icons/calendar';
 export { default as Check } from 'lucide-react-native/icons/check';
 export { default as ChevronLeft } from 'lucide-react-native/icons/chevron-left';
+export { default as ChevronRight } from 'lucide-react-native/icons/chevron-right';
 export { default as Clock } from 'lucide-react-native/icons/clock';
 export { default as Heart } from 'lucide-react-native/icons/heart';
 export { default as House } from 'lucide-react-native/icons/house';

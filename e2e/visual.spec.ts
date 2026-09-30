@@ -388,6 +388,21 @@ test.describe('visual baselines @visual', () => {
     await snap(page, 'chat-failed');
   });
 
+  test('О продукте: a guest', async ({ page }) => {
+    await page.goto('/about');
+    await expect(page.getByTestId('about-demo')).toBeVisible();
+    await snap(page, 'about');
+  });
+
+  test('Membership: a member with free verified', async ({ page }) => {
+    await joinAsMadina(page);
+    // Through the menu: a reload would restart the demo clock before the join.
+    await page.getByTestId('home-menu').click();
+    await page.getByTestId('menu-membership').click();
+    await expect(page.getByTestId('membership-left')).toHaveText('365 дней');
+    await snap(page, 'membership');
+  });
+
   test('Активность: new events of a seed author', async ({ page }) => {
     await signInAs(page, 'm01');
     await page.goto('/activity');
