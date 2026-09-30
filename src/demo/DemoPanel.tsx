@@ -133,6 +133,14 @@ export function DemoPanel() {
         testID="demo-network-error-once"
       />
       <ToggleRow
+        label={t.failedMessageOnce}
+        hint={t.failedMessageOnceHint}
+        value={flags.failedMessageOnce}
+        disabled={setFlags.isPending}
+        onChange={(failedMessageOnce) => setFlags.mutate({ failedMessageOnce })}
+        testID="demo-failed-message-once"
+      />
+      <ToggleRow
         label={t.offline}
         hint={t.offlineHint}
         value={flags.offline}

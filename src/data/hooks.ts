@@ -20,6 +20,7 @@ import type {
   PlanView,
   RespondToPlanInput,
   SetBlockInput,
+  SendMessageInput,
   MembershipSelection,
   PartialAnswers,
   PostView,
@@ -57,6 +58,8 @@ export const queryKeys = {
   myPlans: ['my-plans'] as const,
   myResponses: ['my-responses'] as const,
   chats: ['chats'] as const,
+  chat: (chatId: string) => ['chat', chatId] as const,
+  messages: (chatId: string) => ['messages', chatId] as const,
 };
 
 /** Everything a plan or an Отклик shows up in. */
@@ -556,6 +559,8 @@ export function useSetBlock() {
           'follows',
           'blocked',
           'chats',
+          'chat',
+          'messages',
           ...planKeys,
         ].map((key) => client.invalidateQueries({ queryKey: [key] })),
       ),
@@ -935,4 +940,56 @@ export function useChats(enabled: boolean) {
 export function useUnreadMessages(enabled: boolean): number {
   const chats = useChats(enabled);
   return (chats.data?.pages ?? []).flatMap((p) => p.items).reduce((n, c) => n + c.unreadCount, 0);
+}
+
+export function useChat(chatId: string, enabled: boolean) {
+  const repository = useRepository();
+  return useQuery({
+    queryKey: queryKeys.chat(chatId),
+    queryFn: () => repository.getChat({ chatId }),
+    enabled,
+  });
+}
+
+/** A chat's messages, pages going back in time. */
+export function useMessages(chatId: string, enabled: boolean) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: queryKeys.messages(chatId),
+    queryFn: ({ pageParam }) => repository.listMessages({ chatId, cursor: pageParam, limit: 20 }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
+  });
+}
+
+/** After a message changes, the chat, its messages and the list with its counts reload. */
+function useChatMutation<I, O>(chatId: string, run: (input: I) => Promise<O>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: run,
+    onSuccess: () =>
+      Promise.all(
+        [queryKeys.messages(chatId), queryKeys.chat(chatId), queryKeys.chats].map((queryKey) =>
+          client.invalidateQueries({ queryKey }),
+        ),
+      ),
+  });
+}
+
+export function useSendMessage(chatId: string) {
+  const repository = useRepository();
+  return useChatMutation(chatId, (input: Omit<SendMessageInput, 'chatId'>) =>
+    repository.sendMessage({ ...input, chatId }),
+  );
+}
+
+export function useRetryMessage(chatId: string) {
+  const repository = useRepository();
+  return useChatMutation(chatId, (messageId: string) => repository.retryMessage({ messageId }));
+}
+
+export function useMarkChatRead(chatId: string) {
+  const repository = useRepository();
+  return useChatMutation(chatId, () => repository.markChatRead({ chatId }));
 }

@@ -1,10 +1,10 @@
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
-import { meetingFormatLabels } from '@/catalogs';
 import type { ChatSummary } from '@/contracts';
-import { useChats, usePlan, useSession } from '@/data/hooks';
+import { useChats, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
+import { ContextLine } from '@/features/chat/ContextLine';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { AuthorRow } from '@/ui/components/AuthorRow';
 import { Avatar } from '@/ui/components/Avatar';
@@ -14,7 +14,7 @@ import { RenewBanner } from '@/ui/components/RenewBanner';
 import { Screen } from '@/ui/components/Screen';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
-import { formatPlanDate, formatRelative } from '@/ui/format';
+import { formatRelative } from '@/ui/format';
 import { ChevronLeft } from '@/ui/icons';
 import { strings } from '@/ui/strings';
 import { radius, spacing } from '@/ui/theme/tokens';
@@ -114,7 +114,7 @@ function ChatRow({ chat }: { chat: ChatSummary }) {
           author={chat.peer}
           time={last ? formatRelative(last.createdAt, clock) : undefined}
         />
-        <ContextLine chat={chat} />
+        <ContextLine chat={chat} testID={`chat-row-${chat.id}-context`} />
         <View style={styles.previewRow}>
           <AppText
             numberOfLines={1}
@@ -139,24 +139,6 @@ function ChatRow({ chat }: { chat: ChatSummary }) {
         </View>
       </View>
     </Pressable>
-  );
-}
-
-/** Where the chat started, in one line; a Встреча names its plan. */
-function ContextLine({ chat }: { chat: ChatSummary }) {
-  const clock = useClock();
-  const planId = chat.context.kind === 'plan_response' ? chat.context.planId : '';
-  const plan = usePlan(planId, !!planId);
-  const text =
-    planId && plan.data
-      ? t.meeting(
-          `${meetingFormatLabels[plan.data.format]}, ${formatPlanDate(plan.data.date, clock)}`,
-        )
-      : t.context[chat.context.kind];
-  return (
-    <AppText variant="caption" tone="textMuted" testID={`chat-row-${chat.id}-context`}>
-      {text}
-    </AppText>
   );
 }
 

@@ -371,4 +371,20 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('chat-row-chat2-context')).toBeVisible();
     await snap(page, 'chats-list');
   });
+
+  test('Чат: a message that did not go', async ({ page }) => {
+    await signInAs(page, 'm01');
+    await page.goto('/settings');
+    await page.getByTestId('demo-failed-message-once').click();
+    await expect(page.getByTestId('demo-failed-message-once')).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await page.goto('/chats/chat2');
+    await page.getByTestId('chat-input').fill('Это не дойдёт с первого раза');
+    await page.getByTestId('chat-send').click();
+    await expect(page.getByTestId('message-message-1-retry')).toBeVisible();
+    await expect(page.getByTestId('chat-context')).toBeVisible();
+    await snap(page, 'chat-failed');
+  });
 });

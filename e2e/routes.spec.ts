@@ -4,7 +4,6 @@ import { joinAsMadina } from './helpers';
 
 /** Every surface on the screen map that is not built yet: a named stub with «Назад». */
 const stubs = [
-  { path: '/chats/chat-1', testID: 'screen-chat', title: 'Чат' },
   { path: '/about', testID: 'screen-about', title: 'О продукте' },
   { path: '/membership', testID: 'screen-membership', title: 'Membership' },
   { path: '/notifications', testID: 'screen-notifications', title: 'Уведомления' },

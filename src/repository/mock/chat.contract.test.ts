@@ -58,7 +58,10 @@ describe('the chat list', () => {
     const store = createMemoryStore();
     const before = await on(store, 'm09').listMessages({ chatId: 'chat1' });
     expect(before.items.at(-1)).toMatchObject({ fromMe: true, status: 'sent' });
-    expect(before.items[0]).toMatchObject({ fromMe: true, status: 'read' });
+    expect(before.items.find((m) => m.id === 'chat1-m21')).toMatchObject({
+      fromMe: true,
+      status: 'read',
+    });
 
     const read = await on(store, 'm01').markChatRead({ chatId: 'chat1' });
     expect(read.unreadCount).toBe(0);
@@ -69,13 +72,13 @@ describe('the chat list', () => {
   it('pages back in time, older messages first inside a page', async () => {
     const repo = on(createMemoryStore(), 'm01');
     const first = MessagePage.parse(await repo.listMessages({ chatId: 'chat1', limit: 2 }));
-    expect(ids(first)).toEqual(['chat1-m4', 'chat1-m5']);
+    expect(ids(first)).toEqual(['chat1-m24', 'chat1-m25']);
     const second = await repo.listMessages({
       chatId: 'chat1',
       limit: 2,
       cursor: first.nextCursor,
     });
-    expect(ids(second)).toEqual(['chat1-m2', 'chat1-m3']);
+    expect(ids(second)).toEqual(['chat1-m22', 'chat1-m23']);
   });
 
   it('is for members; a stranger to the chat does not find it', async () => {
