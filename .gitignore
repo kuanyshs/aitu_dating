@@ -10,3 +10,6 @@ test-results/
 /android
 .DS_Store
 .env*.local
+
+# Screens for the product guide, embedded into docs/product-guide.html
+docs/guide-shots/

@@ -68,17 +68,18 @@ pnpm web
 
 ## Команды для разработки
 
-| Команда                   | Что делает                                 |
-| ------------------------- | ------------------------------------------ |
-| `pnpm web` / `pnpm start` | dev-сервер для браузера / для Expo Go      |
-| `pnpm check`              | проверка типов TypeScript                  |
-| `pnpm lint`               | ESLint и проверка форматирования           |
-| `pnpm format`             | отформатировать код                        |
-| `pnpm test`               | unit-тесты (Vitest)                        |
-| `pnpm build:web`          | статическая web-сборка в `dist/`           |
-| `pnpm e2e`                | Playwright-тесты по готовой сборке `dist/` |
-| `pnpm e2e:full`           | сборка + Playwright-тесты                  |
-| `pnpm e2e:visual`         | сравнение с визуальными эталонами          |
+| Команда                   | Что делает                                                |
+| ------------------------- | --------------------------------------------------------- |
+| `pnpm web` / `pnpm start` | dev-сервер для браузера / для Expo Go                     |
+| `pnpm check`              | проверка типов TypeScript                                 |
+| `pnpm lint`               | ESLint и проверка форматирования                          |
+| `pnpm format`             | отформатировать код                                       |
+| `pnpm test`               | unit-тесты (Vitest)                                       |
+| `pnpm build:web`          | статическая web-сборка в `dist/`                          |
+| `pnpm e2e`                | Playwright-тесты по готовой сборке `dist/`                |
+| `pnpm e2e:full`           | сборка + Playwright-тесты                                 |
+| `pnpm e2e:visual`         | сравнение с визуальными эталонами                         |
+| `pnpm guide`              | пересобрать `docs/product-guide.html` со свежими экранами |
 
 Перед первым `pnpm e2e` на своём компьютере установите браузер: `pnpm exec playwright install chromium`.
 
