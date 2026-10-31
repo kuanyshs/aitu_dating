@@ -66,6 +66,10 @@ _Avoid_: profile card, анкета (the questionnaire is a different thing)
 The seven mandatory single-choice questions answered during onboarding; finishing it publishes the **Карточка**.
 _Avoid_: survey, onboarding form
 
+**Фильтры ленты** (`FeedFilters`):
+The **Анкета** questions used as filters of the «Для тебя» feed: any number of options per question, a person matches a question when their answer is one of the chosen options. Anyone matching at least one chosen question is in the feed, most matched questions first, then newest. A **Участник** starts from their own answers and keeps the filters with their account; a **Гость** starts with none and keeps them on the device. A **Гость** may filter by every question, though the authors stay in the **Безопасный вид** and the answers themselves are never shown.
+_Avoid_: preferences, matching settings
+
 **Намерение** (`DatingIntent`):
 What a person is looking for in the community: общение, свидания, дружба or новые впечатления.
 _Avoid_: intent (unqualified), goal
