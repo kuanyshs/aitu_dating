@@ -24,7 +24,7 @@ test.describe('expired membership', () => {
 
     await page.getByTestId('tab-index').click();
     await expect(page.getByTestId('home-renew-banner')).toBeVisible();
-    await expect(page.getByTestId('home-messages')).toHaveCount(0);
+    await expect(page.getByTestId('home-member')).toHaveCount(0);
     await expectNoMemberNames(page);
     await testInfo.attach(`home-expired-${testInfo.project.name}`, {
       body: await page.screenshot(),
@@ -43,7 +43,7 @@ test.describe('expired membership', () => {
     });
     await page.getByTestId('renew-pay').click();
 
-    await expect(page.getByTestId('home-messages')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('home-member')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('toast')).toContainText('Membership продлён');
     await expect(page.getByTestId('access-questionnaire')).toHaveCount(0);
     await expectMemberNames(page);
@@ -86,7 +86,7 @@ test.describe('expired membership', () => {
     await expect(page.getByTestId('renew-error')).toBeVisible({ timeout: 10_000 });
     await page.getByTestId('renew-retry').click();
     await expect(page.getByTestId('screen-home')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await expect(page.getByTestId('home-member')).toBeVisible();
   });
 
   test('«Восстановить membership» brings the member mode back', async ({ page }) => {

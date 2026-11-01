@@ -38,7 +38,7 @@ import { RenewBanner } from '@/ui/components/RenewBanner';
 import { Screen } from '@/ui/components/Screen';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
-import { Search as SearchIcon, X } from '@/ui/icons';
+import { ChevronLeft, Search as SearchIcon, X } from '@/ui/icons';
 import { strings } from '@/ui/strings';
 import { useTheme } from '@/ui/theme/ThemeProvider';
 import { radius, spacing, typography } from '@/ui/theme/tokens';
@@ -63,6 +63,7 @@ type PlanFilters = { city?: City; goal?: MeetingGoal; format?: MeetingFormat };
  */
 export default function SearchScreen() {
   const styles = useStyles();
+  const router = useRouter();
   const { colors } = useTheme();
   const session = useSession();
   const state = session.data?.accessState;
@@ -87,10 +88,18 @@ export default function SearchScreen() {
     list.includes(item) ? list.filter((i) => i !== item) : [...list, item];
 
   return (
-    <Screen testID="screen-search">
-      <AppText variant="display" role="heading">
-        {t.title}
-      </AppText>
+    <Screen testID="screen-search" withTabBar={false}>
+      <View style={styles.header}>
+        <IconAction
+          icon={ChevronLeft}
+          accessibilityLabel={t.back}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          testID="search-back"
+        />
+        <AppText variant="display" role="heading">
+          {t.title}
+        </AppText>
+      </View>
 
       <View style={styles.field}>
         <SearchIcon size={18} color={colors.textMuted} aria-hidden />
@@ -458,6 +467,7 @@ function PlanResults({ text, filters }: { text: string; filters: PlanFilters }) 
 }
 
 const useStyles = createStyles((colors) => ({
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginLeft: -spacing.sm },
   field: {
     flexDirection: 'row',
     alignItems: 'center',

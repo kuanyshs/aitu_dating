@@ -29,7 +29,7 @@ test.describe('Ограничение', () => {
     await page.getByTestId('screen-restricted').getByTestId('demo-unrestrict').click();
     await expect(page.getByTestId('screen-restricted')).toHaveCount(0);
     await page.goto('/');
-    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await expect(page.getByTestId('home-member')).toBeVisible();
     await expect(page.getByTestId('author-name').first()).toBeVisible();
   });
 

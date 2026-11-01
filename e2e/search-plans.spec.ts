@@ -30,7 +30,8 @@ test.describe('Поиск: планы', () => {
 
   test('a member narrows by city and format; nothing found reads so', async ({ page }) => {
     await joinAsMadina(page);
-    await page.getByTestId('tab-search').click();
+    await page.getByTestId('feed-tab-for_you').click();
+    await page.getByTestId('home-search').click();
     await page.getByTestId('search-kind-plans').click();
     await page.getByTestId('search-filters').click();
     await page.getByTestId('search-plan-city-karaganda').click();

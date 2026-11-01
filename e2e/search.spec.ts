@@ -9,13 +9,26 @@ const m01 = seed.members.find((m) => m.id === 'm01')!;
 const p01 = seed.posts.find((p) => p.id === 'p01')!;
 
 async function openSearch(page: Page) {
-  await page.getByTestId('tab-search').click();
+  await page.getByTestId('feed-tab-for_you').click();
+  await page.getByTestId('home-search').click();
   await expect(page.getByTestId('screen-search')).toBeVisible();
 }
 
 test.describe('Поиск', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'light', 'layout-independent rule');
+  });
+
+  test('Поиск opens from «Для тебя» only, and «‹» returns to Главная', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('tab-search')).toHaveCount(0);
+    await page.getByTestId('feed-tab-popular').click();
+    await expect(page.getByTestId('home-search')).toHaveCount(0);
+    await page.getByTestId('feed-tab-for_you').click();
+    await page.getByTestId('home-search').click();
+    await expect(page.getByTestId('screen-search')).toBeVisible();
+    await page.getByTestId('search-back').click();
+    await expect(page.getByTestId('screen-home')).toBeVisible();
   });
 
   test('a member finds people: nearby first, then by name, and opens a profile', async ({

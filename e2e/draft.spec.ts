@@ -4,7 +4,7 @@ import { joinAsMadina, showFeed } from './helpers';
 
 async function openEditor(page: Page) {
   // The member header shows the session has loaded before the tab is tapped.
-  await expect(page.getByTestId('home-messages')).toBeVisible();
+  await expect(page.getByTestId('home-member')).toBeVisible();
   await page.getByTestId('tab-create').click();
   await expect(page.getByTestId('compose-input')).toBeVisible();
 }

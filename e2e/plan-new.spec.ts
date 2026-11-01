@@ -26,7 +26,7 @@ test.describe('Новый план', () => {
     page,
   }) => {
     await joinAsMadina(page);
-    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await expect(page.getByTestId('home-member')).toBeVisible();
     await page.getByTestId('tab-create').click();
     await page.getByTestId('compose-type-plan').click();
     await expect(page.getByTestId('new-plan-city-karaganda')).toHaveAttribute(

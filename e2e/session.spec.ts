@@ -25,7 +25,7 @@ test.describe('logout and login', () => {
 
     await page.reload();
     await page.getByRole('button', { name: 'Войти в зарегистрированный режим' }).click();
-    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await expect(page.getByTestId('home-member')).toBeVisible();
     await expectMemberNames(page);
     await expect(page.getByTestId('access-questionnaire')).toHaveCount(0);
 

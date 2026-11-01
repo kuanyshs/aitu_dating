@@ -60,7 +60,7 @@ test.describe('onboarding', () => {
     await expect(page.getByTestId('author-name').first()).toBeVisible();
     await expect(page.getByTestId('feed-tab-following')).toBeVisible();
     await expect(page.getByTestId('home-join')).toHaveCount(0);
-    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await expect(page.getByTestId('home-member')).toBeVisible();
 
     // The member feed replaces the guest one after a refetch; wait for real names.
     await expect

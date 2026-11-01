@@ -27,7 +27,7 @@ const t = strings.activity;
 const categories = activityCategories.filter((c) => c !== 'mentions');
 
 /**
- * «Активность»: what happened around the member, newest first, by category. Opening the
+ * «Уведомления»: what happened around the member, newest first, by category. Opening the
  * tab marks everything so far as seen; for the rest of the visit whatever came after the
  * previous look stays marked as new, in any category.
  */

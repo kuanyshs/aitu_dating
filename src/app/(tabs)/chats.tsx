@@ -8,14 +8,14 @@ import { ContextLine } from '@/features/chat/ContextLine';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { AuthorRow } from '@/ui/components/AuthorRow';
 import { Avatar } from '@/ui/components/Avatar';
-import { IconAction, SecondaryButton } from '@/ui/components/buttons';
+import { SecondaryButton } from '@/ui/components/buttons';
 import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
 import { RenewBanner } from '@/ui/components/RenewBanner';
 import { Screen } from '@/ui/components/Screen';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
 import { formatRelative } from '@/ui/format';
-import { ChevronLeft } from '@/ui/icons';
+import { badgeText } from '@/ui/navigation/FloatingTabBar';
 import { strings } from '@/ui/strings';
 import { radius, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
@@ -27,26 +27,15 @@ const t = strings.chats;
  * started and how many messages wait. Expired members read them and are offered renewal.
  */
 export default function ChatsScreen() {
-  const styles = useStyles();
-  const router = useRouter();
   const session = useSession();
   const state = session.data?.accessState;
   const isMember = state === 'ACTIVE_MEMBER' || state === 'ACTIVE_MEMBER_EXPIRED';
 
   return (
-    <Screen testID="screen-chats" withTabBar={false}>
-      <View style={styles.header}>
-        <IconAction
-          icon={ChevronLeft}
-          accessibilityLabel={t.back}
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          testID="chats-back"
-        />
-        <AppText variant="bodyStrong" role="heading" style={styles.title}>
-          {t.title}
-        </AppText>
-        <View style={styles.spacer} />
-      </View>
+    <Screen testID="screen-chats">
+      <AppText variant="display" role="heading">
+        {t.title}
+      </AppText>
       {state === 'ACTIVE_MEMBER_EXPIRED' ? <RenewBanner testID="chats-renew" /> : null}
       {isMember ? (
         <ChatList />
@@ -132,7 +121,7 @@ function ChatRow({ chat }: { chat: ChatSummary }) {
               testID={`chat-row-${chat.id}-unread`}
             >
               <AppText variant="caption" tone="onPrimary">
-                {String(chat.unreadCount)}
+                {badgeText(chat.unreadCount)}
               </AppText>
             </View>
           ) : null}
@@ -143,9 +132,6 @@ function ChatRow({ chat }: { chat: ChatSummary }) {
 }
 
 const useStyles = createStyles((colors) => ({
-  header: { flexDirection: 'row', alignItems: 'center', marginLeft: -spacing.sm },
-  title: { flex: 1, textAlign: 'center' },
-  spacer: { width: 44 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

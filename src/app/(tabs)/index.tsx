@@ -12,12 +12,12 @@ import {
   type PostView,
 } from '@/contracts';
 import {
+  useAccessFlow,
   useDemoFlags,
   useFeedFilters,
   useHomeFeed,
   useLogin,
   useSession,
-  useUnreadMessages,
 } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { usePostActions } from '@/features/post/usePostActions';
@@ -29,7 +29,7 @@ import { PostRow } from '@/ui/components/PostRow';
 import { RenewBanner } from '@/ui/components/RenewBanner';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
-import { Menu, MessageCircle, Search, SlidersHorizontal } from '@/ui/icons';
+import { Menu, Search, SlidersHorizontal } from '@/ui/icons';
 import { useTabBarInset } from '@/ui/navigation/tabBarInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -52,10 +52,12 @@ export default function HomeScreen() {
 
   const session = useSession();
   const isMember = session.data?.accessState === 'ACTIVE_MEMBER';
-  const unread = useUnreadMessages(isMember);
   const isExpired = session.data?.accessState === 'ACTIVE_MEMBER_EXPIRED';
 
   const canLogin = !!session.data?.canLogin;
+  // A guest who chose a Passport and left mid-way picks up where they stopped.
+  const accessFlow = useAccessFlow(session.data?.accessState === 'GUEST_PREVIEW' && !canLogin);
+  const joinStarted = !!accessFlow.data?.candidate;
   const login = useLogin();
   const toast = useToast((s) => s.show);
 
@@ -126,23 +128,7 @@ export default function HomeScreen() {
           </AppText>
         </View>
         {isMember ? (
-          <View>
-            <IconAction
-              icon={MessageCircle}
-              accessibilityLabel={
-                unread ? strings.home.messagesUnread(unread) : strings.home.messages
-              }
-              onPress={() => router.push('/chats')}
-              testID="home-messages"
-            />
-            {unread ? (
-              <View style={styles.unread} pointerEvents="none" testID="home-messages-unread">
-                <AppText variant="caption" tone="onPrimary">
-                  {String(unread)}
-                </AppText>
-              </View>
-            ) : null}
-          </View>
+          <View style={styles.spacer} testID="home-member" />
         ) : isExpired ? (
           <PrimaryButton
             label={strings.renew.short}
@@ -167,7 +153,7 @@ export default function HomeScreen() {
           />
         ) : (
           <PrimaryButton
-            label={strings.home.join}
+            label={joinStarted ? strings.home.continueJoin : strings.home.join}
             onPress={openAccess}
             testID="home-join"
             style={styles.join}
@@ -366,18 +352,7 @@ const useStyles = createStyles((colors) => ({
   brand: { flex: 1, alignItems: 'center' },
   banner: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   join: { minHeight: 40, paddingHorizontal: spacing.lg },
-  unread: {
-    position: 'absolute',
-    top: 2,
-    right: 0,
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
+  spacer: { width: minTouch, height: minTouch },
   chips: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
   contentRow: {
     flexDirection: 'row',

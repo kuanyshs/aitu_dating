@@ -171,9 +171,13 @@ export function useResetDemo() {
   });
 }
 
-export function useAccessFlow() {
+export function useAccessFlow(enabled = true) {
   const repository = useRepository();
-  return useQuery({ queryKey: queryKeys.accessFlow, queryFn: () => repository.getAccessFlow() });
+  return useQuery({
+    queryKey: queryKeys.accessFlow,
+    queryFn: () => repository.getAccessFlow(),
+    enabled,
+  });
 }
 
 export function usePassportCandidates() {

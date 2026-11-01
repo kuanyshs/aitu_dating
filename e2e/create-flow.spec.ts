@@ -16,7 +16,7 @@ test('a question leads the feed, is quoted, and the quote outlives it', async ({
   const byText = (text: string) => home.getByRole('article').filter({ hasText: text });
 
   // A question with a topic, first in «Для вас».
-  await expect(page.getByTestId('home-messages')).toBeVisible();
+  await expect(page.getByTestId('home-member')).toBeVisible();
   await page.getByTestId('tab-create').click();
   await page.getByTestId('compose-type-question').click();
   await page.getByTestId('compose-topic-meetings').click();

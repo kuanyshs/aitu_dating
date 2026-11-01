@@ -55,15 +55,20 @@ test.describe('access flow up to membership', () => {
     await expect(page.getByTestId('access-profile')).toBeVisible();
   });
 
-  test('closing mid-flow keeps progress and «Вступить» resumes it', async ({ page }) => {
+  test('closing mid-flow keeps progress and «Продолжить вступление» resumes it', async ({
+    page,
+  }) => {
     await page.goto('/');
+    await expect(page.getByTestId('home-join')).toHaveText('Вступить');
     await page.getByTestId('home-join').click();
     await choosePassport(page, 'passport-3');
     await expect(page.getByTestId('access-rules')).toBeVisible();
     await page.getByTestId('access-close').click();
     await expect(page.getByTestId('screen-home')).toBeVisible();
+    await expect(page.getByTestId('home-join')).toHaveText('Продолжить вступление');
 
     await page.reload();
+    await expect(page.getByTestId('home-join')).toHaveText('Продолжить вступление');
     await page.getByTestId('home-join').click();
     await expect(page.getByTestId('access-rules')).toBeVisible();
     await page.getByTestId('access-back').click();

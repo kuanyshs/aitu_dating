@@ -9,7 +9,7 @@ const byText = (page: Page, text: string) =>
 
 async function openEditor(page: Page) {
   // The member footer of Home shows the session has loaded before the tab is tapped.
-  await expect(page.getByTestId('home-messages')).toBeVisible();
+  await expect(page.getByTestId('home-member')).toBeVisible();
   await page.getByTestId('tab-create').click();
   await expect(page.getByTestId('screen-compose')).toBeVisible();
 }

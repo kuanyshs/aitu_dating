@@ -35,8 +35,8 @@ test.describe('Чат', () => {
     await page.getByTestId('chat-back').click();
     await expect(page.getByTestId('chat-row-chat1-unread')).toHaveCount(0);
     await page.goto('/');
-    await expect(page.getByTestId('home-messages')).toBeVisible();
-    await expect(page.getByTestId('home-messages-unread')).toHaveCount(0);
+    await expect(page.getByTestId('home-member')).toBeVisible();
+    await expect(page.getByTestId('tab-chats-count')).toHaveCount(0);
 
     // m09 now sees their last message as read.
     await openChat(page, 'm09', 'chat1');

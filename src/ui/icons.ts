@@ -1,4 +1,5 @@
 // Per-icon imports keep Metro from bundling the whole lucide set.
+export { default as Bell } from 'lucide-react-native/icons/bell';
 export { default as BadgeCheck } from 'lucide-react-native/icons/badge-check';
 export { default as Calendar } from 'lucide-react-native/icons/calendar';
 export { default as Check } from 'lucide-react-native/icons/check';

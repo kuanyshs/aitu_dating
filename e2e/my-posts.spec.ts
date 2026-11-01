@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { joinAsMadina, signInAsSeedAuthor } from './helpers';
 
 async function publish(page: Page, text: string) {
-  await expect(page.getByTestId('home-messages')).toBeVisible();
+  await expect(page.getByTestId('home-member')).toBeVisible();
   await page.getByTestId('tab-create').click();
   await page.getByTestId('compose-input').fill(text);
   await page.getByTestId('compose-submit').click();

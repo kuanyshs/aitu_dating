@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
 
-import { useHasNewActivity, useSession } from '@/data/hooks';
+import { useHasNewActivity, useSession, useUnreadMessages } from '@/data/hooks';
 import { socialGate } from '@/features/post/socialGate';
 
 import { FloatingTabBar } from '@/ui/navigation/FloatingTabBar';
@@ -12,16 +12,18 @@ export default function TabsLayout() {
   const { colors } = useTheme();
   const router = useRouter();
   const accessState = useSession().data?.accessState;
-  const hasNew = useHasNewActivity(
-    accessState === 'ACTIVE_MEMBER' || accessState === 'ACTIVE_MEMBER_EXPIRED',
-  );
+  const hasCard = accessState === 'ACTIVE_MEMBER' || accessState === 'ACTIVE_MEMBER_EXPIRED';
+  const hasNew = useHasNewActivity(hasCard);
+  const unread = useUnreadMessages(hasCard);
   return (
     <Tabs
-      tabBar={(props) => <FloatingTabBar {...props} dots={{ activity: hasNew }} />}
+      tabBar={(props) => (
+        <FloatingTabBar {...props} dots={{ activity: hasNew }} counts={{ chats: unread }} />
+      )}
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.bg } }}
     >
       <Tabs.Screen name="index" options={{ title: strings.tabs.index }} />
-      <Tabs.Screen name="search" options={{ title: strings.tabs.search }} />
+      <Tabs.Screen name="chats" options={{ title: strings.tabs.chats }} />
       <Tabs.Screen
         name="create"
         options={{ title: strings.tabs.create }}

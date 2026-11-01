@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
-import { useLogout, useMyProfile, useProfile, useSession } from '@/data/hooks';
+import { useLogout, useMyProfile, useProfile, useSession, useUnreadMessages } from '@/data/hooks';
 import { MyPlans } from '@/features/profile/MyPlans';
 import { MyPosts } from '@/features/profile/MyPosts';
 import { ProfileStats } from '@/features/profile/ProfileStats';
@@ -41,6 +41,7 @@ export default function ProfileScreen() {
   const me = useMyProfile(isMember);
   const own = useProfile(me.data?.id ?? '', { enabled: !!me.data });
   const router = useRouter();
+  const unread = useUnreadMessages(isMember);
   const logout = useLogout();
   const toast = useToast((s) => s.show);
   if (!isMember) {
@@ -75,6 +76,11 @@ export default function ProfileScreen() {
         label={strings.profile.editCard}
         onPress={() => router.push('/card-edit')}
         testID="profile-edit-card"
+      />
+      <TextButton
+        label={unread ? strings.profile.messagesUnread(unread) : strings.profile.messages}
+        onPress={() => router.navigate('/chats')}
+        testID="profile-messages"
       />
       {me.data ? <MyPlans canCreate={!isExpired} /> : null}
       {me.data ? <MyPosts memberId={me.data.id} canWrite={!isExpired} /> : null}

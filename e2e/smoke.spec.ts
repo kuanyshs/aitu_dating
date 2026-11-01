@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { palettes } from '../src/ui/theme/palette';
 import { strings } from '../src/ui/strings';
 
-const tabOrder = ['index', 'search', 'create', 'activity', 'profile'] as const;
+const tabOrder = ['index', 'chats', 'create', 'activity', 'profile'] as const;
 
 function toRgb(hex: string): string {
   const n = parseInt(hex.slice(1), 16);
@@ -41,9 +41,9 @@ test('home opens with five tabs in the current theme', async ({ page }, testInfo
 
 test('tab bar navigates between tabs', async ({ page }) => {
   await page.goto('/');
-  await page.getByTestId('tab-search').click();
-  await expect(page.getByTestId('screen-search')).toBeVisible();
-  await expect(page.getByTestId('tab-search')).toHaveAttribute('aria-selected', 'true');
+  await page.getByTestId('tab-chats').click();
+  await expect(page.getByTestId('screen-chats')).toBeVisible();
+  await expect(page.getByTestId('tab-chats')).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByTestId('tab-index')).toHaveAttribute('aria-selected', 'false');
 });
 

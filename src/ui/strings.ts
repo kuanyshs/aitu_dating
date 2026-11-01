@@ -12,9 +12,9 @@ export const strings = {
   },
   tabs: {
     index: 'Главная',
-    search: 'Поиск',
+    chats: 'Сообщения',
     create: 'Создать',
-    activity: 'Активность',
+    activity: 'Уведомления',
     profile: 'Профиль',
   },
   session: {
@@ -212,6 +212,7 @@ export const strings = {
   },
   search: {
     title: 'Поиск',
+    back: 'Назад',
     placeholder: {
       people: 'Имя, интерес или слово из «О себе»',
       posts: 'Слово из публикации',
@@ -425,9 +426,8 @@ export const strings = {
     settings: 'Настройки',
     moderator: 'Модерация',
     membership: 'Membership',
-    activity: 'Активность',
+    activity: 'Уведомления',
     safety: 'Безопасность',
-    messages: 'Сообщения',
   },
   home: {
     brand: 'aitu dating',
@@ -554,7 +554,7 @@ export const strings = {
     more: 'Показать ещё',
   },
   activity: {
-    title: 'Активность',
+    title: 'Уведомления',
     categoriesLabel: 'Что показать',
     kind: {
       follow: 'Подписка на вас',
@@ -577,7 +577,7 @@ export const strings = {
     errorText: 'Проверьте соединение и попробуйте ещё раз.',
     retry: 'Повторить',
     more: 'Показать ещё',
-    hasNew: 'Активность, есть новое',
+    hasNew: 'Уведомления, есть новое',
   },
   chat: {
     write: 'Написать',
@@ -852,6 +852,8 @@ export const strings = {
   },
   profile: {
     verified: 'verified',
+    messages: 'Сообщения',
+    messagesUnread: (n: number) => `Сообщения · ${n > 99 ? '99+' : n}`,
     about: 'О себе',
     intent: 'Ищу',
     interests: 'Интересы',

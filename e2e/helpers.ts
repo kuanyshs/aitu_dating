@@ -29,7 +29,7 @@ export async function joinAsMadina(page: Page) {
     await page.getByTestId(`question-${question}-${answer}`).click();
   }
   await page.getByTestId('questionnaire-create').click();
-  await expect(page.getByTestId('home-messages')).toBeVisible();
+  await expect(page.getByTestId('home-member')).toBeVisible();
 }
 
 export async function expectNoMemberNames(page: Page) {

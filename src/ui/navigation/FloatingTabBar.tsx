@@ -1,7 +1,8 @@
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { Heart, House, Plus, Search, UserRound, type Icon } from '@/ui/icons';
+import { Bell, House, MessageCircle, Plus, UserRound, type Icon } from '@/ui/icons';
+import { AppText } from '@/ui/components/Text';
 import { strings } from '@/ui/strings';
 import { createStyles } from '@/ui/theme/useStyles';
 import { useTheme } from '@/ui/theme/ThemeProvider';
@@ -13,9 +14,9 @@ export type TabName = keyof typeof strings.tabs;
 
 const icons: Record<TabName, Icon> = {
   index: House,
-  search: Search,
+  chats: MessageCircle,
   create: Plus,
-  activity: Heart,
+  activity: Bell,
   profile: UserRound,
 };
 
@@ -24,11 +25,15 @@ function isTabName(name: string): name is TabName {
 }
 
 type Props = BottomTabBarProps & {
-  /** Tabs with something new, marked with a dot (Активность). */
+  /** Tabs with something new, marked with a dot (Уведомления). */
   dots?: Partial<Record<TabName, boolean>>;
+  /** Tabs with a count, such as unread messages; above 99 it reads «99+». */
+  counts?: Partial<Record<TabName, number>>;
 };
 
-export function FloatingTabBar({ state, navigation, dots }: Props) {
+export const badgeText = (count: number) => (count > 99 ? '99+' : String(count));
+
+export function FloatingTabBar({ state, navigation, dots, counts }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
@@ -43,6 +48,13 @@ export function FloatingTabBar({ state, navigation, dots }: Props) {
           const name = route.name;
           const focused = state.index === index;
           const TabIcon = icons[name];
+          const count = counts?.[name] ?? 0;
+          const label =
+            dots?.[name] && name === 'activity'
+              ? strings.activity.hasNew
+              : count && name === 'chats'
+                ? strings.home.messagesUnread(count)
+                : strings.tabs[name];
 
           const onPress = () => {
             const event = navigation.emit({
@@ -63,9 +75,7 @@ export function FloatingTabBar({ state, navigation, dots }: Props) {
             <Pressable
               key={route.key}
               role="tab"
-              aria-label={
-                dots?.[name] && name === 'activity' ? strings.activity.hasNew : strings.tabs[name]
-              }
+              aria-label={label}
               aria-selected={focused}
               testID={`tab-${name}`}
               onPress={onPress}
@@ -79,6 +89,13 @@ export function FloatingTabBar({ state, navigation, dots }: Props) {
                   strokeWidth={focused ? iconStroke.active : iconStroke.default}
                 />
                 {dots?.[name] ? <View style={styles.dot} testID={`tab-${name}-dot`} /> : null}
+                {count ? (
+                  <View style={styles.badge} pointerEvents="none" testID={`tab-${name}-count`}>
+                    <AppText variant="caption" tone="onPrimary" style={styles.badgeText}>
+                      {badgeText(count)}
+                    </AppText>
+                  </View>
+                ) : null}
               </View>
             </Pressable>
           );
@@ -126,6 +143,19 @@ const useStyles = createStyles((colors) => ({
   pillActive: {
     backgroundColor: colors.tabActive,
   },
+  badge: {
+    position: 'absolute',
+    top: 2,
+    left: tabBarLayout.pillWidth / 2 + 2,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  badgeText: { fontSize: 11, lineHeight: 14 },
   dot: {
     position: 'absolute',
     top: 6,

@@ -75,7 +75,7 @@ test.describe('visual baselines @visual', () => {
     await snap(page, 'questionnaire-7of7');
 
     await page.getByTestId('questionnaire-create').click();
-    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await expect(page.getByTestId('home-member')).toBeVisible();
     await expectMemberNames(page);
     await snap(page, 'home-member');
 
@@ -167,7 +167,7 @@ test.describe('visual baselines @visual', () => {
   test('Создание: the empty editor', async ({ page }) => {
     test.setTimeout(90_000);
     await joinAsMadina(page);
-    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await expect(page.getByTestId('home-member')).toBeVisible();
     await page.getByTestId('tab-create').click();
     await expect(page.getByTestId('compose-avatar')).toBeVisible();
     await expect(page.getByTestId('compose-submit')).toHaveAttribute('aria-disabled', 'true');
@@ -204,7 +204,7 @@ test.describe('visual baselines @visual', () => {
       ['post', 'Первый пост Мадины'],
       ['question', 'Где в Алматы тихо поговорить?'],
     ] as const) {
-      await expect(page.getByTestId('home-messages')).toBeVisible();
+      await expect(page.getByTestId('home-member')).toBeVisible();
       await page.getByTestId('tab-create').click();
       await page.getByTestId(`compose-type-${kind}`).click();
       await page.getByTestId('compose-input').fill(text);
@@ -305,7 +305,8 @@ test.describe('visual baselines @visual', () => {
   test('Поиск: people nearby', async ({ page }) => {
     test.setTimeout(90_000);
     await joinAsMadina(page);
-    await page.getByTestId('tab-search').click();
+    await page.getByTestId('feed-tab-for_you').click();
+    await page.getByTestId('home-search').click();
     await expect(page.getByTestId('search-nearby')).toBeVisible();
     await expect(page.getByTestId('search-results').getByRole('link').first()).toBeVisible();
     await snap(page, 'search-people');

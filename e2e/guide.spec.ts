@@ -124,7 +124,7 @@ test.describe('guide @guide', () => {
     await page.getByTestId('question-dateFormat-walk').click();
     await shot(page, 'join-questionnaire');
     await page.getByTestId('questionnaire-create').click();
-    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await expect(page.getByTestId('home-member')).toBeVisible();
     await expect(page.getByTestId('author-name').first()).toBeVisible();
     await shot(page, 'member-home');
   });
@@ -191,7 +191,7 @@ test.describe('guide @guide', () => {
   // 4. Creating
   test('compose-question', async ({ page }) => {
     await joinAsMadina(page);
-    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await expect(page.getByTestId('home-member')).toBeVisible();
     await page.getByTestId('tab-create').click();
     await page.getByTestId('compose-type-question').click();
     await page.getByTestId('compose-topic-city').click();
@@ -213,7 +213,7 @@ test.describe('guide @guide', () => {
 
   test('compose-draft', async ({ page }) => {
     await joinAsMadina(page);
-    await expect(page.getByTestId('home-messages')).toBeVisible();
+    await expect(page.getByTestId('home-member')).toBeVisible();
     await page.getByTestId('tab-create').click();
     await page.getByTestId('compose-input').fill('Черновик: о чём поговорить на первой встрече');
     await page.getByTestId('compose-cancel').click();
@@ -273,7 +273,8 @@ test.describe('guide @guide', () => {
   // 6. Search
   test('search-people', async ({ page }) => {
     await joinAsMadina(page);
-    await page.getByTestId('tab-search').click();
+    await page.getByTestId('feed-tab-for_you').click();
+    await page.getByTestId('home-search').click();
     await expect(page.getByTestId('search-results').getByRole('link').first()).toBeVisible();
     await shot(page, 'search-people');
   });

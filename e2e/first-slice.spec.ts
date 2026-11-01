@@ -51,7 +51,7 @@ test('guest → paid member → «Выйти» → «Войти» → expiry →
   await expect(page.getByTestId('questionnaire-progress')).toHaveText('Вопрос 7 из 7');
   await page.getByTestId('questionnaire-create').click();
 
-  await expect(page.getByTestId('home-messages')).toBeVisible();
+  await expect(page.getByTestId('home-member')).toBeVisible();
   await expect(page.getByTestId('toast')).toBeVisible();
   await expectMemberNames(page);
   await page.getByTestId('tab-profile').click();
@@ -65,7 +65,7 @@ test('guest → paid member → «Выйти» → «Войти» → expiry →
   await expectNoMemberNames(page);
   await page.reload();
   await page.getByRole('button', { name: 'Войти в зарегистрированный режим' }).click();
-  await expect(page.getByTestId('home-messages')).toBeVisible();
+  await expect(page.getByTestId('home-member')).toBeVisible();
   await expect(page.getByTestId('access-questionnaire')).toHaveCount(0);
   await expectMemberNames(page);
 
@@ -80,7 +80,7 @@ test('guest → paid member → «Выйти» → «Войти» → expiry →
   await page.getByTestId('renew-paid-1').click();
   await page.getByTestId('renew-next').click();
   await page.getByTestId('renew-pay').click();
-  await expect(page.getByTestId('home-messages')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('home-member')).toBeVisible({ timeout: 10_000 });
   await expectMemberNames(page);
 
   // The persisted end state survives a reload.
