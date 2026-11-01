@@ -53,7 +53,7 @@ async function join(repo: MockRepository) {
 
 async function feedPostIds(repo: MockRepository) {
   const ids = new Set<string>();
-  for (const tab of ['for_you', 'plans'] as const) {
+  for (const tab of ['popular', 'following'] as const) {
     const page = await repo.getHomeFeed({ tab, limit: 50 });
     for (const post of page.items) ids.add(post.id);
   }

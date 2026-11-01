@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { fixedClock } from '@/clock';
+import { createMemoryStore } from '@/storage';
 import {
   FeedPage,
   RepositoryError,
@@ -62,10 +63,8 @@ function collectAuthorKeys(post: PostView): string[] {
 const guestTabs: FeedQuery[] = [
   { tab: 'for_you' },
   { tab: 'popular' },
-  { tab: 'plans' },
-  { tab: 'city', city: 'almaty' },
-  { tab: 'city', city: 'astana' },
-  { tab: 'city', city: 'karaganda' },
+  { tab: 'for_you', content: 'plans' },
+  { tab: 'popular', content: 'posts' },
 ];
 
 describe('getSession', () => {
@@ -76,7 +75,7 @@ describe('getSession', () => {
 });
 
 describe('guest feed privacy', () => {
-  it.each(guestTabs.map((q) => [q.tab + (q.city ? `:${q.city}` : ''), q] as const))(
+  it.each(guestTabs.map((q) => [`${q.tab}:${q.content ?? 'all'}`, q] as const))(
     '%s returns only safe author views',
     async (_label, query) => {
       const posts = await allPages(guestRepository(), query);
@@ -101,7 +100,7 @@ describe('guest feed privacy', () => {
   });
 
   it('does not expose the exact meeting place in plan summaries', async () => {
-    const posts = await allPages(guestRepository(), { tab: 'plans' });
+    const posts = await allPages(guestRepository(), { tab: 'for_you', content: 'plans' });
     const json = JSON.stringify(posts);
     for (const plan of seed.plans) expect(json).not.toContain(plan.place);
   });
@@ -150,35 +149,17 @@ describe('feed tabs', () => {
     );
   });
 
-  it('requires a city for the city tab', async () => {
-    await expect(guestRepository().getHomeFeed({ tab: 'city' })).rejects.toMatchObject({
-      code: 'VALIDATION_ERROR',
-      fieldErrors: { city: 'required' },
-    });
-  });
-
-  it('returns an empty city feed for Shymkent', async () => {
-    const page = await guestRepository().getHomeFeed({ tab: 'city', city: 'shymkent' });
-    expect(page).toEqual({ items: [], hasMore: false });
-  });
-
-  it('filters the city tab by plan city for plans and author city otherwise', async () => {
-    const posts = await allPages(guestRepository(), { tab: 'city', city: 'astana' });
-    for (const post of posts) {
-      expect(post.plan ? post.plan.city : post.author.city).toBe('astana');
-    }
-  });
-
-  it('shows only plan posts on the plans tab, soonest first', async () => {
-    const posts = await allPages(guestRepository(), { tab: 'plans' });
-    expect(posts).toHaveLength(6);
-    const dates = posts.map((p) => p.plan?.date ?? '');
-    expect(posts.every((p) => p.type === 'plan' && p.plan)).toBe(true);
-    expect(dates).toEqual([...dates].sort());
+  it('shows only Планы, or only ordinary posts, by content type', async () => {
+    const plans = await allPages(guestRepository(), { tab: 'popular', content: 'plans' });
+    expect(plans.length).toBeGreaterThan(0);
+    expect(plans.every((p) => p.type === 'plan' && p.plan)).toBe(true);
+    const posts = await allPages(guestRepository(), { tab: 'popular', content: 'posts' });
+    expect(posts.length).toBeGreaterThan(0);
+    expect(posts.every((p) => p.type !== 'plan')).toBe(true);
   });
 
   it('orders the popular tab by reactions + 2·reposts + comments', async () => {
-    const posts = await allPages(guestRepository(), { tab: 'popular' });
+    const posts = await allPages(guestRepository(), { tab: 'popular', content: 'posts' });
     const scores = posts.map(popularity);
     expect(scores).toEqual([...scores].sort((a, b) => b - a));
   });
@@ -189,7 +170,7 @@ describe('feed tabs', () => {
       .filter((p) => restricted.includes(p.authorId))
       .map((p) => p.id);
     expect(hiddenPostIds.length).toBeGreaterThan(0);
-    for (const query of [...guestTabs, { tab: 'city', city: 'karaganda' } as const]) {
+    for (const query of guestTabs) {
       const ids = (await allPages(guestRepository(), query)).map((p) => p.id);
       for (const id of hiddenPostIds) expect(ids).not.toContain(id);
     }
@@ -234,5 +215,104 @@ describe('pagination', () => {
       .catch((e: unknown) => e);
     expect(error).toBeInstanceOf(RepositoryError);
     expect((error as RepositoryError).requestId).toMatch(/^mock-/);
+  });
+});
+
+describe('Фильтры ленты', () => {
+  const m01 = seed.members.find((m) => m.id === 'm01')!;
+
+  it('start from the member’s own answers, can be changed and kept', async () => {
+    const store = createMemoryStore();
+    const repo = createMockRepository({
+      clock,
+      latency: 0,
+      store,
+      session: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
+    });
+    const own = await repo.getFeedFilters();
+    expect(own.intent).toEqual([m01.card.questionnaire.intent]);
+    expect(own.city).toEqual([m01.card.questionnaire.city]);
+
+    const wider = { ...own, city: ['almaty', 'astana'] as const, intent: [] };
+    expect(await repo.updateFeedFilters({ ...wider, city: [...wider.city] })).toMatchObject({
+      city: ['almaty', 'astana'],
+      intent: [],
+    });
+    const restarted = createMockRepository({
+      clock,
+      latency: 0,
+      store,
+      session: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
+    });
+    expect((await restarted.getFeedFilters()).city).toEqual(['almaty', 'astana']);
+  });
+
+  it('are for members; a guest sends theirs with the request', async () => {
+    await expect(guestRepository().getFeedFilters()).rejects.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+    const filters = {
+      city: ['astana' as const],
+      intent: [],
+      communication: [],
+      pace: [],
+      firstMeeting: [],
+      boundaries: [],
+      dateFormat: [],
+    };
+    const posts = await allPages(guestRepository(), { tab: 'for_you', filters });
+    const astana = new Set(
+      seed.members.filter((m) => m.card.questionnaire.city === 'astana').map((m) => m.id),
+    );
+    expect(posts.length).toBeGreaterThan(0);
+    // Authors stay in the safe view; their Анкета city decides, never shown as such.
+    for (const post of posts) {
+      const author = seed.posts.find((p) => p.id === post.id)!.authorId;
+      expect(astana.has(author)).toBe(true);
+      expect(post.reasons).toBeUndefined();
+    }
+  });
+
+  it('explain the picks to an active member with up to two reasons', async () => {
+    const posts = await allPages(memberRepository('m01'), { tab: 'for_you' });
+    const explained = posts.filter((p) => p.reasons);
+    expect(explained.length).toBeGreaterThan(0);
+    for (const post of explained) expect(post.reasons!.length).toBeLessThanOrEqual(2);
+    for (const post of posts.filter((p) => p.mine)) expect(post.reasons).toBeUndefined();
+  });
+});
+
+describe('«Подписки» and «Популярное»', () => {
+  it('lets an expired member read their Подписки in the safe view', async () => {
+    const repo = createMockRepository({
+      clock,
+      latency: 0,
+      session: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
+    });
+    await repo.expireMembership();
+    const posts = await allPages(repo, { tab: 'following' });
+    expect(posts.length).toBeGreaterThan(0);
+    for (const post of posts) expect(post.author.view).toBe('safe');
+  });
+
+  it('lifts a План others opened in «Популярное»', async () => {
+    const store = createMemoryStore();
+    const as = (userId: string) =>
+      createMockRepository({
+        clock,
+        latency: 0,
+        store,
+        session: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId },
+      });
+    const before = await allPages(guestRepository(), { tab: 'popular', content: 'plans' });
+    const last = before[before.length - 1]!;
+    const planId = last.plan!.id;
+    for (const id of ['m01', 'm02', 'm03', 'm04', 'm05', 'm07', 'm08', 'm09']) {
+      await as(id)
+        .getPlan({ planId })
+        .catch(() => undefined);
+    }
+    const after = await allPages(as('m10'), { tab: 'popular', content: 'plans' });
+    expect(after[0]!.plan!.id).toBe(planId);
   });
 });

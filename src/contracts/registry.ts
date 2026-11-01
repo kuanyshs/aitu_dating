@@ -29,7 +29,7 @@ import {
   SetCommentReactionInput,
 } from './comment';
 import { Id } from './common';
-import { FeedPage, FeedQuery } from './feed';
+import { FeedFilters, FeedPage, FeedQuery } from './feed';
 import { RenewMembershipInput } from './membership';
 import {
   ModerateMemberInput,
@@ -113,6 +113,8 @@ export const repositoryContract = {
   renewMembership: { input: RenewMembershipInput, output: MyProfile },
 
   getHomeFeed: { input: FeedQuery, output: FeedPage },
+  getFeedFilters: { input: none, output: FeedFilters },
+  updateFeedFilters: { input: FeedFilters, output: FeedFilters },
   getPost: { input: PostRef, output: PostView },
   createPost: { input: CreatePostInput, output: PostView },
   deletePost: { input: PostRef, output: z.undefined() },

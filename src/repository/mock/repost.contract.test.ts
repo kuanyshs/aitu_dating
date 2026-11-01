@@ -74,7 +74,7 @@ describe('reposts', () => {
       reposts: seedReposts('p02') + 1,
       repostedByMe: true,
     });
-    const feed = await restarted.getHomeFeed({ tab: 'for_you', limit: 50 });
+    const feed = await restarted.getHomeFeed({ tab: 'popular', limit: 50 });
     expect(feed.items.find((p) => p.id === 'p02')?.repostedByMe).toBe(true);
     expect(feed.items.find((p) => p.id === 'p03')?.repostedByMe).toBe(false);
   });

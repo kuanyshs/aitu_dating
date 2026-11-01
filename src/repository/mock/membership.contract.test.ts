@@ -77,9 +77,9 @@ describe('expiry', () => {
       });
       expect(post.reactedByMe).toBeUndefined();
     }
-    await expect(repo.getHomeFeed({ tab: 'following' })).rejects.toMatchObject({
-      code: 'MEMBERSHIP_EXPIRED',
-    });
+    // «Подписки» stay readable, in the safe view like everything else.
+    const following = await repo.getHomeFeed({ tab: 'following' });
+    for (const post of following.items) expect(post.author.view).toBe('safe');
   });
 
   it('happens on its own when the period ends', async () => {

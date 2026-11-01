@@ -1,12 +1,16 @@
 import { z } from 'zod';
 
 import {
+  interests,
   meetingDurations,
   meetingFormats,
   meetingGoals,
   paymentPolicies,
+  questionKeys,
   topics,
 } from '@/catalogs';
+
+import type { QuestionKey as QuestionKeyName } from '@/catalogs';
 
 import { Id, IsoDate, IsoDateTime } from './common';
 import { LIMITS } from './limits';
@@ -60,6 +64,20 @@ export const QuotedPost = z.strictObject({
 });
 export type QuotedPost = z.infer<typeof QuotedPost>;
 
+/**
+ * Why «Для тебя» picked a post for an active member: a shared interest or an Анкета
+ * answer that matched their filters. At most two are given.
+ */
+export const FeedReason = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('interest'), interest: z.enum(interests) }),
+  z.strictObject({
+    kind: z.literal('answer'),
+    question: z.enum(questionKeys as [QuestionKeyName, ...QuestionKeyName[]]),
+    option: z.string(),
+  }),
+]);
+export type FeedReason = z.infer<typeof FeedReason>;
+
 export const PostView = z.strictObject({
   id: Id,
   type: PostType,
@@ -81,6 +99,8 @@ export const PostView = z.strictObject({
   quoted: QuotedPost.optional(),
   /** A Цитата whose quoted Пост was deleted or hidden: shown as «Публикация недоступна». */
   quotedUnavailable: z.literal(true).optional(),
+  /** «Для тебя» for an active member only: up to two reasons the post was picked. */
+  reasons: z.array(FeedReason).max(2).optional(),
 });
 export type PostView = z.infer<typeof PostView>;
 

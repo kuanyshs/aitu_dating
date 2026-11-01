@@ -142,7 +142,7 @@ describe('deleting an own post', () => {
 
     const restarted = repositoryOn(store, seedAuthor);
     await expect(restarted.getPost({ postId: 'p01' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
-    for (const tab of ['for_you', 'popular', 'plans'] as const) {
+    for (const tab of ['for_you', 'popular'] as const) {
       const page = await restarted.getHomeFeed({ tab, limit: 50 });
       expect(page.items.map((p) => p.id)).not.toContain('p01');
     }

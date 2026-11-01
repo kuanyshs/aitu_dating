@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   AccessFlowStep,
+  FeedFilters,
   StoredPlanStatus,
   UserSettings,
   MembershipSelection,
@@ -125,12 +126,16 @@ export const MockState = z.strictObject({
   messages: z.array(MessageRecord),
   /** Read marks by `chatId:userId`, seed chats too. */
   chatReads: z.record(z.string(), z.string()),
-  /** When each member last opened «Активность». */
+  /** When each member last opened «Уведомления». */
   activitySeenAt: z.record(z.string(), z.string()),
+  /** Фильтры ленты a member changed; until then their own Анкета answers apply. */
+  feedFilters: z.record(z.string(), FeedFilters),
+  /** Who opened each План (its author aside), for «Популярное». */
+  planOpens: z.record(z.string(), z.array(z.string())),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 16;
+export const MOCK_STATE_VERSION = 17;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -182,6 +187,8 @@ export const mockStateMigrations = [
     chatReads: {},
     activitySeenAt: {},
   }),
+  // v17 adds members' Фильтры ленты and who opened each План.
+  (v16: unknown) => ({ ...(v16 as object), feedFilters: {}, planOpens: {} }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -218,6 +225,8 @@ export const defaultMockState = (): MockState => ({
   messages: [],
   chatReads: {},
   activitySeenAt: {},
+  feedFilters: {},
+  planOpens: {},
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';

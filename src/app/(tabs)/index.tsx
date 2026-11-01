@@ -4,16 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { cities, cityLabels, type City } from '@/catalogs';
 import { isRepositoryError, type FeedTab, type PostView } from '@/contracts';
-import {
-  useDemoFlags,
-  useHomeFeed,
-  useLogin,
-  useMyProfile,
-  useSession,
-  useUnreadMessages,
-} from '@/data/hooks';
+import { useDemoFlags, useHomeFeed, useLogin, useSession, useUnreadMessages } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { usePostActions } from '@/features/post/usePostActions';
 import { IconAction, PrimaryButton } from '@/ui/components/buttons';
@@ -31,9 +23,7 @@ import { useTheme } from '@/ui/theme/ThemeProvider';
 import { radius, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
 
-const guestTabs: FeedTab[] = ['for_you', 'popular', 'city', 'plans'];
-const memberTabs: FeedTab[] = ['for_you', 'following', 'popular', 'city', 'plans'];
-const cityChoices = cities.filter((c) => c !== 'other');
+const tabs: FeedTab[] = ['for_you', 'popular', 'following'];
 
 export default function HomeScreen() {
   const styles = useStyles();
@@ -46,10 +36,8 @@ export default function HomeScreen() {
   const isMember = session.data?.accessState === 'ACTIVE_MEMBER';
   const unread = useUnreadMessages(isMember);
   const isExpired = session.data?.accessState === 'ACTIVE_MEMBER_EXPIRED';
-  const tabs = isMember ? memberTabs : guestTabs;
 
   const canLogin = !!session.data?.canLogin;
-  const me = useMyProfile(isMember || isExpired);
   const login = useLogin();
   const toast = useToast((s) => s.show);
 
@@ -68,10 +56,7 @@ export default function HomeScreen() {
     list.current?.scrollToOffset({ offset: 0, animated: false });
     router.setParams({ feed: undefined });
   }, [requestedTab, router]);
-  // «В городе» starts at the member's Passport city (Алматы for guests) until changed.
-  const [chosenCity, setCity] = useState<City | undefined>(undefined);
-  const city: City = chosenCity ?? (isMember || isExpired ? me.data?.city : undefined) ?? 'almaty';
-  const feed = useHomeFeed(tab, city);
+  const feed = useHomeFeed(tab);
   const posts = useMemo(() => feed.data?.pages.flatMap((p) => p.items) ?? [], [feed.data]);
   // Offline keeps showing the last loaded feed under the global banner; any other
   // failure (or offline with nothing cached) shows the error with a retry.
@@ -183,25 +168,6 @@ export default function HomeScreen() {
         ))}
       </ScrollView>
 
-      {tab === 'city' ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chips}
-          role="radiogroup"
-          aria-label={strings.home.cityLabel}
-        >
-          {cityChoices.map((c) => (
-            <Chip
-              key={c}
-              label={cityLabels[c]}
-              selected={c === city}
-              onPress={() => setCity(c)}
-              testID={`feed-city-${c}`}
-            />
-          ))}
-        </ScrollView>
-      ) : null}
       <View style={styles.divider} />
     </View>
   );
@@ -224,7 +190,7 @@ export default function HomeScreen() {
       <EmptyState
         testID="feed-empty"
         title={strings.feed.emptyTitle}
-        text={tab === 'city' ? strings.feed.emptyCity : strings.feed.emptyDefault}
+        text={strings.feed.emptyDefault}
         action={{
           label: strings.feed.emptyAction,
           onPress: () => setTab('for_you'),

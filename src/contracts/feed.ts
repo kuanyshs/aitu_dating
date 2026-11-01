@@ -1,16 +1,42 @@
 import { z } from 'zod';
 
+import { questionnaire } from '@/catalogs';
+
 import { Page } from './common';
-import { CityKey } from './people';
 import { PostView } from './post';
 
-export const FeedTab = z.enum(['for_you', 'popular', 'city', 'plans', 'following']);
+/** The three Ленты of Главная; Планы are a kind of post in them, not a feed of their own. */
+export const FeedTab = z.enum(['for_you', 'popular', 'following']);
 export type FeedTab = z.infer<typeof FeedTab>;
+
+/** What a Лента shows: everything, ordinary posts only or Планы only. */
+export const FeedContent = z.enum(['all', 'posts', 'plans']);
+export type FeedContent = z.infer<typeof FeedContent>;
+
+const options = <T extends readonly [string, ...string[]]>(values: T) =>
+  z.array(z.enum(values)).max(values.length);
+
+/**
+ * Фильтры ленты: the chosen options of each Анкета question. A person matches a question
+ * when their answer is one of its options; a question with none chosen is left out.
+ */
+export const FeedFilters = z.strictObject({
+  city: options(questionnaire.city),
+  intent: options(questionnaire.intent),
+  communication: options(questionnaire.communication),
+  pace: options(questionnaire.pace),
+  firstMeeting: options(questionnaire.firstMeeting),
+  boundaries: options(questionnaire.boundaries),
+  dateFormat: options(questionnaire.dateFormat),
+});
+export type FeedFilters = z.infer<typeof FeedFilters>;
 
 export const FeedQuery = z.object({
   tab: FeedTab,
-  /** Required for the `city` tab; ignored otherwise. */
-  city: CityKey.optional(),
+  /** `all` when omitted. */
+  content: FeedContent.optional(),
+  /** A guest's filters for «Для тебя», kept on the device; a member's are stored with them. */
+  filters: FeedFilters.optional(),
   cursor: z.string().optional(),
   limit: z.number().int().min(1).max(50).optional(),
 });

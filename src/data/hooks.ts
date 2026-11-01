@@ -7,7 +7,6 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 
-import type { City } from '@/catalogs';
 import type {
   AccessFlowState,
   CommentPage,
@@ -17,6 +16,8 @@ import type {
   CreateReportInput,
   ActivityQuery,
   CreatePlanInput,
+  FeedContent,
+  FeedFilters,
   FeedTab,
   PlanView,
   RespondToPlanInput,
@@ -42,7 +43,8 @@ import { useDemoControls, useRepository } from './RepositoryProvider';
 
 export const queryKeys = {
   session: ['session'] as const,
-  feed: (tab: FeedTab, city: City | undefined) => ['feed', tab, city ?? null] as const,
+  feed: (tab: FeedTab, content: FeedContent, filters: FeedFilters | undefined) =>
+    ['feed', tab, content, filters ?? null] as const,
   demoFlags: ['demo', 'flags'] as const,
   accessFlow: ['access', 'flow'] as const,
   candidates: ['access', 'candidates'] as const,
@@ -80,12 +82,19 @@ export function useSession() {
   return useQuery({ queryKey: queryKeys.session, queryFn: () => repository.getSession() });
 }
 
-export function useHomeFeed(tab: FeedTab, city?: City) {
+/**
+ * One Лента. A guest's Фильтры ленты travel with the request; a member's are stored with
+ * them, so `filters` is left out for members.
+ */
+export function useHomeFeed(
+  tab: FeedTab,
+  { content = 'all', filters }: { content?: FeedContent; filters?: FeedFilters } = {},
+) {
   const repository = useRepository();
   return useInfiniteQuery({
-    queryKey: queryKeys.feed(tab, city),
+    queryKey: queryKeys.feed(tab, content, filters),
     queryFn: ({ pageParam }) =>
-      repository.getHomeFeed({ tab, city: tab === 'city' ? city : undefined, cursor: pageParam }),
+      repository.getHomeFeed({ tab, content, filters, cursor: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
   });

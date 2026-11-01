@@ -26,7 +26,7 @@ import type {
   CreateCommentInput,
   SetCommentReactionInput,
 } from './comment';
-import type { FeedPage, FeedQuery } from './feed';
+import type { FeedFilters, FeedPage, FeedQuery } from './feed';
 import type { RenewMembershipInput } from './membership';
 import type {
   ModerateMemberInput,
@@ -123,6 +123,9 @@ export interface AituRepository {
 
   // Feed, posts and comments.
   getHomeFeed(query: FeedQuery): Promise<FeedPage>;
+  /** A member's Фильтры ленты; their own Анкета answers until they change them. */
+  getFeedFilters(): Promise<FeedFilters>;
+  updateFeedFilters(filters: FeedFilters): Promise<FeedFilters>;
   getPost(input: PostRef): Promise<PostView>;
   createPost(input: CreatePostInput): Promise<PostView>;
   /** Soft delete of the viewer's own post. */

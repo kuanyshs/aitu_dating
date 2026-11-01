@@ -59,7 +59,11 @@ describe('creating a plan', () => {
       topics: ['meetings', 'city'],
       plan: { id: created.id, status: 'published' },
     });
-    const feed = await on(store, as('m02')).getHomeFeed({ tab: 'plans', limit: 50 });
+    const feed = await on(store, as('m02')).getHomeFeed({
+      tab: 'popular',
+      content: 'plans',
+      limit: 50,
+    });
     expect(feed.items.map((p) => p.id)).toContain(created.postId);
 
     const other = await on(store, as('m02')).getPlan({ planId: created.id });
@@ -163,7 +167,11 @@ describe('closing and cancelling', () => {
       code: 'CONFLICT',
     });
 
-    const feed = await on(store, as('m02')).getHomeFeed({ tab: 'plans', limit: 50 });
+    const feed = await on(store, as('m02')).getHomeFeed({
+      tab: 'popular',
+      content: 'plans',
+      limit: 50,
+    });
     expect(feed.items.map((p) => p.id)).not.toContain('p-plan4');
   });
 
@@ -212,7 +220,7 @@ describe('«Прошёл»', () => {
     const reader = on(store, as('m02'), started);
     expect((await reader.getPlan({ planId: 'plan1' })).status).toBe('past');
     expect((await reader.getPost({ postId: 'p-plan1' })).plan?.status).toBe('past');
-    const feed = await reader.getHomeFeed({ tab: 'plans', limit: 50 });
+    const feed = await reader.getHomeFeed({ tab: 'popular', content: 'plans', limit: 50 });
     expect(feed.items.map((p) => p.id)).not.toContain('p-plan1');
   });
 

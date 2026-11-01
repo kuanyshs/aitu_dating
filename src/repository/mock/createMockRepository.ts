@@ -33,6 +33,7 @@ import {
   MemberPage,
   ConfirmPaymentInput,
   MyProfile,
+  FeedFilters,
   FeedPage,
   FeedQuery,
   ModerateMemberInput,
@@ -97,7 +98,7 @@ import {
 import { buildThreads } from './comments';
 import { almatyDate, currentStatus, planStartsAt, type CurrentPlan } from './plans';
 import { matchPeople, matchPlans, matchPosts } from './search';
-import { selectFeed } from './feed';
+import { emptyFeedFilters, filtersFromAnswers, selectFeed, type PlanStats } from './feed';
 import {
   BlockRecord,
   ChatRecord,
@@ -238,6 +239,20 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
   function planById(id: string): CurrentPlan | undefined {
     return allPlans().find((p) => p.id === id);
+  }
+
+  /** What «Популярное» weighs for a План. */
+  function planStats(id: string): PlanStats {
+    return {
+      opens: state.planOpens[id]?.length ?? 0,
+      responses: state.planResponses.filter((r) => r.planId === id).length,
+      accepted: planById(id)?.status === 'matched',
+    };
+  }
+
+  /** A member's Фильтры ленты: saved ones, or their own Анкета answers. */
+  function feedFiltersOf(record: MemberRecord): FeedFilters {
+    return state.feedFilters[record.id] ?? filtersFromAnswers(record.card.questionnaire);
   }
   const seedPostsById = new Map(data.posts.map((p) => [p.id, p]));
 
@@ -1042,51 +1057,44 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           fail(requestId, { code: 'FORBIDDEN', message: 'Access is restricted.' });
         }
         const isMember = viewer.accessState === 'ACTIVE_MEMBER';
+        const hasCard = isMember || viewer.accessState === 'ACTIVE_MEMBER_EXPIRED';
 
-        if (query.tab === 'following' && viewer.accessState === 'ACTIVE_MEMBER_EXPIRED') {
-          fail(requestId, {
-            code: 'MEMBERSHIP_EXPIRED',
-            message: 'Renew the membership to see the following feed.',
-          });
-        }
-        if (query.tab === 'following' && !isMember) {
+        // «Подписки» needs follows of one's own: members, expired ones in the safe view.
+        if (query.tab === 'following' && !hasCard) {
           fail(requestId, {
             code: 'FORBIDDEN',
-            message: 'The following feed is available to active members only.',
-          });
-        }
-        if (query.tab === 'city' && !query.city) {
-          fail(requestId, {
-            code: 'VALIDATION_ERROR',
-            message: 'The city feed requires a city.',
-            fieldErrors: { city: 'required' },
+            message: 'The following feed is available to members only.',
           });
         }
 
-        const viewerRecord = viewer.userId ? member(viewer.userId) : undefined;
+        const viewerRecord = hasCard && viewer.userId ? member(viewer.userId) : undefined;
         const followingIds = new Set(
-          isMember
+          viewerRecord
             ? allFollows()
-                .filter((f) => f.followerId === viewer.userId)
+                .filter((f) => f.followerId === viewerRecord.id)
                 .map((f) => f.followingId)
             : [],
         );
-        const viewerTopics = new Set<string>(
-          isMember && viewerRecord
-            ? allPosts()
-                .filter((p) => p.authorId === viewerRecord.id)
-                .flatMap((p) => p.topics)
-            : [],
-        );
+        const filters =
+          query.filters ?? (viewerRecord ? feedFiltersOf(viewerRecord) : emptyFeedFilters());
 
         const ordered = selectFeed(allPosts().filter(isVisible), query, {
-          viewerId: isMember ? viewer.userId : undefined,
+          viewerId: viewerRecord?.id,
           now: clock.now(),
-          viewerTopics,
+          filters,
+          viewerInterests: new Set(isMember && viewerRecord ? viewerRecord.card.interests : []),
           followingIds,
+          withReasons: isMember,
           counters,
-          authorCity: (post) => member(post.authorId)?.city,
+          author: (post) => {
+            const author = member(post.authorId);
+            return {
+              answers: author?.card.questionnaire,
+              interests: author?.card.interests ?? [],
+            };
+          },
           plan: (id) => planById(id),
+          planStats,
         });
 
         const offset = query.cursor === undefined ? 0 : Number(query.cursor);
@@ -1104,10 +1112,24 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const ctx = shapingContext(viewer);
 
         return FeedPage.parse({
-          items: slice.map((post) => toPostView(post, ctx)),
+          items: slice.map(({ post, reasons }) => ({
+            ...toPostView(post, ctx),
+            ...(reasons ? { reasons } : {}),
+          })),
           hasMore,
           ...(hasMore ? { nextCursor: String(offset + limit) } : {}),
         });
+      }),
+
+    getFeedFilters: () =>
+      respond('data', (requestId) => FeedFilters.parse(feedFiltersOf(requireOwnCard(requestId)))),
+
+    updateFeedFilters: (input) =>
+      respond('data', async (requestId) => {
+        const record = requireOwnCard(requestId);
+        const filters = parseOrFail(FeedFilters, input, requestId);
+        await saveState({ ...state, feedFilters: { ...state.feedFilters, [record.id]: filters } });
+        return filters;
       }),
 
     listPassportCandidates: () =>
@@ -1442,10 +1464,20 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       }),
 
     getPlan: (input) =>
-      respond('data', (requestId) => {
+      respond('data', async (requestId) => {
         const viewer = requireReader(requestId);
         const { planId } = parseOrFail(PlanRef, input, requestId);
-        return planView(findPlan(planId, requestId), viewer);
+        const plan = findPlan(planId, requestId);
+        // «Популярное» counts who opened someone else's plan, each person once.
+        const opener = viewer.userId;
+        const openers = state.planOpens[planId] ?? [];
+        if (opener && opener !== plan.authorId && !openers.includes(opener)) {
+          await saveState({
+            ...state,
+            planOpens: { ...state.planOpens, [planId]: [...openers, opener] },
+          });
+        }
+        return planView(plan, viewer);
       }),
 
     getSettings: () =>

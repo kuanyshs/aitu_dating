@@ -203,7 +203,11 @@ describe('the plan in the feed', () => {
     await respond(store, 'm02');
     const own = await on(store, 'm06').getPost({ postId: 'p-plan1' });
     expect(own.plan?.pendingResponses).toBe(1);
-    const feed = await on(store, 'm06').getHomeFeed({ tab: 'plans', limit: 50 });
+    const feed = await on(store, 'm06').getHomeFeed({
+      tab: 'popular',
+      content: 'plans',
+      limit: 50,
+    });
     expect(feed.items.find((p) => p.id === 'p-plan1')?.plan?.pendingResponses).toBe(1);
     expect((await on(store, 'm02').getPost({ postId: 'p-plan1' })).plan?.pendingResponses).toBe(
       undefined,
