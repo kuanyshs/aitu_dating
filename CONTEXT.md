@@ -77,7 +77,7 @@ _Avoid_: intent (unqualified), goal
 ### Content
 
 **Лента** (`Feed`):
-One of the three streams on Главная: «Для тебя» (ranked by the **Фильтры ленты**), «Популярное» and «Подписки» (people the viewer follows, newest first). Each mixes ordinary **Посты** and **Планы** and has its own content type, «Все», «Посты» or «Планы встреч», remembered per **Лента**. A cancelled or past **План** leaves every **Лента**. There is no separate feed of **Планы** and no feed by city.
+One of the three streams on Главная: «Для тебя» (ranked by the **Фильтры ленты**), «Популярное» and «Подписки» (people the viewer follows, newest first). Each mixes ordinary **Посты** and **Планы** and has its own content type, «Все», «Посты» or «Планы встреч», remembered per **Лента**. A cancelled or past **План** leaves every **Лента**. There is no separate feed of **Планы** and no feed by city. A **Гость** sees «Подписки» as an invitation to join; an expired **Участник** reads it in the **Безопасный вид**.
 _Avoid_: tab (unqualified), timeline
 
 **Пост** (`Post`):
@@ -144,7 +144,7 @@ A one-to-one meeting invitation published by its author: city, date, time, forma
 _Avoid_: event, meetup, встреча (for the unpublished or unmatched thing)
 
 **Статус плана** (`PlanStatus`):
-Открыт (takes **Отклики**), «Набор закрыт» (the author stopped new **Отклики**; waiting ones are still decided), **Встреча** («Встреча договорена»), Отменён (by the author, from any status; waiting **Отклики** are declined) and Прошёл (the start time has come for an open or closed **План**; computed, never stored). A past **План** takes no **Отклики** and leaves the «Планы» feed tab.
+Открыт (takes **Отклики**), «Набор закрыт» (the author stopped new **Отклики**; waiting ones are still decided), **Встреча** («Встреча договорена»), Отменён (by the author, from any status; waiting **Отклики** are declined) and Прошёл (the start time has come for an open or closed **План**; computed, never stored). A past **План** takes no **Отклики** and leaves every **Лента**.
 
 **Цель встречи** (`MeetingGoal`):
 Why a specific **План** exists: познакомиться, поговорить or совместное занятие.
