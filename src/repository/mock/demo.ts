@@ -8,6 +8,7 @@ import {
   MembershipSelection,
   PartialAnswers,
   PaymentReceipt,
+  PHOTO_TYPES,
   ProfileStepInput,
 } from '@/contracts';
 
@@ -132,10 +133,16 @@ export const MockState = z.strictObject({
   feedFilters: z.record(z.string(), FeedFilters),
   /** Who opened each План (its author aside), for «Популярное». */
   planOpens: z.record(z.string(), z.array(z.string())),
+  /** Uploaded Фото: who owns each one. The pictures themselves live under their own keys. */
+  photos: z.record(
+    z.string(),
+    z.strictObject({ ownerId: z.string(), mimeType: z.enum(PHOTO_TYPES), createdAt: z.string() }),
+  ),
+  photoKeys: z.record(z.string(), z.string()),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 18;
+export const MOCK_STATE_VERSION = 19;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -191,6 +198,8 @@ export const mockStateMigrations = [
   (v16: unknown) => ({ ...(v16 as object), feedFilters: {}, planOpens: {} }),
   // v18 drops the free tier: every Membership and every chosen period is paid.
   (v17: unknown) => JSON.parse(JSON.stringify(v17).replaceAll('"free_verified"', '"paid"')),
+  // v19 adds uploaded Фото and their idempotency keys.
+  (v18: unknown) => ({ ...(v18 as object), photos: {}, photoKeys: {} }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -229,6 +238,8 @@ export const defaultMockState = (): MockState => ({
   activitySeenAt: {},
   feedFilters: {},
   planOpens: {},
+  photos: {},
+  photoKeys: {},
 });
 
 export type ResetNotice = 'corrupt' | 'unsupported_version' | 'invalid';

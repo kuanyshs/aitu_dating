@@ -47,6 +47,7 @@ import {
   SaveAnswerInput,
   UpdateCardInput,
 } from './onboarding';
+import { PhotoRef, UploadPhotoInput } from './photo';
 import {
   CreatePlanInput,
   MyResponsePage,
@@ -111,6 +112,8 @@ export const repositoryContract = {
   getMyProfile: { input: none, output: MyProfile },
   updateMyCard: { input: UpdateCardInput, output: MyProfile },
   renewMembership: { input: RenewMembershipInput, output: MyProfile },
+
+  uploadPhoto: { input: UploadPhotoInput, output: PhotoRef },
 
   getHomeFeed: { input: FeedQuery, output: FeedPage },
   getFeedFilters: { input: none, output: FeedFilters },

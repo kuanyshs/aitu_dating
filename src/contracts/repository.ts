@@ -44,6 +44,7 @@ import type {
   SaveAnswerInput,
   UpdateCardInput,
 } from './onboarding';
+import type { PhotoRef, UploadPhotoInput } from './photo';
 import type {
   CreatePlanInput,
   MyResponsePage,
@@ -126,6 +127,8 @@ export interface AituRepository {
   /** A member's Фильтры ленты; their own Анкета answers until they change them. */
   getFeedFilters(): Promise<FeedFilters>;
   updateFeedFilters(filters: FeedFilters): Promise<FeedFilters>;
+  /** Stores a Фото for the current active member; a retried key returns the same one. */
+  uploadPhoto(input: UploadPhotoInput): Promise<PhotoRef>;
   getPost(input: PostRef): Promise<PostView>;
   createPost(input: CreatePostInput): Promise<PostView>;
   /** Soft delete of the viewer's own post. */

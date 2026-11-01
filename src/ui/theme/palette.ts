@@ -8,6 +8,9 @@ export type ColorTokens = {
   surfaceRaised: string;
   /** Dims the page behind a sheet. */
   scrim: string;
+  /** Full-screen photo viewer: black in both themes, with light controls. */
+  viewerBg: string;
+  onViewer: string;
   text: string;
   textMuted: string;
   line: string;
@@ -31,6 +34,8 @@ export const lightColors: ColorTokens = {
   surfacePressed: '#EBEBEB',
   surfaceRaised: '#FFFFFF',
   scrim: 'rgba(0, 0, 0, 0.4)',
+  viewerBg: '#000000',
+  onViewer: '#FFFFFF',
   text: '#0A0A0A',
   textMuted: '#666666',
   line: '#E5E5E5',
@@ -54,6 +59,8 @@ export const darkColors: ColorTokens = {
   surfacePressed: '#202020',
   surfaceRaised: '#181818',
   scrim: 'rgba(0, 0, 0, 0.6)',
+  viewerBg: '#000000',
+  onViewer: '#FFFFFF',
   text: '#F3F3F3',
   textMuted: '#8A8A8A',
   line: '#2A2A2A',

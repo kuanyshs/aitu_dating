@@ -94,6 +94,12 @@ const samples: { [K in RepositoryMethod]: Parameters<AituRepository[K]>[0] } = {
   listActivity: { category: 'all' },
   markActivitySeen: undefined,
   getFeedFilters: undefined,
+  uploadPhoto: {
+    mimeType: 'image/jpeg',
+    sizeBytes: 1024,
+    dataUrl: 'data:image/jpeg;base64,AAAA',
+    idempotencyKey: key,
+  },
   updateFeedFilters: {
     city: ['almaty'],
     intent: [],
@@ -171,6 +177,7 @@ const implemented = new Set<RepositoryMethod>([
   'markActivitySeen',
   'getFeedFilters',
   'updateFeedFilters',
+  'uploadPhoto',
   'createReport',
   'listMyReports',
   'setBlock',
@@ -213,6 +220,7 @@ const answersWithData = new Set<RepositoryMethod>([
   'markActivitySeen',
   'getFeedFilters',
   'updateFeedFilters',
+  'uploadPhoto',
   'createReport',
   'listMyReports',
   'setBlock',

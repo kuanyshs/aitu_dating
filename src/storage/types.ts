@@ -12,4 +12,6 @@ export const storageKeys = {
   drafts: 'aitu.demo.drafts.v1',
   settings: 'aitu.demo.settings.v1',
   clock: 'aitu.demo.clock.v1',
+  /** Each uploaded Фото is stored under this prefix plus its id. */
+  photoPrefix: 'aitu.demo.photo.v1.',
 } as const;

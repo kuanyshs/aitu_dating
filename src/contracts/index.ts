@@ -10,6 +10,7 @@ export * from './membership';
 export * from './moderation';
 export * from './onboarding';
 export * from './people';
+export * from './photo';
 export * from './plan';
 export * from './post';
 export * from './profile';

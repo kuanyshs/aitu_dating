@@ -77,6 +77,8 @@ import {
   SetReactionInput,
   SetRepostInput,
   UpdateCardInput,
+  UploadPhotoInput,
+  type PhotoRef,
   UpdateSettingsInput,
   UserSettings,
   defaultUserSettings,
@@ -190,7 +192,22 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     session = loadedSession.data;
     state = loadedState.data;
     resetNotice = loadedSession.reset ?? loadedState.reset;
+    // Pictures are kept apart from the state; bring them back into memory once.
+    await Promise.all(
+      Object.keys(state.photos).map(async (id) => {
+        const url = await store.getItem(`${storageKeys.photoPrefix}${id}`);
+        if (url) photoData.set(id, url);
+      }),
+    );
   })();
+
+  const photoData = new Map<string, string>();
+
+  /** A Фото as a DTO, or nothing when it is gone. */
+  function photoRef(id: string): PhotoRef | undefined {
+    const url = photoData.get(id);
+    return url ? { kind: 'photo', id, url } : undefined;
+  }
 
   async function saveState(next: MockState): Promise<void> {
     state = next;
@@ -1039,6 +1056,37 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           userId: record.id,
           candidateId,
         });
+      }),
+
+    uploadPhoto: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireOwnCard(requestId);
+        const parsed = UploadPhotoInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'A JPG, PNG or WEBP file of up to 10 MB is required.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const { mimeType, dataUrl, idempotencyKey } = parsed.data;
+        // A retried upload returns the Фото it already stored.
+        const existing = state.photoKeys[idempotencyKey];
+        const known = existing ? photoRef(existing) : undefined;
+        if (known) return known;
+
+        const id = `photo-${Object.keys(state.photos).length + 1}-${idempotencyKey.slice(-6)}`;
+        await store.setItem(`${storageKeys.photoPrefix}${id}`, dataUrl);
+        photoData.set(id, dataUrl);
+        await saveState({
+          ...state,
+          photos: {
+            ...state.photos,
+            [id]: { ownerId: me.id, mimeType, createdAt: clock.now().toISOString() },
+          },
+          photoKeys: { ...state.photoKeys, [idempotencyKey]: id },
+        });
+        return { kind: 'photo', id, url: dataUrl };
       }),
 
     getHomeFeed: (rawQuery) =>
@@ -2609,7 +2657,15 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
     async resetDemo() {
       await ready;
-      await Promise.all([sessionSlot.clear(), stateSlot.clear(), clockSlot.clear()]);
+      await Promise.all([
+        sessionSlot.clear(),
+        stateSlot.clear(),
+        clockSlot.clear(),
+        ...Object.keys(state.photos).map((id) =>
+          store.removeItem(`${storageKeys.photoPrefix}${id}`),
+        ),
+      ]);
+      photoData.clear();
       resumable?.restart();
       session = guestSession();
       state = defaultMockState();
