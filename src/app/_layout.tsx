@@ -61,6 +61,7 @@ export default function RootLayout() {
                 <Stack.Screen name="membership" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="report" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="menu" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="feed-filters" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="renew" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="card-edit" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="moderator" options={{ presentation: 'modal' }} />

@@ -32,3 +32,44 @@ describe('settings store', () => {
     expect(useSettings.getState().themePreference).toBe('system');
   });
 });
+
+describe('Ленты on the device', () => {
+  it('keep the content type of each Лента and a guest’s filters across restarts', async () => {
+    const store = createMemoryStore();
+    const first = createSettingsStore(store);
+    await first.hydrate();
+    first.useSettings.getState().setFeedContent('popular', 'plans');
+    first.useSettings.getState().setGuestFilters({
+      city: ['astana'],
+      intent: [],
+      communication: [],
+      pace: [],
+      firstMeeting: [],
+      boundaries: [],
+      dateFormat: [],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const second = createSettingsStore(store);
+    await second.hydrate();
+    expect(second.useSettings.getState().feedContent).toEqual({
+      for_you: 'all',
+      popular: 'plans',
+      following: 'all',
+    });
+    expect(second.useSettings.getState().guestFilters?.city).toEqual(['astana']);
+  });
+
+  it('upgrades v1 settings without losing the theme', async () => {
+    const store = createMemoryStore({
+      [storageKeys.settings]: JSON.stringify({ version: 1, data: { themePreference: 'dark' } }),
+    });
+    const { useSettings, hydrate } = createSettingsStore(store);
+    await hydrate();
+    expect(useSettings.getState()).toMatchObject({
+      themePreference: 'dark',
+      feedContent: { for_you: 'all', popular: 'all', following: 'all' },
+      guestFilters: null,
+    });
+  });
+});

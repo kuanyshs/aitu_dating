@@ -21,7 +21,6 @@ test.describe('logout and login', () => {
     await page.getByTestId('tab-index').click();
     await expect(page.getByTestId('home-login')).toBeVisible();
     await expect(page.getByTestId('home-join')).toHaveCount(0);
-    await expect(page.getByTestId('feed-tab-following')).toHaveCount(0);
     await expectNoMemberNames(page);
 
     await page.reload();

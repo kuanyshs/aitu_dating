@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { loadSeed } from '../src/repository/mock/seed';
 
-import { joinAsMadina, signInAsSeedAuthor } from './helpers';
+import { joinAsMadina, showFeed, signInAsSeedAuthor } from './helpers';
 
 const seed = loadSeed();
 const seedReposts = (id: string) => seed.reposts.filter((r) => r.postId === id).length;
@@ -37,12 +37,14 @@ test.describe('repost, quote and the «•••» menu', () => {
     // The feed shows the same state, also after a restart.
     await page.waitForTimeout(1000);
     await page.goto('/');
+    await showFeed(page, 'popular');
     await expect(card).toBeVisible();
     await expectRepost(repost, seedReposts('p02') + 1, true);
     await repost.click();
     await expectRepost(repost, seedReposts('p02'), false);
     await page.waitForTimeout(1000);
     await page.reload();
+    await showFeed(page, 'popular');
     await expectRepost(repost, seedReposts('p02'), false);
   });
 

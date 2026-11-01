@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { loadSeed } from '../src/repository/mock/seed';
 
-import { joinAsMadina } from './helpers';
+import { joinAsMadina, showFeed } from './helpers';
 
 const seed = loadSeed();
 const count = <T extends { postId?: string; commentId?: string }>(rows: T[], id: string) =>
@@ -18,6 +18,7 @@ test('a member opens a post, replies, likes a reply, deletes their own and repos
   await joinAsMadina(page);
 
   // Open the post from the feed.
+  await showFeed(page, 'popular');
   await page.getByTestId('post-p02').getByTestId('post-open').click();
   await expect(page.getByTestId('post-replies-count')).toHaveText(`Ответы · ${aliveOnP02}`);
 

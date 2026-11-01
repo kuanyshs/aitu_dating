@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { joinAsMadina, signInAsSeedAuthor, topFeedArticle } from './helpers';
+import { joinAsMadina, showFeed, signInAsSeedAuthor, topFeedArticle } from './helpers';
 
 test.describe('Создание: a quote', () => {
   test.beforeEach(({}, testInfo) => {
@@ -12,6 +12,7 @@ test.describe('Создание: a quote', () => {
   }, testInfo) => {
     await joinAsMadina(page);
     // From the feed, as a member would: publishing then closes the post screen too.
+    await showFeed(page, 'popular');
     await page.getByTestId('post-p02').getByTestId('post-open').click();
     await expect(page.getByTestId('reply-composer')).toBeVisible();
     await page.getByTestId('screen-post').getByTestId('post-quote').click();

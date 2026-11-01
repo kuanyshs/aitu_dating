@@ -3,12 +3,10 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import {
-  cityLabels,
-  datingIntentLabels,
+  answerLabel,
   questionKeys,
   questionLabels,
   questionnaire,
-  questionOptionLabels,
   type QuestionKey,
 } from '@/catalogs';
 import { isRepositoryError, type PartialAnswers } from '@/contracts';
@@ -22,12 +20,6 @@ import { AppText } from '@/ui/components/Text';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { spacing } from '@/ui/theme/tokens';
-
-function optionLabel(question: QuestionKey, option: string): string {
-  if (question === 'city') return cityLabels[option as keyof typeof cityLabels];
-  if (question === 'intent') return datingIntentLabels[option as keyof typeof datingIntentLabels];
-  return questionOptionLabels[option] ?? option;
-}
 
 const LAST = questionKeys.length - 1;
 
@@ -163,7 +155,7 @@ export default function QuestionnaireStep() {
           label={questionLabels[question]}
           options={questionnaire[question].map((option) => ({
             value: option,
-            label: optionLabel(question, option),
+            label: answerLabel(question, option),
           }))}
           value={value ?? ''}
           onChange={choose}

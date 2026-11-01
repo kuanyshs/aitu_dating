@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina } from './helpers';
+import { joinAsMadina, showFeed } from './helpers';
 
 // The demo clock starts at 2026-09-26 17:00 in Almaty; Мадина lives in Караганда.
 
@@ -51,7 +51,8 @@ test.describe('Новый план', () => {
     await expect(page.getByTestId('plan-responses-empty')).toBeVisible();
 
     await page.goto('/');
-    await page.getByTestId('feed-tab-plans').click();
+    await showFeed(page, 'popular');
+    await page.getByTestId('feed-content-plans').click();
     await expect(
       page.getByRole('article').filter({ hasText: 'Вечерняя прогулка и разговор о книгах.' }),
     ).toHaveCount(1);

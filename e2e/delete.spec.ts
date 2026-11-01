@@ -80,7 +80,7 @@ test.describe('deleting own content', () => {
     await page.getByTestId('sheet-confirm-delete').click();
     await expect(page.getByTestId('toast')).toBeVisible();
     await page.goto('/');
-    await expect(page.getByTestId('post-p02')).toBeVisible();
+    await expect(page.getByRole('article').first()).toBeVisible();
     await expect(page.getByTestId('post-p01')).toHaveCount(0);
     await page.goto('/post/p01');
     await expect(page.getByTestId('post-unavailable')).toBeVisible();

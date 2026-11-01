@@ -100,3 +100,15 @@ export async function topFeedArticle(page: Page) {
   );
   return boxes.sort((a, b) => a.top - b.top)[0];
 }
+
+/**
+ * Switches Home to a Лента. A tap made while Home is still settling after a flow can be
+ * lost, so it is repeated until the chip reads as chosen.
+ */
+export async function showFeed(page: Page, tab: 'for_you' | 'popular' | 'following') {
+  const chip = page.getByTestId(`feed-tab-${tab}`);
+  await expect(async () => {
+    await chip.click();
+    await expect(chip).toHaveAttribute('aria-checked', 'true', { timeout: 1000 });
+  }).toPass();
+}

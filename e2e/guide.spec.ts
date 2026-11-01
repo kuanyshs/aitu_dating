@@ -48,16 +48,16 @@ test.describe('guide @guide', () => {
 
   test('guest-plans-feed', async ({ page }) => {
     await page.goto('/');
-    await page.getByTestId('feed-tab-plans').click();
+    await page.getByTestId('feed-content-plans').click();
     await expect(page.getByTestId('plan-card').first()).toBeVisible();
     await shot(page, 'guest-plans-feed');
   });
 
-  test('guest-city', async ({ page }) => {
+  test('guest-filters', async ({ page }) => {
     await page.goto('/');
-    await page.getByTestId('feed-tab-city').click();
-    await expect(page.getByTestId('feed-city-shymkent')).toBeVisible();
-    await shot(page, 'guest-city');
+    await page.getByTestId('home-filters').click();
+    await expect(page.getByTestId('feed-filters-guest-note')).toBeVisible();
+    await shot(page, 'guest-filters');
   });
 
   test('guest-post', async ({ page }) => {

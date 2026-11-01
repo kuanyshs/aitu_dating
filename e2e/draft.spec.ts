@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina } from './helpers';
+import { joinAsMadina, showFeed } from './helpers';
 
 async function openEditor(page: Page) {
   // The member header shows the session has loaded before the tab is tapped.
@@ -81,6 +81,7 @@ test.describe('Создание: a draft', () => {
     await writeAndKeep(page, 'Черновик нового поста');
 
     // Quoting p02 while a new-post draft waits: continue it.
+    await showFeed(page, 'popular');
     await page.getByTestId('post-p02').getByTestId('post-open').click();
     await expect(page.getByTestId('reply-composer')).toBeVisible();
     await page.getByTestId('screen-post').getByTestId('post-quote').click();
@@ -98,6 +99,7 @@ test.describe('Создание: a draft', () => {
 
     // And again: start over, which deletes the draft.
     await page.goto('/');
+    await showFeed(page, 'popular');
     await page.getByTestId('post-p02').getByTestId('post-open').click();
     await expect(page.getByTestId('reply-composer')).toBeVisible();
     await page.getByTestId('screen-post').getByTestId('post-quote').click();

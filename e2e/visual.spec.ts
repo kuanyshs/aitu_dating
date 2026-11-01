@@ -1,6 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { expectMemberNames, expectNoMemberNames, joinAsMadina, signInAs } from './helpers';
+import {
+  expectMemberNames,
+  expectNoMemberNames,
+  joinAsMadina,
+  showFeed,
+  signInAs,
+} from './helpers';
 
 /**
  * Visual baselines of the first slice in both themes (390×844). They are rendered and
@@ -172,6 +178,7 @@ test.describe('visual baselines @visual', () => {
     test.setTimeout(90_000);
     await joinAsMadina(page);
     // The quoted post comes from what the feed loaded; offline then fails the send.
+    await showFeed(page, 'popular');
     await page.getByTestId('post-p02').getByTestId('post-open').click();
     await expect(page.getByTestId('reply-composer')).toBeVisible();
     await page.getByTestId('post-back').click();

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina, openDemoPanel, signInAs } from './helpers';
+import { joinAsMadina, openDemoPanel, showFeed, signInAs } from './helpers';
 
 // plan1 is m06's coffee in Almaty; its exact place is «Кофейня на Панфилова».
 const place = 'Кофейня на Панфилова';
@@ -26,7 +26,8 @@ test.describe('План встречи', () => {
 
   test('a guest sees the safe summary and is sent to join', async ({ page }) => {
     await page.goto('/');
-    await page.getByTestId('feed-tab-plans').click();
+    await showFeed(page, 'popular');
+    await page.getByTestId('feed-content-plans').click();
     await page.getByTestId('post-p-plan1').getByTestId('plan-card').click();
     await expect(page.getByTestId('plan-place-hidden')).toBeVisible();
     await expect(page.getByTestId('screen-plan')).not.toContainText(place);

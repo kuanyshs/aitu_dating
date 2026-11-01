@@ -3,14 +3,13 @@ import { ru } from 'date-fns/locale';
 import { View } from 'react-native';
 
 import {
+  answerLabel,
   cityLabels,
   communicationStyleLabels,
   datingIntentLabels,
   interestLabels,
   questionKeys,
   questionLabels,
-  questionOptionLabels,
-  type QuestionKey,
 } from '@/catalogs';
 import type { MyProfile } from '@/contracts';
 import { BadgeCheck } from '@/ui/icons';
@@ -21,12 +20,6 @@ import { createStyles } from '@/ui/theme/useStyles';
 
 import { Avatar } from './Avatar';
 import { AppText } from './Text';
-
-function answerLabel(question: QuestionKey, answer: string): string {
-  if (question === 'city') return cityLabels[answer as keyof typeof cityLabels];
-  if (question === 'intent') return datingIntentLabels[answer as keyof typeof datingIntentLabels];
-  return questionOptionLabels[answer] ?? answer;
-}
 
 /** The member's own Карточка: Passport identity on top, then what they wrote about themselves. */
 export function ProfileCardView({ me, stats }: { me: MyProfile; stats?: React.ReactNode }) {

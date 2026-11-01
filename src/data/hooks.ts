@@ -88,7 +88,11 @@ export function useSession() {
  */
 export function useHomeFeed(
   tab: FeedTab,
-  { content = 'all', filters }: { content?: FeedContent; filters?: FeedFilters } = {},
+  {
+    content = 'all',
+    filters,
+    enabled = true,
+  }: { content?: FeedContent; filters?: FeedFilters; enabled?: boolean } = {},
 ) {
   const repository = useRepository();
   return useInfiniteQuery({
@@ -97,6 +101,31 @@ export function useHomeFeed(
       repository.getHomeFeed({ tab, content, filters, cursor: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
+  });
+}
+
+/** A member's Фильтры ленты; their own Анкета answers until they change them. */
+export function useFeedFilters(enabled: boolean) {
+  const repository = useRepository();
+  return useQuery({
+    queryKey: ['feed-filters'],
+    queryFn: () => repository.getFeedFilters(),
+    enabled,
+  });
+}
+
+/** Saves a member's filters; «Для тебя» reloads with them. */
+export function useUpdateFeedFilters() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (filters: FeedFilters) => repository.updateFeedFilters(filters),
+    // The sheet closes at once; «Для тебя» reloads behind it.
+    onSuccess: (filters) => {
+      client.setQueryData(['feed-filters'], filters);
+      void client.invalidateQueries({ queryKey: ['feed'] });
+    },
   });
 }
 

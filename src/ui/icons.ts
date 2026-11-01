@@ -16,6 +16,7 @@ export { default as Plus } from 'lucide-react-native/icons/plus';
 export { default as Quote } from 'lucide-react-native/icons/quote';
 export { default as Repeat2 } from 'lucide-react-native/icons/repeat-2';
 export { default as Search } from 'lucide-react-native/icons/search';
+export { default as SlidersHorizontal } from 'lucide-react-native/icons/sliders-horizontal';
 export { default as ShieldCheck } from 'lucide-react-native/icons/shield-check';
 export { default as UserRound } from 'lucide-react-native/icons/user-round';
 export { default as Settings } from 'lucide-react-native/icons/settings';

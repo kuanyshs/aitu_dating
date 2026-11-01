@@ -267,9 +267,11 @@ function Sent({
       {
         onSuccess: () => {
           toast(strings.block.done);
-          // The author's post or profile is gone for the member now: its screen closes too.
-          if (target.type !== 'comment') router.dismissTo('/');
-          else onDone();
+          // The author's post or profile is gone for the member now: its screen closes too,
+          // also when it was opened by a link and Главная is not underneath.
+          if (target.type === 'comment') return onDone();
+          if (router.canDismiss()) router.dismissAll();
+          router.replace('/');
         },
         onError: () => toast(strings.block.failed),
       },

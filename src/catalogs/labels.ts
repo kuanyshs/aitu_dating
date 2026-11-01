@@ -126,3 +126,10 @@ export const activityCategoryLabels: Record<ActivityCategory, string> = {
   plans: 'Планы',
   system: 'Системные',
 };
+
+/** The label of an Анкета option: city and intent options come from their own catalogs. */
+export function answerLabel(question: QuestionKey, option: string): string {
+  if (question === 'city') return cityLabels[option as City] ?? option;
+  if (question === 'intent') return datingIntentLabels[option as DatingIntent] ?? option;
+  return questionOptionLabels[option] ?? option;
+}

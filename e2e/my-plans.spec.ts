@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina, signInAs } from './helpers';
+import { joinAsMadina, showFeed, signInAs } from './helpers';
 
 // plan1 is m06's; plan4 (m09) is already a Встреча in the seed.
 
@@ -43,7 +43,8 @@ test.describe('Мои планы и отклики', () => {
     await openProfile(page, 'm06');
     await expect(page.getByTestId('my-plan-plan1-status')).toHaveText('Ждут ответа: 1');
     await page.goto('/');
-    await page.getByTestId('feed-tab-plans').click();
+    await showFeed(page, 'popular');
+    await page.getByTestId('feed-content-plans').click();
     await expect(page.getByTestId('post-p-plan1').getByTestId('plan-card-waiting')).toHaveText(
       'Ждут ответа: 1',
     );
@@ -62,7 +63,8 @@ test.describe('Мои планы и отклики', () => {
     // Everyone else reads the label on the feed card; nobody else sees the count.
     await signInAs(page, 'm04');
     await page.goto('/');
-    await page.getByTestId('feed-tab-plans').click();
+    await showFeed(page, 'popular');
+    await page.getByTestId('feed-content-plans').click();
     const card = page.getByTestId('post-p-plan1');
     await expect(card.getByTestId('plan-card-status')).toHaveText('Встреча договорена');
     await expect(card.getByTestId('plan-card-waiting')).toHaveCount(0);

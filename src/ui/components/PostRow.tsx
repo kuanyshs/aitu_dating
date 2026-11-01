@@ -2,14 +2,16 @@ import { memo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import {
+  answerLabel,
   cityLabels,
+  interestLabels,
   meetingFormatLabels,
   meetingGoalLabels,
   paymentPolicyLabels,
   topicLabels,
 } from '@/catalogs';
 import type { Clock } from '@/clock';
-import type { PlanSummary, PostView } from '@/contracts';
+import type { FeedReason, PlanSummary, PostView } from '@/contracts';
 import { formatPlanDate, formatRelative } from '@/ui/format';
 import {
   Calendar,
@@ -48,6 +50,12 @@ type Props = {
 };
 
 const COLLAPSE_AFTER = 320;
+
+/** Why «Для тебя» picked this post: a shared interest or a matching answer. */
+function reasonText(reason: FeedReason): string {
+  if (reason.kind === 'interest') return strings.reasons.interest(interestLabels[reason.interest]);
+  return strings.reasons.answer[reason.question](answerLabel(reason.question, reason.option));
+}
 const PREVIEW_LENGTH = 260;
 
 /** A feed entry in the Threads rhythm: avatar column, then author, type, text and actions. */
@@ -77,6 +85,16 @@ export const PostRow = memo(function PostRow({ post, clock, onAction, onOpen, fu
         ) : (
           <AuthorRow author={post.author} time={formatRelative(post.createdAt, clock)} />
         )}
+        {post.reasons?.length ? (
+          <AppText
+            variant="caption"
+            tone="textMuted"
+            aria-label={`${strings.reasons.label}: ${post.reasons.map(reasonText).join(', ')}`}
+            testID="post-reasons"
+          >
+            {post.reasons.map(reasonText).join(' · ')}
+          </AppText>
+        ) : null}
         {post.type !== 'post' ? (
           <AppText variant="caption" tone="textMuted" testID="post-type">
             {strings.post.type[post.type]}

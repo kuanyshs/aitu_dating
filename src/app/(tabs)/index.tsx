@@ -1,13 +1,27 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { isRepositoryError, type FeedTab, type PostView } from '@/contracts';
-import { useDemoFlags, useHomeFeed, useLogin, useSession, useUnreadMessages } from '@/data/hooks';
+import {
+  isRepositoryError,
+  type FeedContent,
+  type FeedFilters,
+  type FeedTab,
+  type PostView,
+} from '@/contracts';
+import {
+  useDemoFlags,
+  useFeedFilters,
+  useHomeFeed,
+  useLogin,
+  useSession,
+  useUnreadMessages,
+} from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { usePostActions } from '@/features/post/usePostActions';
+import { useSettings } from '@/settings';
 import { IconAction, PrimaryButton } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
 import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
@@ -15,15 +29,19 @@ import { PostRow } from '@/ui/components/PostRow';
 import { RenewBanner } from '@/ui/components/RenewBanner';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
-import { Menu, MessageCircle } from '@/ui/icons';
+import { Menu, MessageCircle, Search, SlidersHorizontal } from '@/ui/icons';
 import { useTabBarInset } from '@/ui/navigation/tabBarInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
-import { radius, spacing } from '@/ui/theme/tokens';
+import { minTouch, radius, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
 
 const tabs: FeedTab[] = ['for_you', 'popular', 'following'];
+const contents: FeedContent[] = ['all', 'posts', 'plans'];
+
+const chosenCount = (filters?: FeedFilters | null) =>
+  filters ? Object.values(filters).filter((options) => options.length > 0).length : 0;
 
 export default function HomeScreen() {
   const styles = useStyles();
@@ -56,7 +74,20 @@ export default function HomeScreen() {
     list.current?.scrollToOffset({ offset: 0, animated: false });
     router.setParams({ feed: undefined });
   }, [requestedTab, router]);
-  const feed = useHomeFeed(tab);
+  const content = useSettings((s) => s.feedContent[tab]);
+  const setFeedContent = useSettings((s) => s.setFeedContent);
+  const guestFilters = useSettings((s) => s.guestFilters);
+  const hasCard = isMember || isExpired;
+  const memberFilters = useFeedFilters(hasCard);
+  const filtersCount = chosenCount(hasCard ? memberFilters.data : guestFilters);
+  // «Подписки» are for members; a guest gets an invitation instead of a request.
+  const guestFollowing = tab === 'following' && !hasCard && !!session.data;
+  // A member's filters live with their account; a guest's travel with each request.
+  const feed = useHomeFeed(tab, {
+    content,
+    filters: !hasCard && tab === 'for_you' ? (guestFilters ?? undefined) : undefined,
+    enabled: !guestFollowing,
+  });
   const posts = useMemo(() => feed.data?.pages.flatMap((p) => p.items) ?? [], [feed.data]);
   // Offline keeps showing the last loaded feed under the global banner; any other
   // failure (or offline with nothing cached) shows the error with a retry.
@@ -155,7 +186,7 @@ export default function HomeScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.chips}
         role="radiogroup"
-        aria-label={strings.home.filtersLabel}
+        aria-label={strings.home.feedsLabel}
       >
         {tabs.map((t) => (
           <Chip
@@ -168,12 +199,69 @@ export default function HomeScreen() {
         ))}
       </ScrollView>
 
+      <View style={styles.contentRow} role="radiogroup" aria-label={strings.home.contentLabel}>
+        {contents.map((c) => (
+          <Chip
+            key={c}
+            label={strings.home.content[c]}
+            selected={c === content}
+            onPress={() => setFeedContent(tab, c)}
+            testID={`feed-content-${c}`}
+          />
+        ))}
+      </View>
+
+      {tab === 'for_you' ? (
+        <View style={styles.tools}>
+          <Pressable
+            role="link"
+            aria-label={strings.home.search}
+            onPress={() => router.push('/search')}
+            style={styles.search}
+            testID="home-search"
+          >
+            <Search size={18} color={colors.textMuted} />
+            <AppText tone="textMuted" numberOfLines={1} style={styles.searchText}>
+              {strings.home.search}
+            </AppText>
+          </Pressable>
+          <Pressable
+            role="button"
+            aria-label={
+              filtersCount ? strings.home.filtersCount(filtersCount) : strings.home.filters
+            }
+            onPress={() => router.push('/feed-filters')}
+            style={styles.filters}
+            testID="home-filters"
+          >
+            <SlidersHorizontal size={18} color={colors.text} />
+            <AppText variant="bodyStrong">{strings.home.filters}</AppText>
+            {filtersCount ? (
+              <View style={styles.count} testID="home-filters-count">
+                <AppText variant="caption" tone="onPrimary">
+                  {String(filtersCount)}
+                </AppText>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.divider} />
     </View>
   );
 
   let body: React.ReactNode = null;
-  if (feed.isPending) {
+  if (guestFollowing) {
+    body = (
+      <EmptyState
+        testID="feed-empty"
+        title={strings.feed.emptyFollowingTitle}
+        text={strings.feed.guestFollowing}
+        action={{ label: strings.home.join, onPress: openAccess, testID: 'feed-empty-action' }}
+      />
+    );
+  } else if (feed.isPending) {
     body = <FeedSkeleton />;
   } else if (showError) {
     const network = isRepositoryError(feed.error) && feed.error.code === 'NETWORK_ERROR';
@@ -186,18 +274,36 @@ export default function HomeScreen() {
       />
     );
   } else if (posts.length === 0) {
-    body = (
-      <EmptyState
-        testID="feed-empty"
-        title={strings.feed.emptyTitle}
-        text={strings.feed.emptyDefault}
-        action={{
-          label: strings.feed.emptyAction,
-          onPress: () => setTab('for_you'),
-          testID: 'feed-empty-action',
-        }}
-      />
-    );
+    body =
+      content !== 'all' ? (
+        <EmptyState
+          testID="feed-empty"
+          title={strings.feed.emptyTitle}
+          text={strings.feed.emptyContent}
+          action={{
+            label: strings.feed.showAll,
+            onPress: () => setFeedContent(tab, 'all'),
+            testID: 'feed-empty-action',
+          }}
+        />
+      ) : tab === 'following' ? (
+        <EmptyState
+          testID="feed-empty"
+          title={strings.feed.emptyFollowingTitle}
+          text={strings.feed.emptyFollowing}
+          action={{
+            label: strings.feed.findPeople,
+            onPress: () => router.push('/search'),
+            testID: 'feed-empty-action',
+          }}
+        />
+      ) : (
+        <EmptyState
+          testID="feed-empty"
+          title={strings.feed.emptyTitle}
+          text={strings.feed.emptyDefault}
+        />
+      );
   }
 
   return (
@@ -273,6 +379,50 @@ const useStyles = createStyles((colors) => ({
     backgroundColor: colors.primary,
   },
   chips: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
+  contentRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  tools: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  search: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: minTouch,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  searchText: { flex: 1 },
+  filters: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    minHeight: minTouch,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  count: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
   divider: { height: 1, backgroundColor: colors.line },
   footer: { paddingVertical: spacing.xl },
   end: { textAlign: 'center', paddingVertical: spacing.xl },

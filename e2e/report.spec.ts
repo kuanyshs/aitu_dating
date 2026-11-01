@@ -107,8 +107,7 @@ test.describe('Жалоба', () => {
   });
 
   test('a guest reports anonymously, with no offer to block', async ({ page }) => {
-    await page.goto('/');
-    await page.getByTestId('post-p02').getByTestId('post-open').click();
+    await page.goto('/post/p02');
     await page.getByTestId('post-menu').click();
     await page.getByTestId('sheet-report').click();
     await expect(page.getByTestId('report-target')).toContainText('Жалоба на публикацию');

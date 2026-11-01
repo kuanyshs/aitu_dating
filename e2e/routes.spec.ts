@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { joinAsMadina } from './helpers';
+import { joinAsMadina, showFeed } from './helpers';
 
 test.describe('routes', () => {
   test.beforeEach(({}, testInfo) => {
@@ -14,11 +14,12 @@ test.describe('routes', () => {
     await page.getByTestId('post-back').click();
     await expect(page.getByTestId('screen-home')).toBeVisible();
 
-    await page.getByTestId('feed-tab-plans').click();
+    await showFeed(page, 'popular');
+    await page.getByTestId('feed-content-plans').click();
     await page.getByTestId('plan-card').first().click();
     await expect(page.getByTestId('screen-plan')).toBeVisible();
     await page.getByTestId('plan-back').click();
-    await expect(page.getByTestId('feed-tab-plans')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByTestId('feed-content-plans')).toHaveAttribute('aria-checked', 'true');
   });
 
   test('a guest cannot open an author; a member can', async ({ page }) => {

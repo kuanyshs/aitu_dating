@@ -11,7 +11,7 @@ test.describe('Блокировка', () => {
     page,
   }, testInfo) => {
     await joinAsMadina(page);
-    await page.getByTestId('post-p02').getByTestId('post-open').click();
+    await page.goto('/post/p02');
     await expect(page.getByTestId('reply-composer')).toBeVisible();
     const name = await page
       .getByTestId('screen-post')
@@ -31,7 +31,7 @@ test.describe('Блокировка', () => {
     await expect(page.getByTestId('toast')).toContainText('Автор заблокирован');
     await expect(page.getByTestId('screen-post')).toHaveCount(0);
     await expect(page.getByTestId('screen-home')).toBeVisible();
-    await expect(page.getByTestId('post-p01')).toBeVisible();
+    await expect(page.getByRole('article').first()).toBeVisible();
     await expect(page.getByTestId('post-p02')).toHaveCount(0);
     await page.goto('/post/p02');
     await expect(page.getByTestId('post-unavailable')).toBeVisible();
@@ -76,7 +76,7 @@ test.describe('Блокировка', () => {
 
   test('«Заблокировать автора» after a report blocks for real', async ({ page }) => {
     await joinAsMadina(page);
-    await page.getByTestId('post-p03').getByTestId('post-open').click();
+    await page.goto('/post/p03');
     await expect(page.getByTestId('reply-composer')).toBeVisible();
     await page.getByTestId('post-menu').click();
     await page.getByTestId('sheet-report').click();
@@ -87,7 +87,7 @@ test.describe('Блокировка', () => {
     await expect(page.getByTestId('screen-report')).toHaveCount(0);
     await expect(page.getByTestId('screen-post')).toHaveCount(0);
     await expect(page.getByTestId('screen-home')).toBeVisible();
-    await expect(page.getByTestId('post-p01')).toBeVisible();
+    await expect(page.getByRole('article').first()).toBeVisible();
     await expect(page.getByTestId('post-p03')).toHaveCount(0);
   });
 
