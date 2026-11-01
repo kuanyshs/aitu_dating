@@ -67,14 +67,18 @@ The seven mandatory single-choice questions answered during onboarding; finishin
 _Avoid_: survey, onboarding form
 
 **Фильтры ленты** (`FeedFilters`):
-The **Анкета** questions used as filters of the «Для тебя» feed: any number of options per question, a person matches a question when their answer is one of the chosen options. Anyone matching at least one chosen question is in the feed, most matched questions first, then newest. A **Участник** starts from their own answers and keeps the filters with their account; a **Гость** starts with none and keeps them on the device. A **Гость** may filter by every question, though the authors stay in the **Безопасный вид** and the answers themselves are never shown.
-_Avoid_: preferences, matching settings
+The **Анкета** questions that rank the «Для тебя» **Лента**: any number of options per question, and a person matches a question when their answer is one of the chosen options. A **Участник** starts from their own answers and may change them, keeping them with their account; a **Гость** starts with none and keeps them on the device. Ranking puts first the people matching the most chosen questions and sharing interests, then the same **Населённый пункт**, **Намерение** and meeting format, then **Подписки** and newness; for **Планы** a nearer date and a matching format and goal count too. An active **Участник** sees up to two reasons on a card («Общие интересы: кино»); nobody sees a percentage or the other person's answers.
+_Avoid_: preferences, matching settings, compatibility score
 
 **Намерение** (`DatingIntent`):
 What a person is looking for in the community: общение, свидания, дружба or новые впечатления.
 _Avoid_: intent (unqualified), goal
 
 ### Content
+
+**Лента** (`Feed`):
+One of the three streams on Главная: «Для тебя» (ranked by the **Фильтры ленты**), «Популярное» and «Подписки» (people the viewer follows, newest first). Each mixes ordinary **Посты** and **Планы** and has its own content type, «Все», «Посты» or «Планы встреч», remembered per **Лента**. A cancelled or past **План** leaves every **Лента**. There is no separate feed of **Планы** and no feed by city.
+_Avoid_: tab (unqualified), timeline
 
 **Пост** (`Post`):
 A feed entry: a post, a question, a quote of another **Пост**, or the feed face of a **План**.
@@ -129,9 +133,9 @@ _Avoid_: deleted account
 The single conversation between two **Участники**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Отклик** (by its two people only); it keeps the context it started from, and opening it again from anywhere returns the same one. Only an active **Участник** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. Text only; a message is sent, read, or failed with «Повторить» — nothing is resent behind the user's back.
 _Avoid_: DM, direct message
 
-**Активность** (`Activity`):
-What happened around the **Участник**, built from the data rather than stored: new **Подписки** on them, **Комментарии** on their **Посты** and **Ответы** to their **Комментарии**, reactions and **Репосты** of their **Посты**, **Отклики** on their **Планы** and decisions on their own **Отклики**, and a **Membership** ending within 7 days. Messages stay in the chats. Opening the tab marks everything so far as seen; for the rest of that visit, whatever came after the previous look still reads as new, in any category. People hidden from the viewer leave no events.
-_Avoid_: notifications, feed (reserved for Home)
+**Уведомления** (`Activity`):
+What happened around the **Участник**, built from the data rather than stored: new **Подписки** on them, **Комментарии** on their **Посты** and **Ответы** to their **Комментарии**, reactions and **Репосты** of their **Посты**, **Отклики** on their **Планы** and decisions on their own **Отклики**, **Membership** and moderation events. Messages stay in «Сообщения» and never appear here. Opening the tab marks everything so far as seen; for the rest of that visit, whatever came after the previous look still reads as new, in any category. People hidden from the viewer leave no events.
+_Avoid_: activity (former name), feed (reserved for Home)
 
 ### Meetings
 
