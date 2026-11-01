@@ -142,7 +142,7 @@ What another **Участник**'s profile reads when they are in a **Блок�
 _Avoid_: deleted account
 
 **Контекстный чат** (`Chat`):
-The single conversation between two **Участники**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Отклик** (by its two people only); it keeps the context it started from, and opening it again from anywhere returns the same one. Only an active **Участник** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. A message holds up to 2 000 characters and at most one **Фото**; it is sent, read, or failed with «Повторить», keeping its text and **Фото**» — nothing is resent behind the user's back.
+The single conversation between two **Участники**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Отклик** (by its two people only); it keeps the context it started from, and opening it again from anywhere returns the same one. Only an active **Участник** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. A message holds up to 2 000 characters and at most one **Фото**; it is sent, read, or failed with «Повторить», keeping its text and **Фото** — nothing is resent behind the user's back.
 _Avoid_: DM, direct message
 
 **Уведомления** (`Activity`):
