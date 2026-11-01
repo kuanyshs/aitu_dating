@@ -870,6 +870,20 @@ export function useUpdateMyCard() {
   });
 }
 
+/** Saves the own profile Фото: order, removal, the main one first. */
+export function useUpdateMyPhotos() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (photoIds: string[]) => repository.updateMyPhotos({ photoIds }),
+    onSuccess: (me) => {
+      client.setQueryData(queryKeys.myProfile, me);
+      void client.invalidateQueries({ queryKey: queryKeys.profile(me.id) });
+      void client.invalidateQueries({ queryKey: ['feed'] });
+    },
+  });
+}
+
 /** A План in the view the session may see. */
 export function usePlan(planId: string, enabled = true) {
   const repository = useRepository();

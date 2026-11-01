@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina, openDemoPanel, signInAs } from './helpers';
+import { choosePhotos, joinAsMadina, openDemoPanel, signInAs } from './helpers';
 
 // chat1: m01 and m09, 25 messages; m01 has not read m09's last two. chat2: m01 and the
 // author of a comment on p01.
@@ -28,8 +28,12 @@ test.describe('Чат', () => {
     await page.getByTestId('chat-row-chat1').click();
     await expect(page.getByTestId('message-chat1-m25')).toContainText('можем сходить вместе');
     await expect(page.getByTestId('message-chat1-m1')).toHaveCount(0);
-    await page.getByTestId('chat-earlier').click();
-    await expect(page.getByTestId('message-chat1-m1')).toBeVisible();
+    // Opening marks the chat read, which reloads the list once: load earlier until it holds.
+    const earlier = page.getByTestId('chat-earlier');
+    await expect(async () => {
+      if (await earlier.count()) await earlier.click();
+      await expect(page.getByTestId('message-chat1-m1')).toBeVisible({ timeout: 2000 });
+    }).toPass();
     await expect(page.getByTestId('chat-earlier')).toHaveCount(0);
 
     await page.getByTestId('chat-back').click();
@@ -61,6 +65,33 @@ test.describe('Чат', () => {
     await expect(page.getByTestId('message-message-2-status')).toHaveText('Не отправлено');
     await page.getByTestId('message-message-2-retry').click();
     await expect(page.getByTestId('message-message-2-status')).toHaveText('Отправлено');
+  });
+
+  test('a Фото goes with words; a failed one keeps it and the retry sends one message', async ({
+    page,
+  }) => {
+    await openChat(page, 'm01', 'chat2');
+    await choosePhotos(page, () => page.getByTestId('chat-photo-add').click(), ['blue']);
+    await expect(page.getByTestId('chat-photo-slot-0')).toBeVisible();
+    await expect(page.getByTestId('chat-photo-add')).toHaveCount(0);
+    // Removing it before sending brings the button back.
+    await page.getByTestId('chat-photo-remove-0').click();
+    await expect(page.getByTestId('chat-photo-add')).toBeVisible();
+
+    await page.goto('/settings');
+    await page.getByTestId('demo-failed-message-once').click();
+    await openChat(page, 'm01', 'chat2');
+    await choosePhotos(page, () => page.getByTestId('chat-photo-add').click(), ['red']);
+    await expect(page.getByTestId('chat-send')).not.toHaveAttribute('aria-disabled', 'true');
+    await send(page, 'Вот это место');
+    await expect(page.getByTestId('message-message-1-status')).toHaveText('Не отправлено');
+    await expect(page.getByTestId('message-message-1-photo-0')).toBeVisible();
+    await page.getByTestId('message-message-1-retry').click();
+    await expect(page.getByTestId('message-message-1-status')).toHaveText('Отправлено');
+    await expect(page.getByTestId('chat-messages').getByText('Вот это место')).toHaveCount(1);
+
+    await page.getByTestId('message-message-1-photo-0').click();
+    await expect(page.getByTestId('photo-position')).toHaveText('1 из 1');
   });
 
   test('«•••» blocks the other side: the chat is gone', async ({ page }) => {

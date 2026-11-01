@@ -77,6 +77,7 @@ import {
   SetReactionInput,
   SetRepostInput,
   UpdateCardInput,
+  UpdatePhotosInput,
   UploadPhotoInput,
   type PhotoRef,
   UpdateSettingsInput,
@@ -94,6 +95,7 @@ import {
   MOCK_STATE_VERSION,
   MockState,
   mockStateMigrations,
+  type AccessFlowRecord,
   type DemoControls,
   type DemoFlags,
   type ResetNotice,
@@ -120,7 +122,7 @@ import { passportCandidates } from './seed/candidates';
 import {
   isMemberViewer,
   seesFullView,
-  toAuthorView,
+  toAuthorView as shapeAuthor,
   toPlanSummary,
   toPostView,
   type PostCounters,
@@ -208,6 +210,39 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const url = photoData.get(id);
     return url ? { kind: 'photo', id, url } : undefined;
   }
+
+  /** The access flow as its visitor sees it, with the draft's Фото resolved. */
+  function flowView(flow: AccessFlowRecord): AccessFlowState {
+    const photos = (flow.profile?.photoIds ?? []).flatMap((id) => photoRef(id) ?? []);
+    return AccessFlowState.parse({
+      ...access.toFlowState(flow, passportCandidates),
+      ...(photos.length ? { photos } : {}),
+    });
+  }
+
+  /** A member's profile Фото that still exist, the main one first. */
+  function profilePhotos(record: MemberRecord): PhotoRef[] {
+    return (record.card.photoIds ?? []).flatMap((id) => photoRef(id) ?? []);
+  }
+
+  const mainPhoto = (record: MemberRecord) => profilePhotos(record)[0]?.url;
+
+  /**
+   * Who an upload belongs to: a member with a card, or a visitor on the card step of
+   * Вступление after paying, whose card will carry that id once it is published.
+   */
+  function photoOwner(requestId: string): string {
+    const current = effectiveSession();
+    const flow = state.accessFlow;
+    if (current.accessState === 'GUEST_PREVIEW' && flow?.candidateId && flow.payment) {
+      return memberIdOf(flow.candidateId);
+    }
+    return requireOwnCard(requestId).id;
+  }
+
+  /** The single place a person becomes a DTO here: shaping rules plus their main Фото. */
+  const authorView = (record: MemberRecord, viewer: Viewer) =>
+    shapeAuthor(record, viewer, mainPhoto(record));
 
   async function saveState(next: MockState): Promise<void> {
     state = next;
@@ -475,7 +510,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const viewer = viewerOf(effectiveSession());
     return MemberPage.parse(
       page(
-        people(memberId).map((person) => toAuthorView(person, viewer)),
+        people(memberId).map((person) => authorView(person, viewer)),
         cursor,
         limit ?? DEFAULT_PAGE_SIZE,
         requestId,
@@ -501,7 +536,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         ? {
             subject: {
               // Moderation sees the person in full, whoever is looking.
-              person: toAuthorView(person, { accessState: 'ACTIVE_MEMBER' }),
+              person: authorView(person, { accessState: 'ACTIVE_MEMBER' }),
               ...('text' in author && author.text ? { text: author.text } : {}),
               restricted: isRestricted(person),
             },
@@ -582,7 +617,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
   async function saveFlow(flow: NonNullable<MockState['accessFlow']>): Promise<AccessFlowState> {
     await saveState({ ...state, accessFlow: flow });
-    return AccessFlowState.parse(access.toFlowState(flow, passportCandidates));
+    return flowView(flow);
   }
 
   function toMyProfile(record: MemberRecord): MyProfile {
@@ -595,8 +630,13 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       gender: record.gender,
       city: record.city,
       verified: record.verified,
-      avatar: { kind: 'synthetic', key: record.photoKey },
-      card: { ...record.card, showSurname: !!record.card.showSurname },
+      avatar: mainPhoto(record)
+        ? { kind: 'photo', url: mainPhoto(record)! }
+        : { kind: 'synthetic', key: record.photoKey },
+      photos: profilePhotos(record),
+      card: (({ photoIds: _ids, ...card }) => ({ ...card, showSurname: !!card.showSurname }))(
+        record.card,
+      ),
       membership: {
         tier: record.membership.tier,
         periodMonths: record.membership.periodMonths,
@@ -674,6 +714,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       reactedByMe: (postId) => reactionsOf(postId).some((r) => r.userId === viewer.userId),
       repostedByMe: (postId) => repostsOf(postId).some((r) => r.userId === viewer.userId),
       isVisible,
+      mainPhoto,
+      photos: (ids) => ids.flatMap((id) => photoRef(id) ?? []),
     };
   }
 
@@ -710,7 +752,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return PlanView.parse({
       ...toPlanSummary(plan, pendingFor(plan, viewer)),
       postId: post.id,
-      author: toAuthorView(author, viewer),
+      author: authorView(author, viewer),
       description: plan.description,
       ...(full ? { place: plan.place } : {}),
       createdAt: plan.createdAt,
@@ -724,7 +766,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return PlanResponseView.parse({
       id: record.id,
       planId: record.planId,
-      author: toAuthorView(member(record.authorId)!, viewer),
+      author: authorView(member(record.authorId)!, viewer),
       ...(record.message ? { message: record.message } : {}),
       status: record.status,
       createdAt: record.createdAt,
@@ -815,11 +857,17 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     // Mine is read once the other side's mark reaches it; theirs once mine does.
     const mark = readMark(chat.id, fromMe ? peerIdOf(chat, me) : me);
     const read = !!mark && mark >= message.createdAt;
+    // An expired member reads their chats in the safe view: no one else's Фото.
+    const photo =
+      message.photoId && (fromMe || seesFullView(viewerOf(effectiveSession())))
+        ? photoRef(message.photoId)
+        : undefined;
     return MessageView.parse({
       id: message.id,
       chatId: chat.id,
       fromMe,
       text: message.text,
+      ...(photo ? { photo } : {}),
       createdAt: message.createdAt,
       status: message.status === 'failed' ? 'failed' : read ? 'read' : 'sent',
     });
@@ -834,7 +882,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return ChatSummary.parse({
       id: chat.id,
       context: chat.context,
-      peer: toAuthorView(peer, viewer),
+      peer: authorView(peer, viewer),
       ...(last ? { lastMessage: messageView(last, chat, me) } : {}),
       unreadCount: all.filter(
         (m) => m.authorId !== me && m.status === 'sent' && (!mark || m.createdAt > mark),
@@ -858,7 +906,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const events: Omit<ActivityItem, 'read'>[] = [];
     const actor = (id: string) => {
       const person = member(id);
-      return isShown(person) ? toAuthorView(person, viewer) : undefined;
+      return isShown(person) ? authorView(person, viewer) : undefined;
     };
     const push = (event: Omit<ActivityItem, 'read' | 'actor'>, actorId?: string) => {
       if (actorId === undefined) return events.push(event);
@@ -1060,7 +1108,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
     uploadPhoto: (input) =>
       respond('data', async (requestId) => {
-        const me = requireOwnCard(requestId);
+        const ownerId = photoOwner(requestId);
         const parsed = UploadPhotoInput.safeParse(input);
         if (!parsed.success) {
           fail(requestId, {
@@ -1082,11 +1130,29 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           ...state,
           photos: {
             ...state.photos,
-            [id]: { ownerId: me.id, mimeType, createdAt: clock.now().toISOString() },
+            [id]: { ownerId, mimeType, createdAt: clock.now().toISOString() },
           },
           photoKeys: { ...state.photoKeys, [idempotencyKey]: id },
         });
         return { kind: 'photo', id, url: dataUrl };
+      }),
+
+    updateMyPhotos: (input) =>
+      respond('data', async (requestId) => {
+        const record = requireOwnCard(requestId);
+        const { photoIds } = parseOrFail(UpdatePhotosInput, input, requestId);
+        // Only the member's own stored Фото may go into their profile.
+        const foreign = photoIds.find((id) => state.photos[id]?.ownerId !== record.id);
+        if (foreign) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Unknown photo.',
+            fieldErrors: { photoIds: 'unknown' },
+          });
+        }
+        const updated: MemberRecord = { ...record, card: { ...record.card, photoIds } };
+        await saveMember(updated);
+        return toMyProfile(updated);
       }),
 
     getHomeFeed: (rawQuery) =>
@@ -1180,11 +1246,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       respond('data', () => passportCandidates.map((c) => PassportCandidate.parse(c))),
 
     getAccessFlow: () =>
-      respond('local', () =>
-        state.accessFlow
-          ? AccessFlowState.parse(access.toFlowState(state.accessFlow, passportCandidates))
-          : null,
-      ),
+      respond('local', () => (state.accessFlow ? flowView(state.accessFlow) : null)),
 
     startAccess: () => respond('local', () => saveFlow(access.start(state.accessFlow))),
 
@@ -1232,7 +1294,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           const previous = state.payments[idempotencyKey];
           // A retried request with the same key returns the original result, never a second charge.
           if (previous && flow?.payment?.reference === previous.reference) {
-            return AccessFlowState.parse(access.toFlowState(flow, passportCandidates));
+            return flowView(flow);
           }
           if (!flow?.membership) {
             fail(requestId, { code: 'CONFLICT', message: 'Choose a membership period first.' });
@@ -1405,7 +1467,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const hiddenView = (c: CommentRecord): CommentView => ({
           id: c.id,
           postId: c.postId,
-          author: toAuthorView(member(c.authorId)!, { accessState: 'GUEST_PREVIEW' }),
+          author: authorView(member(c.authorId)!, { accessState: 'GUEST_PREVIEW' }),
           text: '',
           createdAt: c.createdAt,
           reactions: commentReactionsOf(c.id).length,
@@ -1416,7 +1478,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           id: c.id,
           postId: c.postId,
           ...(c.parentCommentId ? { parentId: c.parentCommentId } : {}),
-          author: toAuthorView(member(c.authorId)!, viewer),
+          author: authorView(member(c.authorId)!, viewer),
           text: c.deleted ? '' : c.text,
           createdAt: c.createdAt,
           reactions: commentReactionsOf(c.id).length,
@@ -1449,7 +1511,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         }
         const full = seesFullView(viewer);
         return ProfileView.parse({
-          person: toAuthorView(record, viewer),
+          person: authorView(record, viewer),
           ...(full
             ? {
                 card: {
@@ -1458,6 +1520,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
                   interests: record.card.interests,
                   communicationStyle: record.card.communicationStyle,
                 },
+                photos: profilePhotos(record),
               }
             : {}),
           stats: {
@@ -1549,7 +1612,15 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             fieldErrors: access.fieldErrorsOf(parsed.error, ''),
           });
         }
-        const { type, text, topics, quotedPostId, idempotencyKey } = parsed.data;
+        const { type, text, topics, quotedPostId, photoIds, idempotencyKey } = parsed.data;
+        // Only the author's own stored Фото may go into the post.
+        if (photoIds?.some((id) => state.photos[id]?.ownerId !== me.id)) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Unknown photo.',
+            fieldErrors: { photoIds: 'unknown' },
+          });
+        }
         const toView = (post: PostRecord) =>
           PostView.parse(toPostView(post, shapingContext(viewerOf(effectiveSession()))));
 
@@ -1571,6 +1642,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           topics: [...new Set(topics)],
           createdAt: clock.now().toISOString(),
           ...(quotedPostId ? { quotedPostId } : {}),
+          ...(photoIds?.length ? { photoIds } : {}),
         });
         await saveState({
           ...state,
@@ -1683,7 +1755,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             page(
               people.map((person) => ({
                 kind: 'person' as const,
-                person: toAuthorView(person, viewer),
+                person: authorView(person, viewer),
                 card: {
                   bio: person.card.bio,
                   intent: person.card.intent,
@@ -2068,8 +2140,15 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             fieldErrors: access.fieldErrorsOf(parsed.error, ''),
           });
         }
-        const { chatId, text, idempotencyKey } = parsed.data;
+        const { chatId, text, photoId, idempotencyKey } = parsed.data;
         const chat = findChat(chatId, me.id, requestId);
+        if (photoId && state.photos[photoId]?.ownerId !== me.id) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Unknown photo.',
+            fieldErrors: { photoId: 'unknown' },
+          });
+        }
         // A retry of a request that already went through returns the same message.
         const existing = state.messages.find((m) => m.idempotencyKey === idempotencyKey);
         if (existing) return messageView(existing, chat, me.id);
@@ -2081,6 +2160,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           chatId: chat.id,
           authorId: me.id,
           text,
+          ...(photoId ? { photoId } : {}),
           createdAt: clock.now().toISOString(),
           status: failed ? 'failed' : 'sent',
           idempotencyKey,
@@ -2303,7 +2383,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           .flatMap((b) => {
             const person = member(b.blockedId);
             return person
-              ? [{ blockId: b.id, person: toAuthorView(person, viewer), createdAt: b.createdAt }]
+              ? [{ blockId: b.id, person: authorView(person, viewer), createdAt: b.createdAt }]
               : [];
           });
         return BlockedPage.parse(page(items, cursor, limit ?? DEFAULT_PAGE_SIZE, requestId));
@@ -2502,7 +2582,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           id: c.id,
           postId: c.postId,
           ...(c.parentCommentId ? { parentId: c.parentCommentId } : {}),
-          author: toAuthorView(me, viewer),
+          author: authorView(me, viewer),
           text: c.text,
           createdAt: c.createdAt,
           reactions: commentReactionsOf(c.id).length,
@@ -2571,7 +2651,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           id: comment.id,
           postId: comment.postId,
           ...(comment.parentCommentId ? { parentId: comment.parentCommentId } : {}),
-          author: toAuthorView(me, viewer),
+          author: authorView(me, viewer),
           text: '',
           createdAt: comment.createdAt,
           reactions: commentReactionsOf(comment.id).length,

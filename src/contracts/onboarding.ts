@@ -13,6 +13,16 @@ import { LIMITS } from './limits';
 
 import { Id, IsoDateTime } from './common';
 import { AvatarRef, CityKey, GenderKey } from './people';
+import { PHOTO_LIMITS, PhotoRef } from './photo';
+
+/** Up to four different profile Фото, in order. */
+export const PhotoIds = z
+  .array(z.string().min(1))
+  .max(PHOTO_LIMITS.profile, 'too_many')
+  .refine((ids) => new Set(ids).size === ids.length, 'duplicate');
+
+export const UpdatePhotosInput = z.strictObject({ photoIds: PhotoIds });
+export type UpdatePhotosInput = z.infer<typeof UpdatePhotosInput>;
 
 export const BIO_MAX = LIMITS.bio;
 export const INTERESTS_MAX = 5;
@@ -28,6 +38,8 @@ export const ProfileStepInput = z.strictObject({
   communicationStyle: z.enum(communicationStyles, 'required'),
   /** «Показывать фамилию в профиле»; off unless the member turns it on. */
   showSurname: z.boolean().optional(),
+  /** Profile Фото in order, the first one main; set on the card step or later. */
+  photoIds: PhotoIds.optional(),
 });
 export type ProfileStepInput = z.infer<typeof ProfileStepInput>;
 
@@ -79,6 +91,8 @@ export const MyProfile = z.strictObject({
   city: CityKey,
   verified: z.boolean(),
   avatar: AvatarRef,
+  /** Own profile Фото, the main one first; the owner sees them whatever their access. */
+  photos: z.array(PhotoRef).max(PHOTO_LIMITS.profile),
   card: z.strictObject({
     bio: z.string(),
     showSurname: z.boolean(),

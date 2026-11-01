@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { topics as topicKeys } from '@/catalogs';
-import { LIMITS } from '@/contracts';
+import { LIMITS, PHOTO_LIMITS, PhotoRef } from '@/contracts';
 import { createSlot, storageKeys, type KeyValueStore } from '@/storage';
 
 /** Черновик: what the editor held when its author chose to keep it. */
@@ -10,6 +10,8 @@ export const Draft = z.strictObject({
   text: z.string().max(LIMITS.postText),
   topics: z.array(z.enum(topicKeys)).max(4),
   quotedPostId: z.string().min(1).optional(),
+  /** Фото already uploaded for this post. */
+  photos: z.array(PhotoRef).max(PHOTO_LIMITS.post).optional(),
 });
 export type Draft = z.infer<typeof Draft>;
 

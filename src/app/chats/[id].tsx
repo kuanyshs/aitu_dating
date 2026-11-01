@@ -10,7 +10,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { isRepositoryError, LIMITS, type ChatSummary, type MessageView } from '@/contracts';
+import {
+  isRepositoryError,
+  LIMITS,
+  PHOTO_LIMITS,
+  type ChatSummary,
+  type MessageView,
+} from '@/contracts';
 import {
   useChat,
   useMarkChatRead,
@@ -21,6 +27,9 @@ import {
   useSetBlock,
 } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
+import { PhotoGallery } from '@/features/photo/PhotoGallery';
+import { PhotoSlotsEditor } from '@/features/photo/PhotoSlotsEditor';
+import { usePhotoSlots } from '@/features/photo/usePhotoSlots';
 import { newIdempotencyKey } from '@/features/access/steps';
 import { ContextLine } from '@/features/chat/ContextLine';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
@@ -32,7 +41,7 @@ import { Screen } from '@/ui/components/Screen';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
 import { formatRelative } from '@/ui/format';
-import { ChevronLeft, Ellipsis } from '@/ui/icons';
+import { ChevronLeft, Ellipsis, ImagePlus } from '@/ui/icons';
 import { useReportFooter } from '@/ui/navigation/statusInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -260,7 +269,16 @@ function Bubble({ message, chatId }: { message: MessageView; chatId: string }) {
   return (
     <View style={[styles.line, mine ? styles.lineMine : null]} testID={`message-${message.id}`}>
       <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-        <AppText tone={mine ? 'onPrimary' : 'text'}>{message.text}</AppText>
+        {message.photo ? (
+          <View style={styles.bubblePhoto}>
+            <PhotoGallery
+              photos={[message.photo]}
+              testID={`message-${message.id}-photo`}
+              height={180}
+            />
+          </View>
+        ) : null}
+        {message.text ? <AppText tone={mine ? 'onPrimary' : 'text'}>{message.text}</AppText> : null}
       </View>
       <View style={styles.meta}>
         <AppText variant="caption" tone="textMuted">
@@ -295,16 +313,21 @@ function Composer({ chatId }: { chatId: string }) {
   const send = useSendMessage(chatId);
   const [text, setText] = useState('');
   const [idempotencyKey, setKey] = useState(newIdempotencyKey);
-  const ready = text.trim().length > 0 && !send.isPending;
+  const photo = usePhotoSlots(PHOTO_LIMITS.message);
+  const photoId = photo.photoIds[0];
+  // Text, a Фото or both; a Фото still uploading or failed holds the message back.
+  const ready =
+    (text.trim().length > 0 || !!photoId) && !photo.busy && !photo.failed && !send.isPending;
 
   const submit = () => {
     if (!ready) return;
     send.mutate(
-      { text: text.trim(), idempotencyKey },
+      { text: text.trim(), idempotencyKey, ...(photoId ? { photoId } : {}) },
       {
-        // A message that did not go is already in the chat with «Повторить».
+        // A message that did not go is already in the chat with «Повторить», Фото included.
         onSuccess: () => {
           setText('');
+          photo.reset([]);
           setKey(newIdempotencyKey());
         },
         onError: () => toast(t.failedToast),
@@ -313,31 +336,54 @@ function Composer({ chatId }: { chatId: string }) {
   };
 
   return (
-    <View style={styles.composer}>
-      <TextInput
-        value={text}
-        onChangeText={setText}
-        placeholder={t.placeholder}
-        placeholderTextColor={colors.textMuted}
-        aria-label={t.inputLabel}
-        multiline
-        maxLength={LIMITS.messageText}
-        style={styles.input}
-        testID="chat-input"
-      />
-      <SecondaryButton
-        label={t.send}
-        onPress={submit}
-        disabled={!ready}
-        loading={send.isPending}
-        testID="chat-send"
-      />
+    <View style={styles.composerBox}>
+      {photo.slots.length ? (
+        <PhotoSlotsEditor
+          slots={photo.slots}
+          max={PHOTO_LIMITS.message}
+          onAdd={photo.add}
+          onRemove={photo.remove}
+          onMove={photo.move}
+          onRetry={photo.retry}
+          testID="chat-photo"
+        />
+      ) : null}
+      <View style={styles.composer}>
+        {photo.full ? null : (
+          <IconAction
+            icon={ImagePlus}
+            accessibilityLabel={strings.photo.add}
+            onPress={() => void photo.add()}
+            testID="chat-photo-add"
+          />
+        )}
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder={t.placeholder}
+          placeholderTextColor={colors.textMuted}
+          aria-label={t.inputLabel}
+          multiline
+          maxLength={LIMITS.messageText}
+          style={styles.input}
+          testID="chat-input"
+        />
+        <SecondaryButton
+          label={t.send}
+          onPress={submit}
+          disabled={!ready}
+          loading={send.isPending}
+          testID="chat-send"
+        />
+      </View>
     </View>
   );
 }
 
 const useStyles = createStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
+  composerBox: { gap: spacing.sm },
+  bubblePhoto: { width: 200, marginBottom: spacing.xs },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -15,6 +15,7 @@ import type { QuestionKey as QuestionKeyName } from '@/catalogs';
 import { Id, IsoDate, IsoDateTime } from './common';
 import { LIMITS } from './limits';
 import { AuthorView, CityKey } from './people';
+import { PHOTO_LIMITS, PhotoRef } from './photo';
 
 export const PostType = z.enum(['post', 'question', 'quote', 'plan']);
 export type PostType = z.infer<typeof PostType>;
@@ -95,6 +96,8 @@ export const PostView = z.strictObject({
   /** Present for members, expired ones too: the viewer wrote this post and may delete it. */
   mine: z.boolean().optional(),
   media: MediaRef.optional(),
+  /** Up to two Фото of a post; active members (and the author) only. */
+  photos: z.array(PhotoRef).max(PHOTO_LIMITS.post).optional(),
   plan: PlanSummary.optional(),
   quoted: QuotedPost.optional(),
   /** A Цитата whose quoted Пост was deleted or hidden: shown as «Публикация недоступна». */
@@ -111,6 +114,12 @@ export const CreatePostInput = z
     text: z.string().trim().min(1, 'required').max(LIMITS.postText, 'too_long'),
     topics: z.array(TopicKey).max(LIMITS.topics, 'too_many'),
     quotedPostId: Id.optional(),
+    /** Up to two of the author's uploaded Фото, in order. */
+    photoIds: z
+      .array(Id)
+      .max(PHOTO_LIMITS.post, 'too_many')
+      .refine((ids) => new Set(ids).size === ids.length, 'duplicate')
+      .optional(),
     idempotencyKey: z.string().min(8),
   })
   .refine((p) => (p.type === 'quote') === !!p.quotedPostId, {

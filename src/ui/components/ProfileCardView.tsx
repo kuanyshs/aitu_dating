@@ -13,6 +13,7 @@ import {
 } from '@/catalogs';
 import type { MyProfile } from '@/contracts';
 import { BadgeCheck } from '@/ui/icons';
+import { PhotoGallery } from '@/features/photo/PhotoGallery';
 import { fullName } from '@/ui/format';
 import { strings } from '@/ui/strings';
 import { useTheme } from '@/ui/theme/ThemeProvider';
@@ -49,6 +50,8 @@ export function ProfileCardView({ me, stats }: { me: MyProfile; stats?: React.Re
       </View>
 
       {stats}
+
+      <PhotoGallery photos={me.photos} testID="profile-photos-gallery" height={140} />
 
       <AppText testID="profile-bio-text">{me.card.bio}</AppText>
 

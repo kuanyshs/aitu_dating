@@ -94,6 +94,7 @@ const samples: { [K in RepositoryMethod]: Parameters<AituRepository[K]>[0] } = {
   listActivity: { category: 'all' },
   markActivitySeen: undefined,
   getFeedFilters: undefined,
+  updateMyPhotos: { photoIds: [] },
   uploadPhoto: {
     mimeType: 'image/jpeg',
     sizeBytes: 1024,
@@ -178,6 +179,7 @@ const implemented = new Set<RepositoryMethod>([
   'getFeedFilters',
   'updateFeedFilters',
   'uploadPhoto',
+  'updateMyPhotos',
   'createReport',
   'listMyReports',
   'setBlock',

@@ -5,6 +5,7 @@ import { membershipTiers } from '@/catalogs';
 import { Id, IsoDateTime } from './common';
 import { PartialAnswers, ProfileStepInput } from './onboarding';
 import { CityKey, GenderKey } from './people';
+import { PhotoRef } from './photo';
 
 /** A mock Aitu Passport identity the demo user can enter as. Shown only to its owner. */
 export const PassportCandidate = z.strictObject({
@@ -58,6 +59,8 @@ export const AccessFlowState = z.strictObject({
   payment: PaymentReceipt.optional(),
   /** Onboarding draft: survives closing the flow and restarting the app. */
   profile: ProfileStepInput.optional(),
+  /** The draft's profile Фото, so the card step can show them again. */
+  photos: z.array(PhotoRef).optional(),
   answers: PartialAnswers.optional(),
 });
 export type AccessFlowState = z.infer<typeof AccessFlowState>;

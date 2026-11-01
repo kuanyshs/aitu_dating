@@ -15,6 +15,8 @@ export const GenderKey = z.enum(genders);
 export const AvatarRef = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('neutral') }),
   z.object({ kind: z.literal('synthetic'), key: z.string().min(1) }),
+  /** The member's main Фото; full view only. */
+  z.object({ kind: z.literal('photo'), url: z.string().min(1) }),
 ]);
 export type AvatarRef = z.infer<typeof AvatarRef>;
 

@@ -9,6 +9,8 @@ export default defineConfig({
   // file may run in parallel; CI shards then split by test, not by whole files.
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
+  // Joining goes through the paid checkout, so a member's test needs more than 30 s.
+  timeout: 60_000,
   reporter: [['list'], ['html', { open: 'never' }]],
   // Visual baselines: one file per screen and theme. They are rendered in CI inside the
   // Playwright image, so local runs on another OS may differ (README → «Визуальные эталоны»).

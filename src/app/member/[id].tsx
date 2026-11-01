@@ -23,6 +23,7 @@ import { Screen } from '@/ui/components/Screen';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
 import { BadgeCheck, ChevronLeft, Ellipsis } from '@/ui/icons';
+import { PhotoGallery } from '@/features/photo/PhotoGallery';
 import { fullName } from '@/ui/format';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -197,6 +198,9 @@ function MemberProfile({
           />
         </View>
       )}
+      {data.photos?.length ? (
+        <PhotoGallery photos={data.photos} testID="member-photos" height={160} />
+      ) : null}
       {data.card ? <Card card={data.card} /> : null}
       <MyPosts memberId={memberId} canWrite={false} other />
       <ActionSheet

@@ -1,3 +1,4 @@
+import { Image } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import type { AvatarRef } from '@/contracts';
@@ -17,11 +18,18 @@ export function hashKey(key: string): number {
 type Props = { avatar: AvatarRef; size?: number };
 
 export function Avatar({ avatar, size = 36 }: Props) {
-  return avatar.kind === 'neutral' ? (
-    <NeutralAvatar size={size} />
-  ) : (
-    <SyntheticAvatar avatarKey={avatar.key} size={size} />
-  );
+  if (avatar.kind === 'neutral') return <NeutralAvatar size={size} />;
+  if (avatar.kind === 'photo') {
+    return (
+      <Image
+        source={{ uri: avatar.url }}
+        style={{ width: size, height: size, borderRadius: size / 2 }}
+        accessibilityIgnoresInvertColors
+        testID="avatar-photo"
+      />
+    );
+  }
+  return <SyntheticAvatar avatarKey={avatar.key} size={size} />;
 }
 
 /**

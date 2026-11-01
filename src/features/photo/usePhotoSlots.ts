@@ -98,6 +98,14 @@ export function usePhotoSlots(max: number, initial: PhotoRef[] = []) {
     });
   }, []);
 
+  /** Puts a Фото first: in a profile that makes it the main one. */
+  const makeFirst = useCallback((key: string) => {
+    setSlots((all) => {
+      const slot = all.find((s) => s.key === key);
+      return slot ? [slot, ...all.filter((s) => s.key !== key)] : all;
+    });
+  }, []);
+
   const retry = useCallback(
     (key: string) => {
       const slot = slots.find((s) => s.key === key);
@@ -123,6 +131,7 @@ export function usePhotoSlots(max: number, initial: PhotoRef[] = []) {
     add,
     remove,
     move,
+    makeFirst,
     retry,
     reset,
   };

@@ -44,6 +44,8 @@ export const ProfileCardRecord = z.strictObject({
   communicationStyle: z.enum(communicationStyles),
   /** «Показывать фамилию в профиле»; absent means off. */
   showSurname: z.boolean().optional(),
+  /** Profile Фото in order; the first is the main one. */
+  photoIds: z.array(z.string()).max(4).optional(),
   questionnaire: QuestionnaireAnswers,
   publishedAt: IsoDateTime,
 });
@@ -117,6 +119,8 @@ export const PostRecord = z.strictObject({
   topics: z.array(TopicKey),
   createdAt: IsoDateTime,
   mediaKey: z.string().optional(),
+  /** Uploaded Фото of a post, in order. */
+  photoIds: z.array(z.string()).max(2).optional(),
   planId: Id.optional(),
   quotedPostId: Id.optional(),
 });
@@ -199,7 +203,9 @@ export const MessageRecord = z.strictObject({
   id: Id,
   chatId: Id,
   authorId: Id,
-  text: z.string().min(1).max(2000),
+  /** Empty when the message is a Фото alone. */
+  text: z.string().max(2000),
+  photoId: z.string().optional(),
   createdAt: IsoDateTime,
   /** «Прочитано» is derived from the other side's read mark, never stored. */
   status: z.enum(['sent', 'failed']),

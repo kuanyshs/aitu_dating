@@ -116,3 +116,14 @@ export async function showFeed(page: Page, tab: 'for_you' | 'popular' | 'followi
     await expect(chip).toHaveAttribute('aria-checked', 'true', { timeout: 1000 });
   }).toPass();
 }
+
+/** Picks small PNG files from `e2e/fixtures` in the file chooser opened by `trigger`. */
+export async function choosePhotos(
+  page: Page,
+  trigger: () => Promise<void>,
+  names: ('red' | 'blue' | 'green')[],
+) {
+  const chooser = page.waitForEvent('filechooser');
+  await trigger();
+  await (await chooser).setFiles(names.map((name) => `e2e/fixtures/${name}.png`));
+}

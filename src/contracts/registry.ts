@@ -46,6 +46,7 @@ import {
   ProfileStepInput,
   SaveAnswerInput,
   UpdateCardInput,
+  UpdatePhotosInput,
 } from './onboarding';
 import { PhotoRef, UploadPhotoInput } from './photo';
 import {
@@ -111,6 +112,7 @@ export const repositoryContract = {
   completeOnboarding: { input: CompleteOnboardingInput, output: MyProfile },
   getMyProfile: { input: none, output: MyProfile },
   updateMyCard: { input: UpdateCardInput, output: MyProfile },
+  updateMyPhotos: { input: UpdatePhotosInput, output: MyProfile },
   renewMembership: { input: RenewMembershipInput, output: MyProfile },
 
   uploadPhoto: { input: UploadPhotoInput, output: PhotoRef },

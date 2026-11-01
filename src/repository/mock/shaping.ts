@@ -1,4 +1,4 @@
-import type { AuthorView, PlanSummary, PostView, Session } from '@/contracts';
+import type { PhotoRef, AuthorView, PlanSummary, PostView, Session } from '@/contracts';
 
 import type { CurrentPlan } from './plans';
 import type { MemberRecord, PostRecord } from './records';
@@ -25,7 +25,12 @@ export function isMemberViewer(viewer: Viewer): boolean {
  * The single place a person record becomes a DTO. Guests and expired members get
  * the safe view with the shared neutral avatar; nothing identifying leaves here.
  */
-export function toAuthorView(member: MemberRecord, viewer: Viewer): AuthorView {
+export function toAuthorView(
+  member: MemberRecord,
+  viewer: Viewer,
+  /** The main Фото, when the member has one; shown in the full view only. */
+  mainPhotoUrl?: string,
+): AuthorView {
   // Members, expired ones too, always see themselves in full: it is their own card.
   const self = isMemberViewer(viewer) && member.id === viewer.userId;
   if (!seesFullView(viewer) && !self) {
@@ -46,7 +51,9 @@ export function toAuthorView(member: MemberRecord, viewer: Viewer): AuthorView {
     gender: member.gender,
     age: member.age,
     city: member.city,
-    avatar: { kind: 'synthetic', key: member.photoKey },
+    avatar: mainPhotoUrl
+      ? { kind: 'photo', url: mainPhotoUrl }
+      : { kind: 'synthetic', key: member.photoKey },
   };
 }
 
@@ -81,6 +88,10 @@ export type ShapingContext = {
   reactedByMe?(postId: string): boolean;
   repostedByMe?(postId: string): boolean;
   isVisible(post: PostRecord): boolean;
+  /** Url of a member's main Фото, if any. */
+  mainPhoto?(member: MemberRecord): string | undefined;
+  /** Uploaded Фото by id, those that still exist. */
+  photos?(ids: string[]): PhotoRef[];
 };
 
 export function toPostView(post: PostRecord, ctx: ShapingContext): PostView {
@@ -96,7 +107,7 @@ export function toPostView(post: PostRecord, ctx: ShapingContext): PostView {
     type: post.type,
     text: post.text,
     topics: post.topics,
-    author: toAuthorView(author, ctx.viewer),
+    author: toAuthorView(author, ctx.viewer, ctx.mainPhoto?.(author)),
     createdAt: post.createdAt,
     ...ctx.counters(post.id),
     ...(seesFullView(ctx.viewer) && ctx.reactedByMe
@@ -107,13 +118,20 @@ export function toPostView(post: PostRecord, ctx: ShapingContext): PostView {
       : {}),
     ...(isMemberViewer(ctx.viewer) ? { mine: post.authorId === ctx.viewer.userId } : {}),
     ...(post.mediaKey ? { media: { kind: 'synthetic' as const, key: post.mediaKey } } : {}),
+    // Фото go to those who see people in full, and to the author themself.
+    ...(post.photoIds?.length &&
+    ctx.photos &&
+    (seesFullView(ctx.viewer) ||
+      (isMemberViewer(ctx.viewer) && ctx.viewer.userId === post.authorId))
+      ? { photos: ctx.photos(post.photoIds) }
+      : {}),
     ...(plan ? { plan: toPlanSummary(plan, ctx.pendingResponses?.(plan)) } : {}),
     ...(quotedRecord && quotedAuthor && ctx.isVisible(quotedRecord)
       ? {
           quoted: {
             id: quotedRecord.id,
             text: quotedRecord.text,
-            author: toAuthorView(quotedAuthor, ctx.viewer),
+            author: toAuthorView(quotedAuthor, ctx.viewer, ctx.mainPhoto?.(quotedAuthor)),
           },
         }
       : post.quotedPostId

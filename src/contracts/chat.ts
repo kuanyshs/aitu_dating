@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Id, IsoDateTime, Page } from './common';
 import { LIMITS } from './limits';
 import { AuthorView } from './people';
+import { PhotoRef } from './photo';
 
 /** Why a Контекстный чат exists: there are no chats out of nowhere. */
 export const ChatContext = z.discriminatedUnion('kind', [
@@ -20,7 +21,10 @@ export const MessageView = z.strictObject({
   id: Id,
   chatId: Id,
   fromMe: z.boolean(),
-  text: z.string().min(1).max(LIMITS.messageText),
+  /** Empty when the message is a Фото alone. */
+  text: z.string().max(LIMITS.messageText),
+  /** One Фото; for active members, and always for its sender. */
+  photo: PhotoRef.optional(),
   createdAt: IsoDateTime,
   status: MessageStatus,
 });
@@ -59,11 +63,15 @@ export const MessagesQuery = z.strictObject({
 });
 export type MessagesQuery = z.infer<typeof MessagesQuery>;
 
-export const SendMessageInput = z.strictObject({
-  chatId: Id,
-  text: z.string().trim().min(1, 'required').max(LIMITS.messageText, 'too_long'),
-  idempotencyKey: z.string().min(8),
-});
+export const SendMessageInput = z
+  .strictObject({
+    chatId: Id,
+    text: z.string().trim().max(LIMITS.messageText, 'too_long'),
+    /** One of the sender's uploaded Фото. */
+    photoId: Id.optional(),
+    idempotencyKey: z.string().min(8),
+  })
+  .refine((m) => m.text.length > 0 || !!m.photoId, { message: 'required', path: ['text'] });
 export type SendMessageInput = z.infer<typeof SendMessageInput>;
 
 export const MessageRef = z.strictObject({ messageId: Id });

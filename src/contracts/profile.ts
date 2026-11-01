@@ -5,6 +5,7 @@ import { communicationStyles, datingIntents, interests } from '@/catalogs';
 import { Id, Page } from './common';
 import { LIMITS } from './limits';
 import { AuthorView } from './people';
+import { PhotoRef } from './photo';
 
 /** What an active member may see of another member's Карточка. Never sent to guests. */
 export const PublicCard = z.strictObject({
@@ -26,6 +27,8 @@ export type ProfileRelation = z.infer<typeof ProfileRelation>;
 export const ProfileView = z.strictObject({
   person: AuthorView,
   card: PublicCard.optional(),
+  /** Profile Фото, the main one first; full view only. */
+  photos: z.array(PhotoRef).optional(),
   stats: z.strictObject({
     posts: z.number().int().min(0),
     followers: z.number().int().min(0),

@@ -11,11 +11,19 @@ import {
   interests,
   type CommunicationStyle,
 } from '@/catalogs';
-import { BIO_MAX, INTERESTS_MAX, isRepositoryError, ProfileStepInput } from '@/contracts';
+import {
+  BIO_MAX,
+  INTERESTS_MAX,
+  isRepositoryError,
+  PHOTO_LIMITS,
+  ProfileStepInput,
+} from '@/contracts';
 import { useSaveProfileStep } from '@/data/hooks';
 import { StepScreen } from '@/features/access/StepScreen';
 import { accessErrorText, stepRoute } from '@/features/access/steps';
 import { useStepGuard } from '@/features/access/useStepGuard';
+import { PhotoSlotsEditor } from '@/features/photo/PhotoSlotsEditor';
+import { usePhotoSlots } from '@/features/photo/usePhotoSlots';
 import { PrimaryButton } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
 import { RadioGroup } from '@/ui/components/RadioGroup';
@@ -25,7 +33,7 @@ import { AppText } from '@/ui/components/Text';
 import { strings } from '@/ui/strings';
 import { spacing } from '@/ui/theme/tokens';
 
-type FieldName = Exclude<keyof ProfileStepInput, 'showSurname'>;
+type FieldName = Exclude<keyof ProfileStepInput, 'showSurname' | 'photoIds'>;
 
 const empty: ProfileStepInput = {
   bio: '',
@@ -63,18 +71,28 @@ export default function ProfileStep() {
 
   const chosen = useWatch({ control, name: 'interests' }) ?? [];
   const surname = flow.data?.candidate?.surname;
+  const photos = usePhotoSlots(PHOTO_LIMITS.profile);
+  // Coming back to this step shows the Фото already chosen.
+  const draftPhotos = flow.data?.photos;
+  const { reset: resetPhotos } = photos;
+  useEffect(() => {
+    if (draftPhotos) resetPhotos(draftPhotos);
+  }, [draftPhotos, resetPhotos]);
 
   const onSubmit = handleSubmit((values) =>
-    save.mutate(values, {
-      onSuccess: (next) => router.replace(stepRoute(next.step) as Href),
-      onError: (error) => {
-        if (!isRepositoryError(error) || !error.fieldErrors) return;
-        for (const key of Object.keys(error.fieldErrors)) {
-          const name = key.replace('profile.', '') as FieldName;
-          if (name in t.errors) setError(name, { message: t.errors[name] });
-        }
+    save.mutate(
+      { ...values, photoIds: photos.photoIds },
+      {
+        onSuccess: (next) => router.replace(stepRoute(next.step) as Href),
+        onError: (error) => {
+          if (!isRepositoryError(error) || !error.fieldErrors) return;
+          for (const key of Object.keys(error.fieldErrors)) {
+            const name = key.replace('profile.', '') as FieldName;
+            if (name in t.errors) setError(name, { message: t.errors[name] });
+          }
+        },
       },
-    }),
+    ),
   );
 
   // Show a field's error once it was edited, after a submit, or when sent back to it.
@@ -101,7 +119,7 @@ export default function ProfileStep() {
           <PrimaryButton
             label={strings.access.next}
             onPress={onSubmit}
-            disabled={!formState.isValid}
+            disabled={!formState.isValid || photos.busy}
             loading={save.isPending}
             testID="access-next"
           />
@@ -194,6 +212,24 @@ export default function ProfileStep() {
             {errorOf('communicationStyle')}
           </AppText>
         ) : null}
+      </View>
+
+      <View style={{ gap: spacing.sm }}>
+        <AppText variant="bodyStrong">{strings.photo.profile.title}</AppText>
+        <AppText variant="caption" tone="textMuted">
+          {strings.photo.profile.hint}
+        </AppText>
+        <PhotoSlotsEditor
+          slots={photos.slots}
+          max={PHOTO_LIMITS.profile}
+          onAdd={photos.add}
+          onRemove={photos.remove}
+          onMove={photos.move}
+          onRetry={photos.retry}
+          onMakeMain={photos.makeFirst}
+          firstIsMain
+          testID="profile-step-photos"
+        />
       </View>
 
       {surname ? (

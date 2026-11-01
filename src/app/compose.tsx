@@ -5,11 +5,13 @@ import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { topicLabels, topics as topicKeys, type Topic } from '@/catalogs';
-import { isRepositoryError, LIMITS } from '@/contracts';
+import { isRepositoryError, LIMITS, PHOTO_LIMITS } from '@/contracts';
 import { useCachedPost, useCreatePost, useMyProfile, usePost, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { draftOnOpen, drafts, sameTarget, type Draft } from '@/drafts';
 import { newIdempotencyKey } from '@/features/access/steps';
+import { PhotoSlotsEditor } from '@/features/photo/PhotoSlotsEditor';
+import { usePhotoSlots } from '@/features/photo/usePhotoSlots';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { ActionSheet } from '@/ui/components/ActionSheet';
 import { Avatar } from '@/ui/components/Avatar';
@@ -90,6 +92,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   // A draft saved under the old limit keeps its first Темы only.
   const [topics, setTopics] = useState<Topic[]>((initial?.topics ?? []).slice(0, MAX_TOPICS));
   const [text, setText] = useState(initial?.text ?? '');
+  const photos = usePhotoSlots(PHOTO_LIMITS.post, initial?.photos ?? []);
   const [idempotencyKey, setKey] = useState(newIdempotencyKey);
   const [sheet, setSheet] = useState<'conflict' | 'leave' | null>(
     opening === 'ask' ? 'conflict' : null,
@@ -106,7 +109,8 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   const ownsDraft = !!stored && sameTarget(stored, { quotedPostId });
 
   const cancel = () => {
-    if (text.trim()) return setSheet('leave');
+    // Text or Фото are worth keeping; an empty editor just closes.
+    if (text.trim() || photos.slots.length) return setSheet('leave');
     // Emptying a restored draft and leaving means it is no longer wanted.
     if (ownsDraft) void storeDraft(null);
     leave();
@@ -117,6 +121,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
     setKind(stored.type === 'question' ? 'question' : 'post');
     setTopics(stored.topics.slice(0, MAX_TOPICS));
     setText(stored.text);
+    photos.reset(stored.photos ?? []);
     setSheet(null);
     if (stored.quotedPostId !== quotedPostId) {
       router.setParams({ quote: stored.quotedPostId });
@@ -124,7 +129,13 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   };
   const trimmed = text.trim();
   const canSend =
-    trimmed.length > 0 && text.length <= LIMITS.postText && !create.isPending && !quoteGone;
+    trimmed.length > 0 &&
+    text.length <= LIMITS.postText &&
+    !create.isPending &&
+    !quoteGone &&
+    // Every chosen Фото must be uploaded first: wait for it, retry it or remove it.
+    !photos.busy &&
+    !photos.failed;
 
   // Any change after a failure is a new attempt at a different post.
   const edit = () => {
@@ -146,7 +157,14 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
 
   const send = () =>
     create.mutate(
-      { type, text, topics, idempotencyKey, ...(quotedPostId ? { quotedPostId } : {}) },
+      {
+        type,
+        text,
+        topics,
+        idempotencyKey,
+        ...(quotedPostId ? { quotedPostId } : {}),
+        ...(photos.photoIds.length ? { photoIds: photos.photoIds } : {}),
+      },
       {
         onSuccess: () => {
           if (ownsDraft) void storeDraft(null);
@@ -245,6 +263,25 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
             </View>
           ) : null}
 
+          <PhotoSlotsEditor
+            slots={photos.slots}
+            max={PHOTO_LIMITS.post}
+            onAdd={() => {
+              edit();
+              void photos.add();
+            }}
+            onRemove={(key) => {
+              edit();
+              photos.remove(key);
+            }}
+            onMove={(key, by) => {
+              edit();
+              photos.move(key, by);
+            }}
+            onRetry={photos.retry}
+            testID="compose-photos"
+          />
+
           <View role="group" aria-label={t.topicsLabel} style={styles.chips}>
             {topicKeys.map((topic) => (
               <Chip
@@ -317,6 +354,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
                       text,
                       topics,
                       ...(quotedPostId ? { quotedPostId } : {}),
+                      ...(photos.photos.length ? { photos: photos.photos } : {}),
                     });
                     toast(t.draft.saved);
                     leave();

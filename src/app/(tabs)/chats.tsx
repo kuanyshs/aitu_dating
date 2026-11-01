@@ -84,11 +84,13 @@ function ChatRow({ chat }: { chat: ChatSummary }) {
   const clock = useClock();
   const last = chat.lastMessage;
   const name = chat.peer.view === 'member' ? chat.peer.name : '';
+  // A Фото without words reads «Фото» in the list.
+  const lastText = last ? last.text || strings.photo.label : '';
   const preview = !last
     ? t.noMessages
     : last.status === 'failed'
-      ? `${t.failed}: ${last.text}`
-      : `${last.fromMe ? t.you : ''}${last.text}`;
+      ? `${t.failed}: ${lastText}`
+      : `${last.fromMe ? t.you : ''}${lastText}`;
   return (
     <Pressable
       role="link"

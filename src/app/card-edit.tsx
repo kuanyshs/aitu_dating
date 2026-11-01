@@ -143,6 +143,12 @@ function CardForm({ me }: { me: MyProfile }) {
             </View>
           </View>
 
+          <TextButton
+            label={strings.photo.profile.open(me.photos.length)}
+            onPress={() => router.push('/profile-photos')}
+            testID="card-edit-photos"
+          />
+
           <Controller
             control={control}
             name="bio"

@@ -18,6 +18,8 @@ type Props = {
   onRetry: (key: string) => void;
   /** Marks the first Фото as the main one (the profile's avatar). */
   firstIsMain?: boolean;
+  /** Offers «Сделать главным» under every other stored Фото. */
+  onMakeMain?: (key: string) => void;
   testID: string;
 };
 
@@ -32,6 +34,7 @@ export function PhotoSlotsEditor({
   onMove,
   onRetry,
   firstIsMain,
+  onMakeMain,
   testID,
 }: Props) {
   const styles = useStyles();
@@ -53,69 +56,88 @@ export function PhotoSlotsEditor({
   return (
     <View style={styles.grid} testID={testID}>
       {slots.map((slot, index) => (
-        <View key={slot.key} style={styles.cell} testID={`${testID}-slot-${index}`}>
-          <Image
-            source={{ uri: slot.preview }}
-            style={[styles.image, slot.status !== 'done' && styles.dimmed]}
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-          />
-          {slot.status === 'uploading' ? (
-            <View style={styles.center} role="status" aria-label={t.uploading}>
-              <ActivityIndicator color={colors.onViewer} />
+        <View key={slot.key} style={styles.column}>
+          <View style={styles.cell} testID={`${testID}-slot-${index}`}>
+            <Image
+              source={{ uri: slot.preview }}
+              style={[styles.image, slot.status !== 'done' && styles.dimmed]}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+            {slot.status === 'uploading' ? (
+              <View style={styles.center} role="status" aria-label={t.uploading}>
+                <ActivityIndicator color={colors.onViewer} />
+              </View>
+            ) : null}
+            {slot.status === 'error' ? (
+              <Pressable
+                role="button"
+                aria-label={t.retry}
+                onPress={() => onRetry(slot.key)}
+                style={styles.center}
+                testID={`${testID}-retry-${index}`}
+              >
+                <AppText variant="caption" style={styles.onImage}>
+                  {t.failed}
+                </AppText>
+                <AppText variant="bodyStrong" style={styles.onImage}>
+                  {t.retry}
+                </AppText>
+              </Pressable>
+            ) : null}
+            <View style={styles.topRow}>
+              {firstIsMain && index === 0 && slot.status === 'done' ? (
+                <View style={styles.badge} testID={`${testID}-main`}>
+                  <AppText variant="caption" tone="onPrimary">
+                    {t.main}
+                  </AppText>
+                </View>
+              ) : (
+                <View />
+              )}
+              {button(
+                slot.status === 'uploading' ? t.cancel : t.remove,
+                X,
+                () => onRemove(slot.key),
+                `${testID}-remove-${index}`,
+              )}
             </View>
-          ) : null}
-          {slot.status === 'error' ? (
+            {slots.length > 1 ? (
+              <View style={styles.bottomRow}>
+                {index > 0 ? (
+                  button(
+                    t.earlier,
+                    ChevronLeft,
+                    () => onMove(slot.key, -1),
+                    `${testID}-earlier-${index}`,
+                  )
+                ) : (
+                  <View />
+                )}
+                {index < slots.length - 1 ? (
+                  button(
+                    t.later,
+                    ChevronRight,
+                    () => onMove(slot.key, 1),
+                    `${testID}-later-${index}`,
+                  )
+                ) : (
+                  <View />
+                )}
+              </View>
+            ) : null}
+          </View>
+          {onMakeMain && index > 0 && slot.status === 'done' ? (
             <Pressable
               role="button"
-              aria-label={t.retry}
-              onPress={() => onRetry(slot.key)}
-              style={styles.center}
-              testID={`${testID}-retry-${index}`}
+              onPress={() => onMakeMain(slot.key)}
+              hitSlop={8}
+              testID={`${testID}-make-main-${index}`}
             >
-              <AppText variant="caption" style={styles.onImage}>
-                {t.failed}
-              </AppText>
-              <AppText variant="bodyStrong" style={styles.onImage}>
-                {t.retry}
+              <AppText variant="caption" style={styles.makeMain}>
+                {t.makeMain}
               </AppText>
             </Pressable>
-          ) : null}
-          <View style={styles.topRow}>
-            {firstIsMain && index === 0 && slot.status === 'done' ? (
-              <View style={styles.badge} testID={`${testID}-main`}>
-                <AppText variant="caption" tone="onPrimary">
-                  {t.main}
-                </AppText>
-              </View>
-            ) : (
-              <View />
-            )}
-            {button(
-              slot.status === 'uploading' ? t.cancel : t.remove,
-              X,
-              () => onRemove(slot.key),
-              `${testID}-remove-${index}`,
-            )}
-          </View>
-          {slots.length > 1 ? (
-            <View style={styles.bottomRow}>
-              {index > 0 ? (
-                button(
-                  t.earlier,
-                  ChevronLeft,
-                  () => onMove(slot.key, -1),
-                  `${testID}-earlier-${index}`,
-                )
-              ) : (
-                <View />
-              )}
-              {index < slots.length - 1 ? (
-                button(t.later, ChevronRight, () => onMove(slot.key, 1), `${testID}-later-${index}`)
-              ) : (
-                <View />
-              )}
-            </View>
           ) : null}
         </View>
       ))}
@@ -141,6 +163,8 @@ const SIZE = 104;
 
 const useStyles = createStyles((colors) => ({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  column: { width: SIZE, gap: spacing.xs },
+  makeMain: { textAlign: 'center', textDecorationLine: 'underline' },
   cell: {
     width: SIZE,
     height: SIZE,

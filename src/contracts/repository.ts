@@ -43,6 +43,7 @@ import type {
   ProfileStepInput,
   SaveAnswerInput,
   UpdateCardInput,
+  UpdatePhotosInput,
 } from './onboarding';
 import type { PhotoRef, UploadPhotoInput } from './photo';
 import type {
@@ -118,6 +119,8 @@ export interface AituRepository {
   getMyProfile(): Promise<MyProfile>;
   /** Edits the own card; allowed for active and expired members. */
   updateMyCard(input: UpdateCardInput): Promise<MyProfile>;
+  /** Sets the own profile Фото: order, removal, the first one main. */
+  updateMyPhotos(input: UpdatePhotosInput): Promise<MyProfile>;
 
   /** Продление for an expired member: new dates, same card, no Анкета. */
   renewMembership(input: RenewMembershipInput): Promise<MyProfile>;

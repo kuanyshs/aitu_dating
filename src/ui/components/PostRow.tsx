@@ -12,6 +12,7 @@ import {
 } from '@/catalogs';
 import type { Clock } from '@/clock';
 import type { FeedReason, PlanSummary, PostView } from '@/contracts';
+import { PhotoGallery } from '@/features/photo/PhotoGallery';
 import { formatPlanDate, formatRelative } from '@/ui/format';
 import {
   Calendar,
@@ -116,6 +117,9 @@ export const PostRow = memo(function PostRow({ post, clock, onAction, onOpen, fu
           <Pressable role="button" onPress={() => setExpanded(true)} hitSlop={8}>
             <AppText variant="bodyStrong">{strings.post.showMore}</AppText>
           </Pressable>
+        ) : null}
+        {post.photos?.length ? (
+          <PhotoGallery photos={post.photos} testID={`post-${post.id}-photos`} />
         ) : null}
         {post.topics.length > 0 ? (
           <AppText tone="textMuted">
