@@ -122,7 +122,7 @@ One **Участник** following another; two opposite **Подписки** ma
 _Avoid_: subscription (as in **Membership**), friend
 
 **Поиск** (`Search`):
-Finding people and **Посты** by text and filters (city, interests, **Намерение**, **Темы**). A **Гость** and an expired **Участник** search **Посты** only; people are for active **Участники**. Nobody in a **Блокировка** with the viewer, nobody under **Ограничение** and never oneself shows up.
+Finding people and **Посты** by text and filters (city, interests, **Намерение**, **Темы**). Opened from «Для тебя»; it is not a tab. A **Гость** and an expired **Участник** search **Посты** only; people are for active **Участники**. Nobody in a **Блокировка** with the viewer, nobody under **Ограничение** and never oneself shows up.
 _Avoid_: discovery, explore
 
 **Профиль недоступен** (`profile unavailable`):
@@ -134,7 +134,7 @@ The single conversation between two **Участники**, opened from someone 
 _Avoid_: DM, direct message
 
 **Уведомления** (`Activity`):
-What happened around the **Участник**, built from the data rather than stored: new **Подписки** on them, **Комментарии** on their **Посты** and **Ответы** to their **Комментарии**, reactions and **Репосты** of their **Посты**, **Отклики** on their **Планы** and decisions on their own **Отклики**, **Membership** and moderation events. Messages stay in «Сообщения» and never appear here. Opening the tab marks everything so far as seen; for the rest of that visit, whatever came after the previous look still reads as new, in any category. People hidden from the viewer leave no events.
+What happened around the **Участник**, built from the data rather than stored: new **Подписки** on them, **Комментарии** on their **Посты** and **Ответы** to their **Комментарии**, reactions and **Репосты** of their **Посты**, **Отклики** on their **Планы** and decisions on their own **Отклики**, **Membership** and moderation events. Messages stay in «Сообщения» (a tab, and an entry in one's own profile) and never appear here. Opening the tab marks everything so far as seen; for the rest of that visit, whatever came after the previous look still reads as new, in any category. People hidden from the viewer leave no events.
 _Avoid_: activity (former name), feed (reserved for Home)
 
 ### Meetings
