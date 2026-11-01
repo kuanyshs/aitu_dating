@@ -6,6 +6,10 @@ Closed, Russian-speaking verified dating community: people meet through conversa
 
 ### People and access
 
+**Вступление** (`AccessFlow`):
+The way a **Гость** becomes a **Участник**: Aitu Passport, club rules, a paid **Membership** period, payment, the **Карточка**, the **Анкета** and the confirmation «Вы участник». It can be closed at any step and continued later from the last finished one («Продолжить вступление»).
+_Avoid_: onboarding, registration
+
 **Кандидат Passport** (`PassportCandidate`):
 A mock Aitu Passport identity the demo user can sign in as. Has no **Карточка** until the **Анкета** is finished and is never one of the seeded community **Участники**.
 _Avoid_: test user, demo user
@@ -26,14 +30,14 @@ _Avoid_: masked profile, blurred profile
 The permitted shape of another person an active **Участник** receives: name, verified mark, photo and the **Безопасный вид** fields.
 
 **Membership**:
-A **Участник**'s paid or free-verified access for exactly one **Период**; active or expired.
+A **Участник**'s paid access for exactly one **Период**; active or expired. It starts once the payment succeeds. There is no free tier.
 _Avoid_: subscription (reserved for **Подписка**), plan (reserved for **План**)
 
 **Период** (`periodMonths`):
 The length of a **Membership**: 1, 3, 6 or 12 months; exactly one is chosen at a time.
 
 **Продление** (`Renewal`):
-Choosing a new **Период** (and paying, unless free-verified) for an expired **Membership**; never repeats the **Анкета**.
+Choosing and paying for a new **Период**. An expired **Membership** starts again from the payment; an early one adds the **Период** to the current end date. Months are calendar months in Asia/Almaty (31 January plus one month is the last day of February). Never repeats the **Анкета** and never lifts an **Ограничение**.
 _Avoid_: resubscribe, re-onboarding
 
 **Блокировка** (`Block`):
@@ -59,7 +63,7 @@ _Avoid_: inbox, tickets
 ### Profile
 
 **Карточка** (`ProfileCard`):
-A **Участник**'s community profile: bio, **Намерение**, interests, communication style and the **Анкета** answers. Name, age, gender and city come from Passport and are read-only.
+A **Участник**'s community profile: bio, **Намерение**, interests, communication style and the **Анкета** answers. Name, surname, age, gender and **Населённый пункт** come from Passport and are read-only. The surname is hidden from others until the owner turns on «Показывать фамилию в профиле»; the owner always sees it.
 _Avoid_: profile card, анкета (the questionnaire is a different thing)
 
 **Анкета** (`Questionnaire`):
@@ -69,6 +73,10 @@ _Avoid_: survey, onboarding form
 **Фильтры ленты** (`FeedFilters`):
 The **Анкета** questions that rank the «Для тебя» **Лента**: any number of options per question, and a person matches a question when their answer is one of the chosen options. A **Участник** starts from their own answers and may change them, keeping them with their account; a **Гость** starts with none and keeps them on the device. Ranking puts first the people matching the most chosen questions and sharing interests, then the same **Населённый пункт**, **Намерение** and meeting format, then **Подписки** and newness; for **Планы** a nearer date and a matching format and goal count too. An active **Участник** sees up to two reasons on a card («Общие интересы: кино»); nobody sees a percentage or the other person's answers.
 _Avoid_: preferences, matching settings, compatibility score
+
+**Населённый пункт** (`Settlement`):
+A place in Kazakhstan from the single directory built from the official КАТО classifier: oblast, district, city, town or village. Every place field picks from it; there is no «Другой город» and no free text. A Passport place is matched to it by code, and an unmatched one must be chosen by hand before the **Вступление** ends. It filters search and sets a **План**'s place; it never makes a feed of its own.
+_Avoid_: city (unqualified), location
 
 **Намерение** (`DatingIntent`):
 What a person is looking for in the community: общение, свидания, дружба or новые впечатления.
