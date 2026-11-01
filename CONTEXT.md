@@ -89,7 +89,7 @@ One of the three streams on Главная: «Для тебя» (ranked by the *
 _Avoid_: tab (unqualified), timeline
 
 **Пост** (`Post`):
-A feed entry: a post, a question, a quote of another **Пост**, or the feed face of a **План**.
+A feed entry: a post, a question, a quote of another **Пост**, or the feed face of a **План**. A post, question or quote holds up to 2 000 characters, up to two **Темы** and up to two **Фото**.
 
 **Комментарий** (`RootComment`):
 A first-level response to a **Пост**. Only its author can delete it; a deleted **Комментарий** that has **Ответы** stays in the thread as «Комментарий удалён».
@@ -111,8 +111,12 @@ _Avoid_: repost with comment
 A **Пост** in which its author asks the community something. It differs from a plain post only by its label and prompt; it need not end with «?».
 _Avoid_: poll
 
+**Фото** (`Photo`):
+A JPG, PNG or WEBP picture of up to 10 MB that a **Участник** uploads: up to four in their **Карточка** (one of them main, which is their avatar), up to two in a **Пост**, one in a chat message. **Комментарии** and **Отклики** carry none. A **Гость** and an expired **Участник** never receive anyone's **Фото**. An upload can be cancelled, fails visibly and is retried without a duplicate.
+_Avoid_: image, picture, media
+
 **Тема** (`Topic`):
-One of the catalog subjects a **Пост** can carry, up to four; the feed shows it as `#тема`.
+One of the catalog subjects a **Пост** can carry, up to two; the feed shows it as `#тема`.
 _Avoid_: tag, hashtag
 
 **Черновик** (`Draft`):
@@ -138,7 +142,7 @@ What another **Участник**'s profile reads when they are in a **Блок�
 _Avoid_: deleted account
 
 **Контекстный чат** (`Chat`):
-The single conversation between two **Участники**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Отклик** (by its two people only); it keeps the context it started from, and opening it again from anywhere returns the same one. Only an active **Участник** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. Text only; a message is sent, read, or failed with «Повторить» — nothing is resent behind the user's back.
+The single conversation between two **Участники**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Отклик** (by its two people only); it keeps the context it started from, and opening it again from anywhere returns the same one. Only an active **Участник** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. A message holds up to 2 000 characters and at most one **Фото**; it is sent, read, or failed with «Повторить», keeping its text and **Фото**» — nothing is resent behind the user's back.
 _Avoid_: DM, direct message
 
 **Уведомления** (`Activity`):
