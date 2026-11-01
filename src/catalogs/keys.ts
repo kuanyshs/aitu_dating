@@ -76,11 +76,10 @@ export const meetingCatalog = {
   paymentPolicies,
 } as const;
 
-export const membershipTiers = ['free_verified', 'paid'] as const;
+export const membershipTiers = ['paid'] as const;
 export type MembershipTier = (typeof membershipTiers)[number];
 
 export const membershipOffers = [
-  { tier: 'free_verified', periodMonths: 12, priceKzt: 0 },
   { tier: 'paid', periodMonths: 1, priceKzt: 1990 },
   { tier: 'paid', periodMonths: 3, priceKzt: 4990, badge: 'best_value' },
   { tier: 'paid', periodMonths: 6, priceKzt: 8490 },

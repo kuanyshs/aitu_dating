@@ -124,6 +124,8 @@ test.describe('guide @guide', () => {
     await page.getByTestId('question-dateFormat-walk').click();
     await shot(page, 'join-questionnaire');
     await page.getByTestId('questionnaire-create').click();
+    await expect(page.getByTestId('access-welcome')).toBeVisible();
+    await page.getByTestId('welcome-feed').click();
     await expect(page.getByTestId('home-member')).toBeVisible();
     await expect(page.getByTestId('author-name').first()).toBeVisible();
     await shot(page, 'member-home');

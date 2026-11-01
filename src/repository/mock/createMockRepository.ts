@@ -1,3 +1,4 @@
+import { addMonths } from './calendar';
 import { isResumable, type Clock } from '@/clock';
 import {
   AccessFlowState,
@@ -572,12 +573,13 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return MyProfile.parse({
       id: record.id,
       name: record.name,
+      ...(record.surname ? { surname: record.surname } : {}),
       age: record.age,
       gender: record.gender,
       city: record.city,
       verified: record.verified,
       avatar: { kind: 'synthetic', key: record.photoKey },
-      card: record.card,
+      card: { ...record.card, showSurname: !!record.card.showSurname },
       membership: {
         tier: record.membership.tier,
         periodMonths: record.membership.periodMonths,
@@ -638,12 +640,6 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       fail(requestId, { code: 'UNAUTHENTICATED', message: 'Join the community to do this.' });
     }
     return record;
-  }
-
-  function addMonths(iso: string, months: number): string {
-    const date = new Date(iso);
-    date.setUTCMonth(date.getUTCMonth() + months);
-    return date.toISOString();
   }
 
   function viewerOf(current: Session): Viewer {
@@ -1168,12 +1164,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
     selectMembership: (selection) =>
       respond('data', (requestId) =>
-        saveFlow(
-          flowResult(
-            requestId,
-            access.selectMembership(state.accessFlow, selection, clock.now().toISOString()),
-          ),
-        ),
+        saveFlow(flowResult(requestId, access.selectMembership(state.accessFlow, selection))),
       ),
 
     confirmPayment: (input) =>
@@ -1253,6 +1244,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           id: memberIdOf(candidate.id),
           aituSubjectId: candidate.aituSubjectId,
           name: candidate.name,
+          surname: candidate.surname,
           gender: candidate.gender,
           age: candidate.age,
           city: candidate.city,
@@ -2372,18 +2364,24 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           if (!record || current.accessState === 'GUEST_PREVIEW') {
             fail(requestId, { code: 'UNAUTHENTICATED', message: 'Log in to renew.' });
           }
-          if (current.accessState !== 'ACTIVE_MEMBER_EXPIRED') {
-            fail(requestId, { code: 'CONFLICT', message: 'The membership is still active.' });
+          if (
+            current.accessState !== 'ACTIVE_MEMBER_EXPIRED' &&
+            current.accessState !== 'ACTIVE_MEMBER'
+          ) {
+            fail(requestId, { code: 'FORBIDDEN', message: 'This account cannot renew.' });
           }
 
+          // An expired Membership starts again from the payment; an early Продление adds
+          // the period to the current end date.
           const now = clock.now().toISOString();
+          const early = current.accessState === 'ACTIVE_MEMBER';
           const updated: MemberRecord = {
             ...record,
             membership: {
               tier: selection.tier,
               periodMonths: selection.periodMonths,
-              startsAt: now,
-              endsAt: addMonths(now, selection.periodMonths),
+              startsAt: early ? record.membership.startsAt : now,
+              endsAt: addMonths(early ? record.membership.endsAt : now, selection.periodMonths),
             },
           };
           const expiredMemberships = { ...state.expiredMemberships };

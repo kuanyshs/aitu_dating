@@ -18,18 +18,15 @@ type Props = {
   testID: string;
 };
 
-/** One radio group across paid and free options: exactly one Период at a time. */
+/** One radio group of paid periods: exactly one Период at a time. */
 export function MembershipOptions({ value: selection, onChange, testID }: Props) {
   const styles = useStyles();
   const t = strings.access.membership;
-  const paid = membershipOffers.filter((o) => o.tier === 'paid');
-  const free = membershipOffers.filter((o) => o.tier === 'free_verified');
 
   const option = (offer: Offer) => {
     const value: MembershipSelection = { tier: offer.tier, periodMonths: offer.periodMonths };
     const selected = selection ? keyOf(selection) === keyOf(value) : false;
-    const isFree = offer.tier === 'free_verified';
-    const title = isFree ? t.free : t.months(offer.periodMonths);
+    const title = t.months(offer.periodMonths);
     const label = `${title}, ${t.price(offer.priceKzt)}`;
     return (
       <Pressable
@@ -50,11 +47,6 @@ export function MembershipOptions({ value: selection, onChange, testID }: Props)
         </View>
         <View style={styles.optionText}>
           <AppText variant="bodyStrong">{title}</AppText>
-          {isFree ? (
-            <AppText variant="caption" tone="textMuted">
-              {t.freeHint}
-            </AppText>
-          ) : null}
         </View>
         {'badge' in offer ? (
           <View style={styles.badge}>
@@ -70,21 +62,13 @@ export function MembershipOptions({ value: selection, onChange, testID }: Props)
 
   return (
     <View role="radiogroup" aria-label={t.title} style={styles.group}>
-      <AppText variant="caption" tone="textMuted" style={styles.groupLabel}>
-        {t.paidGroup}
-      </AppText>
-      {paid.map(option)}
-      <AppText variant="caption" tone="textMuted" style={styles.groupLabel}>
-        {t.freeGroup}
-      </AppText>
-      {free.map(option)}
+      {membershipOffers.map(option)}
     </View>
   );
 }
 
 const useStyles = createStyles((colors) => ({
   group: { gap: spacing.sm },
-  groupLabel: { marginTop: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',

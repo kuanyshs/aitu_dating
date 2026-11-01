@@ -11,6 +11,8 @@ export const PassportCandidate = z.strictObject({
   id: Id,
   aituSubjectId: z.string().min(1),
   name: z.string().min(1),
+  /** From Passport; hidden from others unless the owner chooses to show it. */
+  surname: z.string().min(1),
   gender: GenderKey,
   age: z.number().int().min(18),
   city: CityKey,
@@ -32,12 +34,10 @@ export const PeriodMonths = z.union([z.literal(1), z.literal(3), z.literal(6), z
 export type PeriodMonths = z.infer<typeof PeriodMonths>;
 
 /** Exactly one period; free verified is always twelve months. */
-export const MembershipSelection = z
-  .strictObject({ tier: z.enum(membershipTiers), periodMonths: PeriodMonths })
-  .refine((s) => s.tier === 'paid' || s.periodMonths === 12, {
-    message: 'Free verified membership is always 12 months',
-    path: ['periodMonths'],
-  });
+export const MembershipSelection = z.strictObject({
+  tier: z.enum(membershipTiers),
+  periodMonths: PeriodMonths,
+});
 export type MembershipSelection = z.infer<typeof MembershipSelection>;
 
 export const PaymentReceipt = z.strictObject({

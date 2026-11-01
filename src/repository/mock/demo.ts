@@ -135,7 +135,7 @@ export const MockState = z.strictObject({
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 17;
+export const MOCK_STATE_VERSION = 18;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -189,6 +189,8 @@ export const mockStateMigrations = [
   }),
   // v17 adds members' Фильтры ленты and who opened each План.
   (v16: unknown) => ({ ...(v16 as object), feedFilters: {}, planOpens: {} }),
+  // v18 drops the free tier: every Membership and every chosen period is paid.
+  (v17: unknown) => JSON.parse(JSON.stringify(v17).replaceAll('"free_verified"', '"paid"')),
 ];
 
 export const defaultMockState = (): MockState => ({

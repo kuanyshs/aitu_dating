@@ -16,15 +16,12 @@ function paid(months: 1 | 3 | 6 | 12, startedDaysAgo: number) {
   return { tier: 'paid' as const, periodMonths: months, startsAt, endsAt };
 }
 
-function free(startedDaysAgo: number) {
-  return { ...paid(12, startedDaysAgo), tier: 'free_verified' as const };
-}
-
 export const members: MemberRecord[] = [
   {
     id: 'm01',
     aituSubjectId: 'demo-subject-m01',
     name: 'Алия',
+    surname: 'Сарсенова',
     gender: 'woman',
     age: 26,
     city: 'almaty',
@@ -35,6 +32,7 @@ export const members: MemberRecord[] = [
       intent: 'dating',
       interests: ['books', 'walks', 'coffee'],
       communicationStyle: 'calm_dialogue',
+      showSurname: true,
       questionnaire: {
         city: 'almaty',
         intent: 'dating',
@@ -53,6 +51,7 @@ export const members: MemberRecord[] = [
     id: 'm02',
     aituSubjectId: 'demo-subject-m02',
     name: 'Руслан',
+    surname: 'Ахметов',
     gender: 'man',
     age: 34,
     city: 'almaty',
@@ -81,6 +80,7 @@ export const members: MemberRecord[] = [
     id: 'm03',
     aituSubjectId: 'demo-subject-m03',
     name: 'Диана',
+    surname: 'Ким',
     gender: 'woman',
     age: 30,
     city: 'astana',
@@ -102,13 +102,14 @@ export const members: MemberRecord[] = [
       },
       publishedAt: hoursAgo(60 * DAY),
     },
-    membership: free(60),
+    membership: paid(12, 60),
     restricted: false,
   },
   {
     id: 'm04',
     aituSubjectId: 'demo-subject-m04',
     name: 'Ермек',
+    surname: 'Жумабеков',
     gender: 'man',
     age: 28,
     city: 'karaganda',
@@ -137,6 +138,7 @@ export const members: MemberRecord[] = [
     id: 'm05',
     aituSubjectId: 'demo-subject-m05',
     name: 'Сабина',
+    surname: 'Омарова',
     gender: 'woman',
     age: 32,
     city: 'shymkent',
@@ -165,6 +167,7 @@ export const members: MemberRecord[] = [
     id: 'm06',
     aituSubjectId: 'demo-subject-m06',
     name: 'Нурлан',
+    surname: 'Исмаилов',
     gender: 'man',
     age: 30,
     city: 'almaty',
@@ -193,6 +196,7 @@ export const members: MemberRecord[] = [
     id: 'm07',
     aituSubjectId: 'demo-subject-m07',
     name: 'Жанна',
+    surname: 'Ибраева',
     gender: 'woman',
     age: 35,
     city: 'astana',
@@ -221,6 +225,7 @@ export const members: MemberRecord[] = [
     id: 'm08',
     aituSubjectId: 'demo-subject-m08',
     name: 'Арман',
+    surname: 'Нурланов',
     gender: 'man',
     age: 27,
     city: 'karaganda',
@@ -242,13 +247,14 @@ export const members: MemberRecord[] = [
       },
       publishedAt: hoursAgo(25 * DAY),
     },
-    membership: free(25),
+    membership: paid(12, 25),
     restricted: false,
   },
   {
     id: 'm09',
     aituSubjectId: 'demo-subject-m09',
     name: 'Камила',
+    surname: 'Сейткали',
     gender: 'woman',
     age: 28,
     city: 'almaty',
@@ -259,6 +265,7 @@ export const members: MemberRecord[] = [
       intent: 'dating',
       interests: ['exhibitions', 'cinema', 'coffee'],
       communicationStyle: 'calm_dialogue',
+      showSurname: true,
       questionnaire: {
         city: 'almaty',
         intent: 'dating',
@@ -277,6 +284,7 @@ export const members: MemberRecord[] = [
     id: 'm10',
     aituSubjectId: 'demo-subject-m10',
     name: 'Данияр',
+    surname: 'Мусин',
     gender: 'man',
     age: 29,
     city: 'astana',
@@ -305,6 +313,7 @@ export const members: MemberRecord[] = [
     id: 'm11',
     aituSubjectId: 'demo-subject-m11',
     name: 'Лаура',
+    surname: 'Бекова',
     gender: 'woman',
     age: 31,
     city: 'karaganda',
@@ -333,6 +342,7 @@ export const members: MemberRecord[] = [
     id: 'm12',
     aituSubjectId: 'demo-subject-m12',
     name: 'Асель',
+    surname: 'Абенова',
     gender: 'woman',
     age: 25,
     city: 'almaty',

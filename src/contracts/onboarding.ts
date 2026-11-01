@@ -26,6 +26,8 @@ export const ProfileStepInput = z.strictObject({
     .max(INTERESTS_MAX, 'too_many')
     .refine((list) => new Set(list).size === list.length, 'duplicate'),
   communicationStyle: z.enum(communicationStyles, 'required'),
+  /** «Показывать фамилию в профиле»; off unless the member turns it on. */
+  showSurname: z.boolean().optional(),
 });
 export type ProfileStepInput = z.infer<typeof ProfileStepInput>;
 
@@ -70,6 +72,8 @@ export type CompleteOnboardingInput = z.infer<typeof CompleteOnboardingInput>;
 export const MyProfile = z.strictObject({
   id: Id,
   name: z.string().min(1),
+  /** The owner always sees their own surname, whatever its visibility. */
+  surname: z.string().min(1).optional(),
   age: z.number().int().min(18),
   gender: GenderKey,
   city: CityKey,
@@ -77,6 +81,7 @@ export const MyProfile = z.strictObject({
   avatar: AvatarRef,
   card: z.strictObject({
     bio: z.string(),
+    showSurname: z.boolean(),
     intent: z.enum(datingIntents),
     interests: z.array(z.enum(interests)),
     communicationStyle: z.enum(communicationStyles),

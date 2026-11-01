@@ -20,13 +20,19 @@ import { PrimaryButton } from '@/ui/components/buttons';
 import { Chip } from '@/ui/components/Chip';
 import { RadioGroup } from '@/ui/components/RadioGroup';
 import { TextArea } from '@/ui/components/TextArea';
+import { ToggleRow } from '@/ui/components/ToggleRow';
 import { AppText } from '@/ui/components/Text';
 import { strings } from '@/ui/strings';
 import { spacing } from '@/ui/theme/tokens';
 
-type FieldName = keyof ProfileStepInput;
+type FieldName = Exclude<keyof ProfileStepInput, 'showSurname'>;
 
-const empty: ProfileStepInput = { bio: '', interests: [], communicationStyle: undefined as never };
+const empty: ProfileStepInput = {
+  bio: '',
+  interests: [],
+  communicationStyle: undefined as never,
+  showSurname: false,
+};
 
 export default function ProfileStep() {
   const router = useRouter();
@@ -56,6 +62,7 @@ export default function ProfileStep() {
   }, [field, setError, t.errors]);
 
   const chosen = useWatch({ control, name: 'interests' }) ?? [];
+  const surname = flow.data?.candidate?.surname;
 
   const onSubmit = handleSubmit((values) =>
     save.mutate(values, {
@@ -188,6 +195,22 @@ export default function ProfileStep() {
           </AppText>
         ) : null}
       </View>
+
+      {surname ? (
+        <Controller
+          control={control}
+          name="showSurname"
+          render={({ field: f }) => (
+            <ToggleRow
+              label={t.showSurname}
+              hint={t.showSurnameHint(surname)}
+              value={!!f.value}
+              onChange={f.onChange}
+              testID="profile-show-surname"
+            />
+          )}
+        />
+      ) : null}
     </StepScreen>
   );
 }

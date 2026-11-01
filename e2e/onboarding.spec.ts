@@ -14,16 +14,17 @@ const answers = {
   dateFormat: 'walk',
 } as const;
 
-/** Madina with free verified membership, up to the profile step. */
+/** Madina with a paid membership, up to the profile step. */
 async function toProfileStep(page: Page) {
   await page.goto('/access');
   await page.getByTestId('candidate-passport-3').click();
   await page.getByTestId('access-next').click();
   await page.getByTestId('rules-accept').click();
   await page.getByTestId('access-next').click();
-  await page.getByTestId('membership-free_verified-12').click();
+  await page.getByTestId('membership-paid-12').click();
   await page.getByTestId('access-next').click();
-  await expect(page.getByTestId('access-profile')).toBeVisible();
+  await page.getByTestId('payment-pay').click();
+  await expect(page.getByTestId('access-profile')).toBeVisible({ timeout: 10_000 });
 }
 
 async function fillProfile(page: Page) {
@@ -55,6 +56,11 @@ test.describe('onboarding', () => {
     });
     await page.getByTestId('questionnaire-create').click();
 
+    // The last step: «Вы участник» with the end of the Membership.
+    await expect(page.getByTestId('access-welcome')).toBeVisible();
+    await expect(page.getByTestId('access-progress')).toHaveText('Шаг 7 из 7');
+    await expect(page.getByTestId('welcome-until')).toContainText('Membership активен до');
+    await page.getByTestId('welcome-feed').click();
     await expect(page.getByTestId('screen-home')).toBeVisible();
     await expect(page.getByTestId('toast')).toBeVisible();
     await expect(page.getByTestId('author-name').first()).toBeVisible();
@@ -71,9 +77,9 @@ test.describe('onboarding', () => {
       .toBe(true);
 
     await page.getByTestId('tab-profile').click();
-    await expect(page.getByTestId('profile-name')).toHaveText('Мадина');
+    await expect(page.getByTestId('profile-name')).toHaveText('Мадина Тулегенова');
     await expect(page.getByTestId('profile-bio-text')).toContainText('Люблю книги');
-    await expect(page.getByTestId('profile-membership')).toContainText('Бесплатный verified');
+    await expect(page.getByTestId('profile-membership')).toContainText('Membership активен до');
     await expect(page.getByTestId('profile-card')).toContainText('Дружба');
     await testInfo.attach(`profile-member-${testInfo.project.name}`, {
       body: await page.screenshot({ fullPage: true }),
@@ -82,7 +88,7 @@ test.describe('onboarding', () => {
 
     await page.reload();
     await page.getByTestId('tab-profile').click();
-    await expect(page.getByTestId('profile-name')).toHaveText('Мадина');
+    await expect(page.getByTestId('profile-name')).toHaveText('Мадина Тулегенова');
   });
 
   test('«Далее» stays off until the profile step is valid', async ({ page }) => {

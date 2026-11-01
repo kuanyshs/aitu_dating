@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina } from './helpers';
+import { joinAsMadina, signInAs } from './helpers';
 
 async function openEditor(page: Page) {
   await page.getByTestId('tab-profile').click();
@@ -11,6 +11,31 @@ async function openEditor(page: Page) {
 test.describe('Редактирование Карточки', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'light', 'layout-independent rule');
+  });
+
+  test('the surname is hidden by default and shown once the owner turns it on', async ({
+    page,
+  }) => {
+    await joinAsMadina(page);
+    // The owner always sees it.
+    await page.getByTestId('tab-profile').click();
+    await expect(page.getByTestId('profile-name')).toHaveText('Мадина Тулегенова');
+
+    await signInAs(page, 'm03');
+    await page.goto('/member/me-passport-3');
+    await expect(page.getByTestId('member-name')).toHaveText('Мадина');
+
+    await signInAs(page, 'me-passport-3');
+    await page.goto('/card-edit');
+    const toggle = page.getByTestId('card-edit-show-surname');
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await toggle.click();
+    await page.getByTestId('card-edit-save').click();
+    await expect(page.getByTestId('toast')).toContainText('Карточка сохранена');
+
+    await signInAs(page, 'm03');
+    await page.goto('/member/me-passport-3');
+    await expect(page.getByTestId('member-name')).toHaveText('Мадина Тулегенова');
   });
 
   test('changes are saved and the Profile tab shows them', async ({ page }, testInfo) => {

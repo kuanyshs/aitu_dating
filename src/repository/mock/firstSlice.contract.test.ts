@@ -47,12 +47,13 @@ describe('first slice: guest → member → logout → login → expiry → rene
       repo.setReaction({ postId: firstPostId, reaction: 'like', active: true }),
     ).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
 
-    // Flow B — free verified onboarding as Айдана.
+    // Flow B — paid onboarding as Айдана.
     await repo.startAccess();
     await repo.selectPassport({ candidateId: 'passport-1' });
     await repo.acceptRules({ rulesVersion: CLUB_RULES_VERSION });
-    const free = await repo.selectMembership({ tier: 'free_verified', periodMonths: 12 });
-    expect(free.step).toBe('profile'); // no payment step for free verified
+    const chosen = await repo.selectMembership({ tier: 'paid', periodMonths: 12 });
+    expect(chosen.step).toBe('payment');
+    await repo.confirmPayment({ idempotencyKey: 'first-slice-pay-1' });
     await repo.saveProfileStep({
       bio: 'Люблю разговоры о книгах.',
       interests: ['books', 'coffee'],
@@ -71,7 +72,7 @@ describe('first slice: guest → member → logout → login → expiry → rene
     expect(aidana).toMatchObject({ name: 'Айдана', age: 27, city: 'almaty', verified: true });
     expect(aidana.card.questionnaire[last]).toBe(answers[last]);
     expect(aidana.card.intent).toBe(answers.intent);
-    expect(aidana.membership).toMatchObject({ tier: 'free_verified', status: 'active' });
+    expect(aidana.membership).toMatchObject({ tier: 'paid', status: 'active' });
     expect((await repo.getSession()).accessState).toBe('ACTIVE_MEMBER');
     const memberFeed = await repo.getHomeFeed({ tab: 'for_you' });
     expect(memberFeed.items.every((p) => p.author.view === 'member')).toBe(true);

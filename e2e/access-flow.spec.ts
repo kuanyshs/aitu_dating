@@ -21,7 +21,7 @@ test.describe('access flow up to membership', () => {
     await expect(page.getByTestId('passport-subject').first()).toContainText(
       'aitu-subject-almaty-102',
     );
-    await expect(page.getByTestId('access-progress')).toHaveText('Шаг 1 из 6');
+    await expect(page.getByTestId('access-progress')).toHaveText('Шаг 1 из 7');
     await choosePassport(page);
     await acceptRules(page);
 
@@ -46,13 +46,15 @@ test.describe('access flow up to membership', () => {
     await expect(page.getByTestId('access-profile')).toBeVisible({ timeout: 10_000 });
   });
 
-  test('free verified skips the payment step', async ({ page }) => {
+  test('only paid periods are offered, and every one goes through payment', async ({ page }) => {
     await page.goto('/access');
     await choosePassport(page, 'passport-2');
     await acceptRules(page);
-    await page.getByTestId('membership-free_verified-12').click();
+    await expect(page.getByRole('radio')).toHaveCount(4);
+    await expect(page.getByText('Бесплатный verified')).toHaveCount(0);
+    await page.getByTestId('membership-paid-12').click();
     await page.getByTestId('access-next').click();
-    await expect(page.getByTestId('access-profile')).toBeVisible();
+    await expect(page.getByTestId('payment-summary')).toContainText('14 990');
   });
 
   test('closing mid-flow keeps progress and «Продолжить вступление» resumes it', async ({

@@ -5,7 +5,7 @@ import type { AccessFlowStep } from '@/contracts';
 import { FlowScreen } from '@/ui/components/FlowScreen';
 import { strings } from '@/ui/strings';
 
-import { stepNumber, stepOrder, stepRoute } from './steps';
+import { stepNumber, stepOrder, stepRoute, TOTAL_STEPS } from './steps';
 
 type Props = {
   step: AccessFlowStep;
@@ -26,7 +26,7 @@ export function StepScreen({ step, title, text, children, footer, testID }: Prop
     <FlowScreen
       title={title}
       text={text}
-      progress={strings.access.step(index, stepOrder.length)}
+      progress={strings.access.step(index, TOTAL_STEPS)}
       progressTestID="access-progress"
       back={
         previous && previous !== 'payment'

@@ -249,7 +249,7 @@ export const strings = {
     save: 'Сохранить',
     retry: 'Повторить',
     passportTitle: 'Из Aitu Passport',
-    passportText: 'Имя, возраст, пол и город приходят из Passport и здесь не меняются.',
+    passportText: 'Имя, фамилия, возраст, пол и город приходят из Passport и здесь не меняются.',
     intent: 'Ищу',
     saved: 'Карточка сохранена',
     failed: 'Не удалось сохранить. Изменения на месте — попробуйте ещё раз.',
@@ -405,9 +405,10 @@ export const strings = {
   renew: {
     title: 'Продление membership',
     text: 'Карточка и анкета сохранятся — заполнять их заново не нужно. Выберите ровно один период.',
+    earlyText: (until: string) =>
+      `Новый период добавится к текущей дате окончания — ${until}. Выберите ровно один период.`,
     step: (n: number, total: number) => `Шаг ${n} из ${total}`,
     next: 'Далее',
-    renewFree: 'Продлить бесплатно',
     changePeriod: 'Изменить период',
     close: 'Закрыть продление',
     payTitle: 'Оплата продления (демо)',
@@ -798,13 +799,9 @@ export const strings = {
     membership: {
       title: 'Membership',
       text: 'Один уровень доступа: без доплат за сообщения, реакции и планы. Выберите ровно один вариант.',
-      paidGroup: 'Платный доступ',
-      freeGroup: 'Бесплатно',
       months: (n: number) => `${n} ${n === 1 ? 'месяц' : n < 5 ? 'месяца' : 'месяцев'}`,
       price: (kzt: number) => `${kzt.toLocaleString('ru-RU')} ₸`,
       bestValue: 'Выгоднее',
-      free: 'Бесплатный verified',
-      freeHint: '12 месяцев для demo и одобренного beta-доступа',
       chooseRequired: 'Выберите вариант membership.',
     },
     payment: {
@@ -819,7 +816,10 @@ export const strings = {
     },
     profileStep: {
       title: 'Ваша карточка',
-      text: 'Имя, возраст, пол и город придут из Passport. Расскажите о себе — это увидят участники.',
+      text: 'Имя, фамилия, возраст, пол и город придут из Passport. Расскажите о себе — это увидят участники.',
+      showSurname: 'Показывать фамилию в профиле',
+      showSurnameHint: (surname: string) =>
+        `Фамилия «${surname}» из Passport. Пока настройка выключена, её видите только вы.`,
       bio: 'О себе',
       bioPlaceholder: 'Пара фраз о том, что вам интересно и какие разговоры вы любите',
       bioCounter: (n: number, max: number) => `${n} / ${max}`,
@@ -844,6 +844,19 @@ export const strings = {
       missing: 'Ответьте на этот вопрос, чтобы создать карточку.',
       created: 'Карточка опубликована. Добро пожаловать в сообщество!',
     },
+    welcome: {
+      title: 'Вы участник',
+      text: 'Карточка опубликована. Теперь вам открыто всё сообщество.',
+      can: [
+        'Видеть имена, фото и карточки участников',
+        'Писать посты, вопросы и комментарии',
+        'Предлагать планы встреч и откликаться на них',
+        'Подписываться и переписываться',
+      ],
+      until: (date: string) => `Membership активен до ${date}`,
+      feed: 'В ленту',
+      profile: 'Мой профиль',
+    },
     errors: {
       network: 'Нет соединения. Попробуйте ещё раз.',
       conflict: 'Этот шаг сейчас недоступен. Вернёмся к нужному шагу.',
@@ -860,7 +873,6 @@ export const strings = {
     communication: 'Стиль общения',
     questionnaire: 'Анкета',
     membershipActive: (until: string) => `Membership активен до ${until}`,
-    membershipFree: (until: string) => `Бесплатный verified до ${until}`,
     membershipExpired: 'Membership истёк',
     editCard: 'Редактировать карточку',
     ageCity: (age: number, city: string) => `${age} · ${city}`,
@@ -905,6 +917,7 @@ export const strings = {
   },
   membershipScreen: {
     title: 'Membership',
+    renewEarly: 'Продлить заранее',
     close: 'Закрыть',
     guest:
       'Membership открывает ленту подписок, сообщения, реакции и планы встреч. Вступите через Aitu Passport, чтобы стать участником.',

@@ -37,6 +37,8 @@ export const MemberAuthorView = z.strictObject({
   view: z.literal('member'),
   id: Id,
   name: z.string().min(1),
+  /** Present only when its owner shows it in the profile. */
+  surname: z.string().min(1).optional(),
   verified: z.boolean(),
   gender: GenderKey,
   age: z.number().int().min(18),

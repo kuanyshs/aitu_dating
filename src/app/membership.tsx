@@ -76,7 +76,7 @@ function Membership({ membership }: { membership: MyProfile['membership'] }) {
     ...(active ? [[t.left, t.days(daysLeft), 'left'] as [string, string, string]] : []),
   ];
   const renew = {
-    label: t.renew,
+    label: active ? t.renewEarly : t.renew,
     onPress: () => router.push('/renew'),
     testID: 'membership-renew',
   };

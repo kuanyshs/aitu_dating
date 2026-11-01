@@ -6,7 +6,7 @@ import { View } from 'react-native';
 
 import { membershipOffers } from '@/catalogs';
 import type { MembershipSelection } from '@/contracts';
-import { useRenewMembership } from '@/data/hooks';
+import { useMyProfile, useRenewMembership, useSession } from '@/data/hooks';
 import { MembershipOptions } from '@/features/access/MembershipOptions';
 import { accessErrorText, newIdempotencyKey } from '@/features/access/steps';
 import { PrimaryButton, SecondaryButton } from '@/ui/components/buttons';
@@ -18,13 +18,16 @@ import { radius, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
 
 /**
- * Продление: choose exactly one Период, pay for a paid one (demo), and the member is
- * active again. The card and the Анкета are kept, so nothing else is asked.
+ * Продление: choose exactly one Период and pay (demo). An expired member is active again
+ * from the payment; an active one adds the period to the current end date. The card and
+ * the Анкета are kept, so nothing else is asked.
  */
 export default function RenewScreen() {
   const styles = useStyles();
   const router = useRouter();
   const renew = useRenewMembership();
+  const early = useSession().data?.accessState === 'ACTIVE_MEMBER';
+  const me = useMyProfile(early);
   const toast = useToast((s) => s.show);
   // Opened from a link there is nothing underneath; land on Home instead.
   const leave = () => (router.canGoBack() ? router.back() : router.replace('/'));
@@ -39,7 +42,6 @@ export default function RenewScreen() {
         (o) => o.tier === selection.tier && o.periodMonths === selection.periodMonths,
       )
     : undefined;
-  const isFree = selection?.tier === 'free_verified';
 
   const choose = (next: MembershipSelection) => {
     setSelection(next);
@@ -114,29 +116,21 @@ export default function RenewScreen() {
   return (
     <FlowScreen
       title={t.title}
-      text={t.text}
-      progress={isFree ? undefined : t.step(1, 2)}
+      text={
+        early && me.data
+          ? t.earlyText(format(new Date(me.data.membership.endsAt), 'd MMMM yyyy', { locale: ru }))
+          : t.text
+      }
+      progress={t.step(1, 2)}
       close={close}
       testID="renew-choose"
       footer={
-        <>
-          {isFree ? error : null}
-          {isFree ? (
-            <PrimaryButton
-              label={t.renewFree}
-              loading={renew.isPending}
-              onPress={submit}
-              testID="renew-free"
-            />
-          ) : (
-            <PrimaryButton
-              label={t.next}
-              disabled={!selection}
-              onPress={() => setPhase('pay')}
-              testID="renew-next"
-            />
-          )}
-        </>
+        <PrimaryButton
+          label={t.next}
+          disabled={!selection}
+          onPress={() => setPhase('pay')}
+          testID="renew-next"
+        />
       }
     >
       <MembershipOptions value={selection} onChange={choose} testID="renew" />

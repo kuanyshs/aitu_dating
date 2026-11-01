@@ -70,7 +70,7 @@ export default function QuestionnaireStep() {
       {
         onSuccess: () => {
           toast(t.created);
-          router.dismissTo('/');
+          router.replace('/access/welcome');
         },
         onError: (error) => {
           if (!isRepositoryError(error) || !error.fieldErrors) return;

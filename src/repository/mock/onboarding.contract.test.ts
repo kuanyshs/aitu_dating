@@ -37,7 +37,8 @@ async function toProfileStep(repo: AituRepository, candidateId = 'passport-3') {
   await repo.startAccess();
   await repo.selectPassport({ candidateId });
   await repo.acceptRules({ rulesVersion: CLUB_RULES_VERSION });
-  await repo.selectMembership({ tier: 'free_verified', periodMonths: 12 });
+  await repo.selectMembership({ tier: 'paid', periodMonths: 12 });
+  await repo.confirmPayment({ idempotencyKey: 'join-checkout' });
 }
 
 async function toQuestionnaire(repo: AituRepository) {
@@ -145,7 +146,7 @@ describe('completeOnboarding', () => {
       verified: true,
       avatar: { kind: 'synthetic' },
       card: { ...profile, intent: 'friendship', questionnaire: answers },
-      membership: { tier: 'free_verified', periodMonths: 12, status: 'active' },
+      membership: { tier: 'paid', periodMonths: 12, status: 'active' },
     });
     expect(await repo.getSession()).toEqual({
       accessState: 'ACTIVE_MEMBER',

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { cityLabels, genderLabels } from '@/catalogs';
 import type { AuthorView } from '@/contracts';
 import { BadgeCheck } from '@/ui/icons';
+import { fullName } from '@/ui/format';
 import { strings } from '@/ui/strings';
 import { useTheme } from '@/ui/theme/ThemeProvider';
 import { spacing } from '@/ui/theme/tokens';
@@ -24,7 +25,7 @@ export function AuthorRow({ author, time }: Props) {
       {author.view === 'member' ? (
         <>
           <AppText variant="bodyStrong" testID="author-name">
-            {author.name}
+            {fullName(author)}
           </AppText>
           {author.verified ? (
             <BadgeCheck

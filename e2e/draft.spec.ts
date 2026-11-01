@@ -128,6 +128,8 @@ test.describe('Создание: a draft', () => {
   });
 
   test('«Сбросить демо» forgets the draft', async ({ page }) => {
+    // Two paid joins in one test.
+    test.setTimeout(90_000);
     await joinAsMadina(page);
     await openEditor(page);
     await writeAndKeep(page, 'Исчезнет со сбросом');

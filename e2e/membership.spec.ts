@@ -11,7 +11,7 @@ test.describe('Membership', () => {
     await joinAsMadina(page);
     await page.getByTestId('home-menu').click();
     await page.getByTestId('menu-membership').click();
-    await expect(page.getByTestId('membership-tier')).toHaveText('Бесплатный verified');
+    await expect(page.getByTestId('membership-tier')).toHaveText('Платный');
     await expect(page.getByTestId('membership-period')).toHaveText('12 месяцев');
     await expect(page.getByTestId('membership-starts')).toHaveText('26 сентября 2026');
     await expect(page.getByTestId('membership-ends')).toContainText('2027');

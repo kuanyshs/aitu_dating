@@ -33,9 +33,11 @@ import { Chip } from '@/ui/components/Chip';
 import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
 import { RadioGroup } from '@/ui/components/RadioGroup';
 import { Screen } from '@/ui/components/Screen';
+import { ToggleRow } from '@/ui/components/ToggleRow';
 import { TextArea } from '@/ui/components/TextArea';
 import { AppText } from '@/ui/components/Text';
 import { useReportFooter } from '@/ui/navigation/statusInset';
+import { fullName } from '@/ui/format';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { radius, spacing } from '@/ui/theme/tokens';
@@ -87,6 +89,7 @@ function CardForm({ me }: { me: MyProfile }) {
       interests: me.card.interests,
       communicationStyle: me.card.communicationStyle,
       intent: me.card.intent,
+      showSurname: me.card.showSurname,
     },
     mode: 'onChange',
   });
@@ -130,7 +133,7 @@ function CardForm({ me }: { me: MyProfile }) {
           <View style={styles.passport} testID="card-edit-passport">
             <Avatar avatar={me.avatar} size={48} />
             <View style={styles.grow}>
-              <AppText variant="bodyStrong">{me.name}</AppText>
+              <AppText variant="bodyStrong">{fullName(me)}</AppText>
               <AppText variant="caption" tone="textMuted">
                 {`${genderLabels[me.gender]} · ${strings.profile.ageCity(me.age, cityLabels[me.city])}`}
               </AppText>
@@ -240,6 +243,22 @@ function CardForm({ me }: { me: MyProfile }) {
               )}
             />
           </View>
+
+          {me.surname ? (
+            <Controller
+              control={control}
+              name="showSurname"
+              render={({ field }) => (
+                <ToggleRow
+                  label={step.showSurname}
+                  hint={step.showSurnameHint(me.surname ?? '')}
+                  value={!!field.value}
+                  onChange={field.onChange}
+                  testID="card-edit-show-surname"
+                />
+              )}
+            />
+          ) : null}
         </ScrollView>
 
         <View style={styles.footer} onLayout={reportFooter}>

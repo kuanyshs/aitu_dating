@@ -32,7 +32,8 @@ test('guest → paid member → «Выйти» → «Войти» → expiry →
   await page.getByTestId('rules-accept').click();
   await page.getByTestId('access-next').click();
   await page.getByTestId('membership-paid-3').click();
-  for (const other of ['membership-paid-1', 'membership-paid-6', 'membership-free_verified-12']) {
+  await expect(page.getByTestId('membership-free_verified-12')).toHaveCount(0);
+  for (const other of ['membership-paid-1', 'membership-paid-6', 'membership-paid-12']) {
     await expect(page.getByTestId(other)).toHaveAttribute('aria-checked', 'false');
   }
   await page.getByTestId('access-next').click();
@@ -50,12 +51,14 @@ test('guest → paid member → «Выйти» → «Войти» → expiry →
   }
   await expect(page.getByTestId('questionnaire-progress')).toHaveText('Вопрос 7 из 7');
   await page.getByTestId('questionnaire-create').click();
+  await expect(page.getByTestId('access-welcome')).toBeVisible();
+  await page.getByTestId('welcome-feed').click();
 
   await expect(page.getByTestId('home-member')).toBeVisible();
   await expect(page.getByTestId('toast')).toBeVisible();
   await expectMemberNames(page);
   await page.getByTestId('tab-profile').click();
-  await expect(page.getByTestId('profile-name')).toHaveText('Айдана');
+  await expect(page.getByTestId('profile-name')).toHaveText('Айдана Кенжебаева');
   await expect(page.getByTestId('profile-membership')).toContainText('активен до');
 
   // Flow D: «Выйти» to the safe view, «Войти» back without the Анкета.
@@ -86,6 +89,6 @@ test('guest → paid member → «Выйти» → «Войти» → expiry →
   // The persisted end state survives a reload.
   await page.reload();
   await page.getByTestId('tab-profile').click();
-  await expect(page.getByTestId('profile-name')).toHaveText('Айдана');
+  await expect(page.getByTestId('profile-name')).toHaveText('Айдана Кенжебаева');
   await expect(page.getByTestId('profile-membership')).toContainText('активен до');
 });

@@ -42,6 +42,8 @@ export const ProfileCardRecord = z.strictObject({
   intent: z.enum(datingIntents),
   interests: z.array(z.enum(interests)).min(1).max(5),
   communicationStyle: z.enum(communicationStyles),
+  /** «Показывать фамилию в профиле»; absent means off. */
+  showSurname: z.boolean().optional(),
   questionnaire: QuestionnaireAnswers,
   publishedAt: IsoDateTime,
 });
@@ -57,6 +59,8 @@ export const MemberRecord = z.strictObject({
   id: Id,
   aituSubjectId: z.string().min(1),
   name: z.string().min(1),
+  /** From Passport. Records saved before surnames existed have none. */
+  surname: z.string().min(1).optional(),
   gender: GenderKey,
   age: z.number().int().min(18),
   city: CityKey,

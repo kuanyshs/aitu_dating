@@ -41,7 +41,8 @@ async function join(repo: MockRepository) {
   await repo.startAccess();
   await repo.selectPassport({ candidateId: 'passport-1' });
   await repo.acceptRules({ rulesVersion: CLUB_RULES_VERSION });
-  await repo.selectMembership({ tier: 'free_verified', periodMonths: 12 });
+  await repo.selectMembership({ tier: 'paid', periodMonths: 12 });
+  await repo.confirmPayment({ idempotencyKey: 'join-checkout' });
   await repo.saveProfileStep({
     bio: 'Коротко о себе.',
     interests: ['coffee'],

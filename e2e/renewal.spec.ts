@@ -17,7 +17,7 @@ test.describe('expired membership', () => {
     await expireFromDemoPanel(page);
 
     // Profile: own card stays in full, with the call to renew.
-    await expect(page.getByTestId('profile-name')).toHaveText('Мадина');
+    await expect(page.getByTestId('profile-name')).toHaveText('Мадина Тулегенова');
     await expect(page.getByTestId('profile-membership')).toContainText('истёк');
     await expect(page.getByTestId('profile-renew-banner')).toBeVisible();
     await expect(page.getByTestId('profile-edit-card')).toBeVisible();
@@ -60,15 +60,22 @@ test.describe('expired membership', () => {
     await expect(page.getByTestId('renew-choose')).toBeVisible();
   });
 
-  test('free verified renews without payment', async ({ page }) => {
+  test('an active member renews early and the period is added to the end date', async ({
+    page,
+  }) => {
     test.skip(test.info().project.name !== 'light', 'layout-independent rule');
     await joinAsMadina(page);
-    await expireFromDemoPanel(page);
-    await page.getByTestId('profile-renew-banner-action').click();
-    await page.getByTestId('renew-free_verified-12').click();
-    await page.getByTestId('renew-free').click();
-    await expect(page.getByTestId('profile-membership')).toContainText('Бесплатный verified до');
-    await expect(page.getByTestId('profile-renew-banner')).toHaveCount(0);
+    await page.goto('/membership');
+    const ends = await page.getByTestId('membership-ends').innerText();
+    await page.getByTestId('membership-renew').click();
+    await expect(page.getByTestId('renew-choose')).toContainText(ends);
+    await page.getByTestId('renew-paid-1').click();
+    await page.getByTestId('renew-next').click();
+    await page.getByTestId('renew-pay').click();
+    await expect(page.getByTestId('toast')).toContainText('Membership продлён до');
+    await page.goto('/membership');
+    await expect(page.getByTestId('membership-ends')).not.toHaveText(ends);
+    await expect(page.getByTestId('membership-period')).toHaveText('1 месяц');
   });
 
   test('a failed renewal payment can be retried', async ({ page }) => {

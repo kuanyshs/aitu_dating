@@ -30,3 +30,8 @@ export function formatPlanDate(isoDate: string, clock: Clock): string {
   const local = new TZDate(`${isoDate}T12:00:00`, clock.timezone);
   return format(local, 'd MMM, EEEEEE', { locale: ru });
 }
+
+/** Name with the surname when the person shows it (or it is the owner's own). */
+export function fullName(person: { name: string; surname?: string }): string {
+  return person.surname ? `${person.name} ${person.surname}` : person.name;
+}

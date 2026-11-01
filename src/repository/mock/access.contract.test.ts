@@ -60,18 +60,15 @@ describe('access flow order', () => {
     expect(afterPayment).toMatchObject({ step: 'profile', payment: { amountKzt: 4990 } });
   });
 
-  it('skips payment for free verified and records a zero receipt', async () => {
+  it('has no free tier: every period goes through payment', async () => {
     const repo = repositoryOn();
     await toMembershipStep(repo);
-    const flow = await repo.selectMembership({ tier: 'free_verified', periodMonths: 12 });
-    expect(flow).toMatchObject({
-      step: 'profile',
-      membership: { tier: 'free_verified', periodMonths: 12 },
-      payment: { amountKzt: 0 },
-    });
-    await expect(repo.confirmPayment({ idempotencyKey: 'key-00000002' })).rejects.toMatchObject({
-      code: 'CONFLICT',
-    });
+    await expect(
+      repo.selectMembership({ tier: 'free_verified' as never, periodMonths: 12 }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    const flow = await repo.selectMembership({ tier: 'paid', periodMonths: 12 });
+    expect(flow).toMatchObject({ step: 'payment' });
+    expect(flow.payment).toBeUndefined();
   });
 
   it.each([
@@ -114,12 +111,9 @@ describe('access flow order', () => {
     });
   });
 
-  it('allows exactly one period and only 12 months for free verified', async () => {
+  it('allows exactly one period', async () => {
     const repo = repositoryOn();
     await toMembershipStep(repo);
-    await expect(
-      repo.selectMembership({ tier: 'free_verified', periodMonths: 3 }),
-    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     await expect(
       repo.selectMembership({ tier: 'paid', periodMonths: 2 as never }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
@@ -139,7 +133,8 @@ describe('access flow order', () => {
   it('locks identity and plan once membership is confirmed', async () => {
     const repo = repositoryOn();
     await toMembershipStep(repo);
-    await repo.selectMembership({ tier: 'free_verified', periodMonths: 12 });
+    await repo.selectMembership({ tier: 'paid', periodMonths: 12 });
+    await repo.confirmPayment({ idempotencyKey: 'key-00000009' });
     await expect(repo.selectPassport({ candidateId: 'passport-2' })).rejects.toMatchObject({
       code: 'CONFLICT',
     });
@@ -199,7 +194,8 @@ describe('resume', () => {
   it('leaves the visitor a guest until the card is published', async () => {
     const repo = repositoryOn();
     await toMembershipStep(repo);
-    await repo.selectMembership({ tier: 'free_verified', periodMonths: 12 });
+    await repo.selectMembership({ tier: 'paid', periodMonths: 12 });
+    await repo.confirmPayment({ idempotencyKey: 'key-00000009' });
     expect((await repo.getSession()).accessState).toBe('GUEST_PREVIEW');
   });
 

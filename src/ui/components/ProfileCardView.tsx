@@ -13,6 +13,7 @@ import {
 } from '@/catalogs';
 import type { MyProfile } from '@/contracts';
 import { BadgeCheck } from '@/ui/icons';
+import { fullName } from '@/ui/format';
 import { strings } from '@/ui/strings';
 import { useTheme } from '@/ui/theme/ThemeProvider';
 import { radius, spacing } from '@/ui/theme/tokens';
@@ -28,11 +29,7 @@ export function ProfileCardView({ me, stats }: { me: MyProfile; stats?: React.Re
   const t = strings.profile;
   const until = format(new Date(me.membership.endsAt), 'd MMMM yyyy', { locale: ru });
   const membershipText =
-    me.membership.status === 'expired'
-      ? t.membershipExpired
-      : me.membership.tier === 'free_verified'
-        ? t.membershipFree(until)
-        : t.membershipActive(until);
+    me.membership.status === 'expired' ? t.membershipExpired : t.membershipActive(until);
 
   return (
     <View style={styles.root} testID="profile-card">
@@ -40,7 +37,7 @@ export function ProfileCardView({ me, stats }: { me: MyProfile; stats?: React.Re
         <View style={styles.identity}>
           <View style={styles.nameRow}>
             <AppText variant="display" role="heading" testID="profile-name">
-              {me.name}
+              {fullName(me)}
             </AppText>
             {me.verified ? (
               <BadgeCheck size={22} color={colors.text} strokeWidth={2} aria-label={t.verified} />

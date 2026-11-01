@@ -4,15 +4,17 @@ import { loadSeed } from '../src/repository/mock/seed';
 
 const seed = loadSeed();
 
-/** Madina joins with free verified membership and a published card. */
+/** Madina joins with a paid 12-month membership and a published card. */
 export async function joinAsMadina(page: Page) {
   await page.goto('/access');
   await page.getByTestId('candidate-passport-3').click();
   await page.getByTestId('access-next').click();
   await page.getByTestId('rules-accept').click();
   await page.getByTestId('access-next').click();
-  await page.getByTestId('membership-free_verified-12').click();
+  await page.getByTestId('membership-paid-12').click();
   await page.getByTestId('access-next').click();
+  await page.getByTestId('payment-pay').click();
+  await expect(page.getByTestId('access-profile')).toBeVisible({ timeout: 10_000 });
   await page.getByTestId('profile-bio').fill('Люблю книги и долгие прогулки.');
   await page.getByTestId('interest-books').click();
   await page.getByTestId('profile-style-calm_dialogue').click();
@@ -29,6 +31,8 @@ export async function joinAsMadina(page: Page) {
     await page.getByTestId(`question-${question}-${answer}`).click();
   }
   await page.getByTestId('questionnaire-create').click();
+  await expect(page.getByTestId('access-welcome')).toBeVisible();
+  await page.getByTestId('welcome-feed').click();
   await expect(page.getByTestId('home-member')).toBeVisible();
 }
 

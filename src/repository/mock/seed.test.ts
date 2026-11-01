@@ -17,8 +17,7 @@ describe('seed data', () => {
 
   it('covers the required edge cases', () => {
     expect(seed.members.some((m) => m.restricted)).toBe(true);
-    expect(seed.members.some((m) => m.membership.tier === 'free_verified')).toBe(true);
-    expect(seed.members.some((m) => m.membership.tier === 'paid')).toBe(true);
+    expect(seed.members.every((m) => m.membership.tier === 'paid')).toBe(true);
     expect(seed.members.some((m) => m.membership.endsAt < SEED_NOW)).toBe(true);
     expect(seed.posts.some((p) => p.mediaKey)).toBe(true);
     expect(seed.posts.some((p) => p.type === 'quote')).toBe(true);

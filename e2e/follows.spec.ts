@@ -42,7 +42,7 @@ test.describe('Подписчики и Подписки', () => {
     await page.getByTestId('follows-person-m01').click();
     // Their first profile screen is still underneath: work on the top one.
     const top = page.getByTestId('screen-member').last();
-    await expect(top.getByTestId('member-name')).toHaveText(m01.name);
+    await expect(top.getByTestId('member-name')).toHaveText(`${m01.name} ${m01.surname}`);
 
     // Unfollowed, they leave the list.
     await top.getByTestId('member-follow').click();

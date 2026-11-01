@@ -41,6 +41,7 @@ export function toAuthorView(member: MemberRecord, viewer: Viewer): AuthorView {
     view: 'member',
     id: member.id,
     name: member.name,
+    ...(member.surname && member.card.showSurname ? { surname: member.surname } : {}),
     verified: member.verified,
     gender: member.gender,
     age: member.age,

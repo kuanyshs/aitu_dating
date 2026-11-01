@@ -43,7 +43,7 @@ test.describe('Поиск', () => {
     await page.getByTestId('search-input').fill(m01.name.slice(0, 3).toLowerCase());
     await expect(page.getByTestId('search-nearby')).toHaveCount(0);
     await page.getByTestId(`search-person-m01`).click();
-    await expect(page.getByTestId('member-name')).toHaveText(m01.name);
+    await expect(page.getByTestId('member-name')).toHaveText(`${m01.name} ${m01.surname}`);
   });
 
   test('interest filters narrow people down, and «Сбросить» clears them', async ({ page }) => {

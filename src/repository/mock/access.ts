@@ -83,7 +83,6 @@ export function acceptRules(
 export function selectMembership(
   flow: AccessFlowRecord | null,
   input: unknown,
-  paidAt: string,
 ): Outcome<AccessFlowRecord> {
   if (!flow?.rulesAcceptedVersion) return conflict('Accept the club rules first.');
   if (isLocked(flow)) return conflict('Membership is already confirmed.');
@@ -92,16 +91,6 @@ export function selectMembership(
     return invalid('Choose exactly one membership period.', { periodMonths: 'invalid' });
   const membership = parsed.data;
 
-  if (membership.tier === 'free_verified') {
-    // Free verified skips checkout: it is confirmed at once with a zero receipt.
-    return ok({
-      step: 'profile',
-      candidateId: flow.candidateId,
-      rulesAcceptedVersion: flow.rulesAcceptedVersion,
-      membership,
-      payment: { reference: `free-${flow.candidateId}`, amountKzt: 0, paidAt },
-    });
-  }
   return ok({
     step: 'payment',
     candidateId: flow.candidateId,
@@ -115,7 +104,6 @@ export function confirmPayment(
   receipt: PaymentReceipt,
 ): Outcome<AccessFlowRecord> {
   if (!flow?.membership) return conflict('Choose a membership period first.');
-  if (flow.membership.tier !== 'paid') return conflict('Free verified needs no payment.');
   if (flow.step !== 'payment') return conflict('Payment is not expected at this step.');
   return ok({ ...flow, step: 'profile', payment: receipt });
 }

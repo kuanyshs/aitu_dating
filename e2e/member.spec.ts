@@ -17,7 +17,7 @@ const follower = seed.follows.find(
 async function openM01FromFeed(page: Page) {
   await expect(page.getByTestId('home-member')).toBeVisible();
   await page.getByTestId('post-p01').getByTestId('post-author').click();
-  await expect(page.getByTestId('member-name')).toHaveText(m01.name);
+  await expect(page.getByTestId('member-name')).toHaveText(`${m01.name} ${m01.surname}`);
 }
 
 test.describe('Чужой профиль', () => {

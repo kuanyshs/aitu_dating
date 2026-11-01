@@ -59,9 +59,12 @@ describe('meetingCatalog', () => {
 });
 
 describe('membership offers', () => {
-  it('has one free offer and one paid offer per period', () => {
-    const paid = keys.membershipOffers.filter((o) => o.tier === 'paid').map((o) => o.periodMonths);
-    expect(paid).toEqual([1, 3, 6, 12]);
-    expect(keys.membershipOffers.filter((o) => o.tier === 'free_verified')).toHaveLength(1);
+  it('has only paid periods with the v3 prices', () => {
+    expect(keys.membershipOffers.map((o) => [o.tier, o.periodMonths, o.priceKzt])).toEqual([
+      ['paid', 1, 1990],
+      ['paid', 3, 4990],
+      ['paid', 6, 8490],
+      ['paid', 12, 14990],
+    ]);
   });
 });

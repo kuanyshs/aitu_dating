@@ -113,7 +113,6 @@ export const paymentPolicyLabels: Record<PaymentPolicy, string> = {
 };
 
 export const membershipTierLabels: Record<MembershipTier, string> = {
-  free_verified: 'Бесплатный verified',
   paid: 'Платный',
 };
 

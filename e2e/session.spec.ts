@@ -9,7 +9,7 @@ test.describe('logout and login', () => {
     await joinAsMadina(page);
 
     await page.getByTestId('tab-profile').click();
-    await expect(page.getByTestId('profile-name')).toHaveText('Мадина');
+    await expect(page.getByTestId('profile-name')).toHaveText('Мадина Тулегенова');
     await page.getByRole('button', { name: 'Выйти в preview' }).click();
     await expect(page.getByTestId('toast')).toBeVisible();
     await expect(page.getByTestId('profile-access-prompt-login')).toBeVisible();
@@ -30,7 +30,7 @@ test.describe('logout and login', () => {
     await expect(page.getByTestId('access-questionnaire')).toHaveCount(0);
 
     await page.getByTestId('tab-profile').click();
-    await expect(page.getByTestId('profile-name')).toHaveText('Мадина');
+    await expect(page.getByTestId('profile-name')).toHaveText('Мадина Тулегенова');
     await expect(page.getByTestId('profile-bio-text')).toContainText('Люблю книги');
   });
 
@@ -84,7 +84,7 @@ test.describe('Passport identities in the demo panel', () => {
     await page.getByTestId('tab-index').click();
     await page.getByTestId('home-login').click();
     await page.getByTestId('tab-profile').click();
-    await expect(page.getByTestId('profile-name')).toHaveText('Мадина');
+    await expect(page.getByTestId('profile-name')).toHaveText('Мадина Тулегенова');
 
     await page.getByTestId('open-settings').click();
     await page.getByTestId('demo-reset').click();

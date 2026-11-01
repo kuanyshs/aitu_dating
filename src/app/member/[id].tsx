@@ -23,6 +23,7 @@ import { Screen } from '@/ui/components/Screen';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
 import { BadgeCheck, ChevronLeft, Ellipsis } from '@/ui/icons';
+import { fullName } from '@/ui/format';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
@@ -220,7 +221,7 @@ function Identity({ profile }: { profile: ProfileView }) {
       <View style={styles.grow}>
         <View style={styles.nameRow}>
           <AppText variant="display" role="heading" testID="member-name">
-            {person.view === 'member' ? person.name : genderLabels[person.gender]}
+            {person.view === 'member' ? fullName(person) : genderLabels[person.gender]}
           </AppText>
           {person.view === 'member' && person.verified ? (
             <BadgeCheck

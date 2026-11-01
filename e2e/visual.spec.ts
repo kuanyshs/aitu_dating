@@ -75,12 +75,16 @@ test.describe('visual baselines @visual', () => {
     await snap(page, 'questionnaire-7of7');
 
     await page.getByTestId('questionnaire-create').click();
+
+    await expect(page.getByTestId('access-welcome')).toBeVisible();
+
+    await page.getByTestId('welcome-feed').click();
     await expect(page.getByTestId('home-member')).toBeVisible();
     await expectMemberNames(page);
     await snap(page, 'home-member');
 
     await page.getByTestId('tab-profile').click();
-    await expect(page.getByTestId('profile-name')).toHaveText('Айдана');
+    await expect(page.getByTestId('profile-name')).toHaveText('Айдана Кенжебаева');
     // The counters load on their own after the card.
     await expect(page.getByTestId('profile-stat-followers')).toBeVisible();
     // «Встречи» load on their own too.

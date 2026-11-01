@@ -44,7 +44,6 @@ async function joinPaid(repo: MockRepository, months: 1 | 3 = 1) {
 }
 
 const paid3: MembershipSelection = { tier: 'paid', periodMonths: 3 };
-const free: MembershipSelection = { tier: 'free_verified', periodMonths: 12 };
 
 async function firstPostId(repo: MockRepository) {
   const page = await repo.getHomeFeed({ tab: 'for_you' });
@@ -179,17 +178,19 @@ describe('renewal', () => {
     expect(page.items.every((p) => p.author.view === 'member')).toBe(true);
   });
 
-  it('renews free verified for twelve months', async () => {
+  it('adds an early Продление to the current end date, once per key', async () => {
     const repo = repositoryOn();
-    await joinPaid(repo);
-    await repo.expireMembership();
-    const renewed = await repo.renewMembership({ selection: free, idempotencyKey: 'renew-free-1' });
+    const me = await joinPaid(repo);
+    expect(me.membership.endsAt).toBe('2026-10-26T12:00:00.000Z');
+    const input = { selection: paid3, idempotencyKey: 'renew-early-1' };
+    const renewed = await repo.renewMembership(input);
     expect(renewed.membership).toMatchObject({
-      tier: 'free_verified',
-      periodMonths: 12,
       status: 'active',
-      endsAt: '2027-09-26T12:00:00.000Z',
+      periodMonths: 3,
+      startsAt: me.membership.startsAt,
+      endsAt: '2027-01-26T12:00:00.000Z',
     });
+    expect((await repo.renewMembership(input)).membership.endsAt).toBe('2027-01-26T12:00:00.000Z');
   });
 
   it('takes exactly one valid period', async () => {
@@ -198,7 +199,7 @@ describe('renewal', () => {
     await repo.expireMembership();
     await expect(
       repo.renewMembership({
-        selection: { tier: 'free_verified', periodMonths: 3 },
+        selection: { tier: 'free_verified' as never, periodMonths: 3 },
         idempotencyKey: 'renew-bad-1',
       }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
@@ -223,15 +224,11 @@ describe('renewal', () => {
     });
   });
 
-  it('is refused while the membership is active and for guests', async () => {
+  it('is refused for guests', async () => {
     const repo = repositoryOn();
     await expect(
       repo.renewMembership({ selection: paid3, idempotencyKey: 'renew-guest-1' }),
     ).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
-    await joinPaid(repo);
-    await expect(
-      repo.renewMembership({ selection: paid3, idempotencyKey: 'renew-active-1' }),
-    ).rejects.toMatchObject({ code: 'CONFLICT' });
   });
 });
 
@@ -251,5 +248,16 @@ describe('state migration', () => {
     const repo = repositoryOn(createMemoryStore({ [storageKeys.state]: JSON.stringify(v4) }));
     expect(await repo.getSession()).toMatchObject({ accessState: 'GUEST_PREVIEW' });
     expect(await repo.takeResetNotice()).toBeUndefined();
+  });
+
+  it('turns a saved free verified Membership into a paid one', async () => {
+    const store = createMemoryStore();
+    const repo = repositoryOn(store);
+    await joinPaid(repo);
+    const saved = JSON.parse((await store.getItem(storageKeys.state))!);
+    const v17 = JSON.stringify({ ...saved, version: 17 }).replaceAll('"paid"', '"free_verified"');
+    expect(v17).toContain('free_verified');
+    const restarted = repositoryOn(createMemoryStore({ [storageKeys.state]: v17 }), clock);
+    expect(await restarted.takeResetNotice()).toBeUndefined();
   });
 });

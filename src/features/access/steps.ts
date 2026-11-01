@@ -12,6 +12,9 @@ export const stepOrder: AccessFlowStep[] = [
 
 export const stepRoute = (step: AccessFlowStep) => `/access/${step}` as const;
 
+/** The flow's steps as the visitor counts them: the six above and «Вы участник». */
+export const TOTAL_STEPS = stepOrder.length + 1;
+
 export function stepNumber(step: AccessFlowStep): number {
   return stepOrder.indexOf(step) + 1;
 }
