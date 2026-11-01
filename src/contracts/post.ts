@@ -109,7 +109,7 @@ export const CreatePostInput = z
   .strictObject({
     type: z.enum(['post', 'question', 'quote']),
     text: z.string().trim().min(1, 'required').max(LIMITS.postText, 'too_long'),
-    topics: z.array(TopicKey).max(4, 'too_many'),
+    topics: z.array(TopicKey).max(LIMITS.topics, 'too_many'),
     quotedPostId: Id.optional(),
     idempotencyKey: z.string().min(8),
   })

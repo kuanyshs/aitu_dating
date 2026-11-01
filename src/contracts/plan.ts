@@ -45,7 +45,11 @@ export const CreatePlanInput = z
     place: z.string().trim().min(1, 'required'),
     /** The creator must confirm the place is public. */
     isPublicPlace: z.literal(true),
-    topics: z.array(TopicKey).max(4),
+    // Repeats are dropped before the limit is checked.
+    topics: z
+      .array(TopicKey)
+      .transform((list) => [...new Set(list)])
+      .pipe(z.array(TopicKey).max(LIMITS.topics)),
     idempotencyKey: z.string().min(8),
   })
   .refine((p) => !p.timeEnd || p.timeEnd > p.timeStart, {

@@ -46,7 +46,7 @@ import { createStyles } from '@/ui/theme/useStyles';
 
 const t = strings.planNew;
 const PLACE_MAX = 120;
-const TOPICS_MAX = 4;
+const TOPICS_MAX = LIMITS.topics;
 
 /** Creating a План: active members only; publishes the plan and its feed post together. */
 export default function NewPlanScreen() {

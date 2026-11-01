@@ -208,7 +208,7 @@ describe('sending', () => {
     await expect(
       on(store, 'm01').sendMessage({
         chatId: 'chat2',
-        text: 'x'.repeat(1001),
+        text: 'x'.repeat(2001),
         idempotencyKey: key(),
       }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', fieldErrors: { text: 'too_long' } });

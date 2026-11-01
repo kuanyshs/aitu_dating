@@ -113,7 +113,7 @@ export const PostRecord = z.strictObject({
   id: Id,
   authorId: Id,
   type: PostType,
-  text: z.string().min(1).max(1000),
+  text: z.string().min(1).max(2000),
   topics: z.array(TopicKey),
   createdAt: IsoDateTime,
   mediaKey: z.string().optional(),
@@ -199,7 +199,7 @@ export const MessageRecord = z.strictObject({
   id: Id,
   chatId: Id,
   authorId: Id,
-  text: z.string().min(1).max(1000),
+  text: z.string().min(1).max(2000),
   createdAt: IsoDateTime,
   /** «Прочитано» is derived from the other side's read mark, never stored. */
   status: z.enum(['sent', 'failed']),

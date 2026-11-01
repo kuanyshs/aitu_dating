@@ -83,7 +83,7 @@ describe('creating a post', () => {
       code: 'VALIDATION_ERROR',
       fieldErrors: { text: 'required' },
     });
-    await expect(repo.createPost({ ...base, text: 'а'.repeat(1001) })).rejects.toMatchObject({
+    await expect(repo.createPost({ ...base, text: 'а'.repeat(2001) })).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
       fieldErrors: { text: 'too_long' },
     });
@@ -91,11 +91,11 @@ describe('creating a post', () => {
       repo.createPost({
         ...base,
         text: 'Темы',
-        topics: ['conversation', 'meetings', 'city', 'thoughts', 'city'],
+        topics: ['conversation', 'meetings', 'city'],
       }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', fieldErrors: { topics: 'too_many' } });
-    const longest = await repo.createPost({ ...base, text: 'а'.repeat(1000) });
-    expect(longest.text).toHaveLength(1000);
+    const longest = await repo.createPost({ ...base, text: 'а'.repeat(2000) });
+    expect(longest.text).toHaveLength(2000);
   });
 
   it('publishes once per idempotency key, even after a network error', async () => {

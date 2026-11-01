@@ -30,7 +30,7 @@ test.describe('Создание: a post or a question', () => {
     await expect(page.getByRole('heading', { name: 'Новый вопрос' })).toBeVisible();
     await page.getByTestId('compose-topic-meetings').click();
     await page.getByTestId('compose-input').fill('Где в Алматы тихо поговорить после работы?');
-    await expect(page.getByTestId('compose-counter')).toHaveText('42 / 1000');
+    await expect(page.getByTestId('compose-counter')).toHaveText('42 / 2000');
     await testInfo.attach('compose-question', {
       body: await page.screenshot(),
       contentType: 'image/png',
@@ -53,23 +53,21 @@ test.describe('Создание: a post or a question', () => {
     await expect.poll(() => topText(page)).toContain(question);
   });
 
-  test('topics stop at four and only real text can be published', async ({ page }) => {
+  test('topics stop at two and only real text can be published', async ({ page }) => {
     await joinAsMadina(page);
     await openEditor(page);
-    for (const topic of ['conversation', 'meetings', 'city', 'thoughts']) {
+    for (const topic of ['conversation', 'meetings']) {
       await page.getByTestId(`compose-topic-${topic}`).click();
     }
-    await expect(page.getByTestId('compose-topic-thoughts')).toHaveAttribute(
+    const third = page.getByTestId('compose-topic-thoughts');
+    await expect(third).toHaveAttribute('aria-disabled', 'true');
+    await page.getByTestId('compose-topic-meetings').click();
+    await expect(page.getByTestId('compose-topic-meetings')).toHaveAttribute(
       'aria-checked',
-      'true',
+      'false',
     );
-    await page.getByTestId('compose-topic-city').click();
-    await expect(page.getByTestId('compose-topic-city')).toHaveAttribute('aria-checked', 'false');
-    await expect(page.getByTestId('compose-topic-city')).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-
+    await expect(third).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByTestId('compose-counter')).toHaveText('0 / 2000');
     await page.getByTestId('compose-input').fill('   ');
     await expect(page.getByTestId('compose-submit')).toHaveAttribute('aria-disabled', 'true');
     await page.getByTestId('compose-cancel').click();

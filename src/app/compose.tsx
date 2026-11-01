@@ -28,7 +28,7 @@ import { createStyles } from '@/ui/theme/useStyles';
 
 type Kind = 'post' | 'question';
 const kinds: Kind[] = ['post', 'question'];
-const MAX_TOPICS = 4;
+const MAX_TOPICS = LIMITS.topics;
 
 /**
  * Создание: one full-screen editor for a Пост, a Вопрос or a Цитата. The text stays
@@ -87,7 +87,8 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   const [kind, setKind] = useState<Kind>(
     (initial ? initial.type : params.type) === 'question' ? 'question' : 'post',
   );
-  const [topics, setTopics] = useState<Topic[]>(initial?.topics ?? []);
+  // A draft saved under the old limit keeps its first Темы only.
+  const [topics, setTopics] = useState<Topic[]>((initial?.topics ?? []).slice(0, MAX_TOPICS));
   const [text, setText] = useState(initial?.text ?? '');
   const [idempotencyKey, setKey] = useState(newIdempotencyKey);
   const [sheet, setSheet] = useState<'conflict' | 'leave' | null>(
@@ -114,7 +115,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   const continueDraft = () => {
     if (!stored) return;
     setKind(stored.type === 'question' ? 'question' : 'post');
-    setTopics(stored.topics);
+    setTopics(stored.topics.slice(0, MAX_TOPICS));
     setText(stored.text);
     setSheet(null);
     if (stored.quotedPostId !== quotedPostId) {
