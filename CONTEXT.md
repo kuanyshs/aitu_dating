@@ -45,19 +45,27 @@ One **Участник** hiding another: their content and chats disappear for b
 _Avoid_: ban, restriction
 
 **Ограничение** (`Restriction`):
-A moderation decision that puts a person into the blocked access state: they see only the restriction screen, rules and support, and their content is hidden from everyone.
+A moderation decision that puts a person into the blocked access state, with a reason (one of the **Жалоба** reasons) and a term: 7 days, 30 days or until lifted. It ends by itself when its term is over, or when moderation lifts it — after an **Апелляция** or on its own; «Продлить» never lifts it. Meanwhile the person sees only the restriction screen: the reason, until when, the state of their **Апелляция**, the rules and **Поддержка**; their content is hidden from everyone. Removing content never restricts its author by itself.
 _Avoid_: block, ban
+
+**Апелляция** (`Appeal`):
+The restricted person's one request to review an **Ограничение**, with an explanation of up to 1 000 characters, within 7 calendar days of the decision. Sending again returns the same one; there is never a second **Апелляция** on the same decision. It waits for moderation, then the **Ограничение** is lifted or stays in force.
+_Avoid_: complaint, dispute
+
+**Обращение в поддержку** (`SupportRequest`):
+A message to the club's support with a topic (ограничение, безопасность, аккаунт, оплата, другое) and a text of up to 1 000 characters; any person with an Aitu Passport identity sends one, the restricted included. It is received and listed in «Мои обращения» with its status; a retry never sends it twice.
+_Avoid_: ticket, feedback
 
 **Жалоба** (`Report`):
 A signal to moderation about a person or a piece of content (**Пост**, **Комментарий**, **План**, message) with a reason and optional details. It goes from created to reviewing to resolved and ends with an **Итог жалобы**. A second **Жалоба** on the same target while the first is unresolved returns the first; nobody reports their own content. A **Гость** may report anonymously but never sees the status.
 _Avoid_: complaint, flag
 
 **Итог жалобы** (`ReportOutcome`):
-The moderator's decision on a **Жалоба**: dismissed, content removed (shown exactly like a deletion by its author) or member restricted (an **Ограничение**). One decision resolves every open **Жалоба** on the same target. The reporter learns it only from «Мои жалобы».
+The moderator's decision on a **Жалоба**: dismissed, content removed (shown exactly like a deletion by its author; a removed message disappears from the chat for both) or member restricted (an **Ограничение** with its term). One decision resolves every open **Жалоба** on the same target. The reporter learns it only from «Мои жалобы».
 _Avoid_: verdict
 
 **Очередь модерации** (`ReportQueue`):
-The moderator's list of **Жалобы** in three tabs: new, reviewing, resolved. Opening a **Жалоба** moves it to reviewing; a moderator never sees **Жалобы** about their own content.
+The moderator's list of **Жалобы** in three tabs: new, reviewing, resolved, and of waiting **Апелляции** in a fourth. Opening a **Жалоба** moves it to reviewing; a moderator never sees **Жалобы** about their own content.
 _Avoid_: inbox, tickets
 
 ### Profile
