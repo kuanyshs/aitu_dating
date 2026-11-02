@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -28,7 +29,7 @@ const t = strings.safety;
 export default function SafetyScreen() {
   const styles = useStyles();
   const session = useSession();
-  const toast = useToast((s) => s.show);
+  const router = useRouter();
   const state = session.data?.accessState;
   const isMember = state === 'ACTIVE_MEMBER' || state === 'ACTIVE_MEMBER_EXPIRED';
 
@@ -60,7 +61,7 @@ export default function SafetyScreen() {
         <AppText tone="textMuted">{t.supportText}</AppText>
         <SecondaryButton
           label={t.support}
-          onPress={() => toast(t.supportSoon)}
+          onPress={() => router.push('/support')}
           testID="safety-support-button"
         />
       </Section>

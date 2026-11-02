@@ -84,6 +84,18 @@ import {
   ReportReceipt,
   SetBlockInput,
 } from './safety';
+import {
+  AppealsQuery,
+  AppealView,
+  CreateAppealInput,
+  CreateSupportRequestInput,
+  DecideAppealInput,
+  ModerationAppealPage,
+  ModerationAppealView,
+  MyRestriction,
+  SupportRequestPage,
+  SupportRequestView,
+} from './restriction';
 import { SearchPage, SearchQuery } from './search';
 import { Session } from './session';
 import { UpdateSettingsInput, UserSettings } from './settings';
@@ -174,6 +186,12 @@ export const repositoryContract = {
   openReport: { input: ReportRef, output: ModerationReportView },
   resolveReport: { input: ResolveReportInput, output: ModerationReportView },
   moderateMember: { input: ModerateMemberInput, output: ModerationResult },
+  listAppeals: { input: AppealsQuery, output: ModerationAppealPage },
+  decideAppeal: { input: DecideAppealInput, output: ModerationAppealView },
+  getMyRestriction: { input: none, output: MyRestriction.nullable() },
+  createAppeal: { input: CreateAppealInput, output: AppealView },
+  createSupportRequest: { input: CreateSupportRequestInput, output: SupportRequestView },
+  listMySupportRequests: { input: ListQuery, output: SupportRequestPage },
 
   getSettings: { input: none, output: UserSettings },
   updateSettings: { input: UpdateSettingsInput, output: UserSettings },

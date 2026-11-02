@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
 import {
+  AppealStatus,
   ChatContext,
+  ReportReason,
+  RestrictionTerm,
+  SupportTopic,
   AccessFlowStep,
   FeedFilters,
   StoredPlanStatus,
@@ -81,6 +85,43 @@ export const MockState = z.strictObject({
   expiredMemberships: z.record(z.string(), z.string()),
   /** Aitu subject ids under Ограничение, decided by moderation. */
   restrictedSubjects: z.array(z.string()),
+  /** Why and for how long each Aitu subject was last restricted (kept after it ends). */
+  restrictionDetails: z.record(
+    z.string(),
+    z.strictObject({
+      id: z.string(),
+      reason: ReportReason,
+      term: RestrictionTerm,
+      decidedAt: z.string(),
+      endsAt: z.string().optional(),
+    }),
+  ),
+  /** Апелляции, one per Ограничение. */
+  appeals: z.array(
+    z.strictObject({
+      id: z.string(),
+      restrictionId: z.string(),
+      subjectId: z.string(),
+      text: z.string(),
+      status: AppealStatus,
+      createdAt: z.string(),
+      decidedAt: z.string().optional(),
+      idempotencyKey: z.string(),
+    }),
+  ),
+  /** Обращения в поддержку by Aitu subject. */
+  supportRequests: z.array(
+    z.strictObject({
+      id: z.string(),
+      subjectId: z.string(),
+      topic: SupportTopic,
+      text: z.string(),
+      createdAt: z.string(),
+      idempotencyKey: z.string(),
+    }),
+  ),
+  /** Messages moderation removed: gone from the chat for both. */
+  deletedMessageIds: z.array(z.string()),
   /** Server-side settings per member. */
   settings: z.record(z.string(), UserSettings),
   /** Comments and replies written during the demo. */
@@ -145,7 +186,7 @@ export const MockState = z.strictObject({
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 20;
+export const MOCK_STATE_VERSION = 21;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -205,6 +246,29 @@ export const mockStateMigrations = [
   (v18: unknown) => ({ ...(v18 as object), photos: {}, photoKeys: {} }),
   // v20 lets one chat gather several Контексты.
   (v19: unknown) => ({ ...(v19 as object), chatContexts: {} }),
+  // v21 gives each Ограничение a reason and a term (an earlier one is until lifted), and
+  // adds Апелляции, Обращения в поддержку and messages removed by moderation.
+  (v20: unknown) => {
+    const prev = v20 as { restrictedSubjects?: string[] };
+    const restrictionDetails = Object.fromEntries(
+      (prev.restrictedSubjects ?? []).map((subject, i) => [
+        subject,
+        {
+          id: `restriction-legacy-${i + 1}`,
+          reason: 'other',
+          term: 'permanent',
+          decidedAt: '2026-09-26T12:00:00.000Z',
+        },
+      ]),
+    );
+    return {
+      ...(v20 as object),
+      restrictionDetails,
+      appeals: [],
+      supportRequests: [],
+      deletedMessageIds: [],
+    };
+  },
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -218,6 +282,10 @@ export const defaultMockState = (): MockState => ({
   renewals: {},
   expiredMemberships: {},
   restrictedSubjects: [],
+  restrictionDetails: {},
+  appeals: [],
+  supportRequests: [],
+  deletedMessageIds: [],
   settings: {},
   comments: [],
   deletedCommentIds: [],

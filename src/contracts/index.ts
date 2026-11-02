@@ -18,6 +18,7 @@ export * from './profile';
 export * from './reaction';
 export * from './registry';
 export * from './repository';
+export * from './restriction';
 export * from './safety';
 export * from './search';
 export * from './session';

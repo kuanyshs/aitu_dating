@@ -65,7 +65,22 @@ test.describe('Безопасность', () => {
     await expect(page.getByTestId('safety-blocked')).toHaveCount(0);
     await expect(page.getByTestId('safety-reports')).toHaveCount(0);
     await page.getByTestId('safety-support-button').click();
-    await expect(page.getByTestId('toast')).toContainText('Скоро');
+    await expect(page.getByTestId('screen-support')).toBeVisible();
+  });
+
+  test('a member writes to support and sees it in «Мои обращения», once', async ({ page }) => {
+    await joinAsMadina(page);
+    await page.goto('/safety');
+    await page.getByTestId('safety-support-button').click();
+    await expect(page.getByTestId('support-mine-empty')).toBeVisible();
+    await page.getByTestId('support-topic-safety').click();
+    await page.getByTestId('support-text').fill('На встрече человек вёл себя странно.');
+    await page.getByTestId('support-send').click();
+    await expect(page.getByTestId('support-sent')).toBeVisible();
+    await expect(page.getByTestId('support-mine-support-1')).toContainText(
+      'Безопасность · Получено',
+    );
+    await expect(page.getByTestId('support-mine').getByText('Получено')).toHaveCount(1);
   });
 
   test('a failed load offers «Повторить»', async ({ page }) => {

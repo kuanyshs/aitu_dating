@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina } from './helpers';
+import { joinAsMadina, signInAs } from './helpers';
 
 async function becomeModerator(page: Page) {
   await page.goto('/settings');
@@ -21,7 +21,10 @@ async function decide(page: Page, reportId: string, decision: string) {
   await expect(page.getByTestId('moderation-sheet')).toContainText(
     'закроет и другие открытые жалобы',
   );
-  await page.getByTestId('moderation-confirm').click();
+  // Restricting asks for a term instead of a plain confirmation.
+  await page
+    .getByTestId(decision === 'member_restricted' ? 'moderation-term-days_7' : 'moderation-confirm')
+    .click();
   await expect(page.getByTestId('toast')).toContainText('Решение принято');
 }
 
@@ -95,6 +98,31 @@ test.describe('Модерация', () => {
     await expect(card.getByTestId('moderation-restricted')).toBeVisible();
     await page.goto('/post/p10');
     await expect(page.getByTestId('post-unavailable')).toBeVisible();
+  });
+
+  test('a reported message: its words reach moderation, and «Удалить контент» removes it', async ({
+    page,
+  }) => {
+    await signInAs(page, 'm01');
+    await page.goto('/chats/chat1');
+    await page.getByTestId('message-chat1-m25-bubble').click();
+    await page.getByTestId('sheet-report-message').click();
+    await expect(page.getByTestId('report-message-text')).toBeVisible();
+    await page.getByTestId('report-reason-harassment').click();
+    await page.getByTestId('report-submit').click();
+    await expect(page.getByTestId('report-sent')).toBeVisible();
+
+    await becomeModerator(page);
+    await page.goto('/moderator');
+    const card = page.getByRole('button', { name: 'Открыть жалобу' }).filter({
+      hasText: 'Сообщение',
+    });
+    await expect(card).toHaveCount(1);
+    const testId = await card.getAttribute('data-testid');
+    await decide(page, testId!.replace('moderation-', ''), 'content_removed');
+    await page.goto('/chats/chat1');
+    await expect(page.getByTestId('message-chat1-m24')).toBeVisible();
+    await expect(page.getByTestId('message-chat1-m25')).toHaveCount(0);
   });
 
   test('one decision closes every open report on the same post', async ({ page }) => {

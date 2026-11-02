@@ -13,6 +13,7 @@ import {
 } from '@/contracts';
 import {
   useCachedCommentById,
+  useCachedMessage,
   useCachedPost,
   useCachedPlan,
   useCachedProfile,
@@ -100,6 +101,8 @@ function ReportForm({ target, leave }: { target: ReportTarget; leave: () => void
   // A plan reported from its screen: its author may be blocked afterwards.
   const plan = useCachedPlan(target.type === 'plan' ? target.id : '');
   const author = context?.author ?? person ?? plan?.author;
+  // A message reported from its chat: its words, without its author's name again.
+  const message = useCachedMessage(target.type === 'message' ? target.id : '');
 
   const accessState = session.data?.accessState;
   // Members, expired ones too, may block the author afterwards; guests may not.
@@ -174,6 +177,10 @@ function ReportForm({ target, leave }: { target: ReportTarget; leave: () => void
               </>
             ) : person ? (
               <AuthorRow author={person} />
+            ) : message?.text ? (
+              <AppText numberOfLines={3} tone="textMuted" testID="report-message-text">
+                {message.text}
+              </AppText>
             ) : null}
           </View>
 

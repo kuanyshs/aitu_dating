@@ -102,6 +102,8 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('demo-restrict')).not.toHaveAttribute('aria-disabled', 'true');
     await page.getByTestId('demo-restrict').click();
     await expect(page.getByTestId('screen-restricted')).toBeVisible();
+    await expect(page.getByTestId('restricted-until')).toBeVisible();
+    await expect(page.getByTestId('restricted-support-mine-empty')).toBeVisible();
     await snap(page, 'restricted');
   });
 

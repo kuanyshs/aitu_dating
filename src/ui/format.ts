@@ -35,3 +35,8 @@ export function formatPlanDate(isoDate: string, clock: Clock): string {
 export function fullName(person: { name: string; surname?: string }): string {
   return person.surname ? `${person.name} ${person.surname}` : person.name;
 }
+
+/** A calendar day in the UI timezone, in words: «9 октября 2026». */
+export function formatDay(iso: string, clock: Clock): string {
+  return format(new TZDate(new Date(iso), clock.timezone), 'd MMMM yyyy', { locale: ru });
+}

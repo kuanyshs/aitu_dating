@@ -8,6 +8,8 @@ export const LIMITS = {
   bio: 160,
   messageText: 2000,
   reportDetails: 500,
+  appealText: 1000,
+  supportText: 1000,
   /** Темы of one Пост or План. */
   topics: 2,
 } as const;

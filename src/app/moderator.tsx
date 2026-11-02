@@ -2,8 +2,21 @@ import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import type { ModerationReportView, ReportOutcome, ReportStatus } from '@/contracts';
-import { useModerationQueue, useOpenReport, useResolveReport, useSession } from '@/data/hooks';
+import type {
+  ModerationAppealView,
+  ModerationReportView,
+  ReportOutcome,
+  ReportStatus,
+  RestrictionTerm,
+} from '@/contracts';
+import {
+  useAppeals,
+  useDecideAppeal,
+  useModerationQueue,
+  useOpenReport,
+  useResolveReport,
+  useSession,
+} from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { ActionSheet, type SheetAction } from '@/ui/components/ActionSheet';
 import { AuthorRow } from '@/ui/components/AuthorRow';
@@ -13,7 +26,7 @@ import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
 import { Screen } from '@/ui/components/Screen';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
-import { formatRelative } from '@/ui/format';
+import { formatDay, formatRelative } from '@/ui/format';
 import { X } from '@/ui/icons';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -21,7 +34,9 @@ import { radius, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
 
 const t = strings.moderation;
-const tabs: ReportStatus[] = ['created', 'reviewing', 'resolved'];
+type Tab = ReportStatus | 'appeals';
+const tabs: Tab[] = ['created', 'reviewing', 'resolved', 'appeals'];
+const terms: RestrictionTerm[] = ['days_7', 'days_30', 'permanent'];
 
 // Protected: only sessions with the moderator role; everyone else lands on Home.
 export default function ModeratorScreen() {
@@ -44,6 +59,7 @@ function Queue() {
   const styles = useStyles();
   const router = useRouter();
   const toast = useToast((s) => s.show);
+  const [tab, setTab] = useState<Tab>('created');
   const [status, setStatus] = useState<ReportStatus>('created');
   const queue = useModerationQueue(status);
   const openReport = useOpenReport();
@@ -56,10 +72,10 @@ function Queue() {
     if (item.report.status === 'created') openReport.mutate(item.report.id);
   };
 
-  const decide = (decision: ReportOutcome) => {
+  const decide = (decision: ReportOutcome, term?: RestrictionTerm) => {
     if (!sheet) return;
     resolve.mutate(
-      { reportId: sheet.item.report.id, resolution: decision },
+      { reportId: sheet.item.report.id, resolution: decision, ...(term ? { term } : {}) },
       { onSuccess: () => toast(t.done), onError: () => toast(t.failed) },
     );
     setSheet(undefined);
@@ -74,21 +90,29 @@ function Queue() {
 
   const sheetActions: SheetAction[] = !sheet
     ? []
-    : sheet.decision
-      ? [
-          {
-            label: t.decisions[sheet.decision],
-            danger: sheet.decision !== 'dismissed',
-            onPress: () => decide(sheet.decision!),
-            testID: 'moderation-confirm',
-          },
-        ]
-      : decisions(sheet.item).map((decision) => ({
-          label: t.decisions[decision],
-          danger: decision !== 'dismissed',
-          onPress: () => setSheet({ ...sheet, decision }),
-          testID: `moderation-decide-${decision}`,
-        }));
+    : sheet.decision === 'member_restricted'
+      ? // Restricting asks for a term; the reason is the report's.
+        terms.map((term) => ({
+          label: t.terms[term],
+          danger: true,
+          onPress: () => decide('member_restricted', term),
+          testID: `moderation-term-${term}`,
+        }))
+      : sheet.decision
+        ? [
+            {
+              label: t.decisions[sheet.decision],
+              danger: sheet.decision !== 'dismissed',
+              onPress: () => decide(sheet.decision!),
+              testID: 'moderation-confirm',
+            },
+          ]
+        : decisions(sheet.item).map((decision) => ({
+            label: t.decisions[decision],
+            danger: decision !== 'dismissed',
+            onPress: () => setSheet({ ...sheet, decision }),
+            testID: `moderation-decide-${decision}`,
+          }));
 
   let body: React.ReactNode;
   if (queue.isPending) body = <FeedSkeleton rows={2} />;
@@ -126,18 +150,21 @@ function Queue() {
         />
       </View>
       <View role="radiogroup" aria-label={t.tabsLabel} style={styles.tabs}>
-        {tabs.map((tab) => (
+        {tabs.map((item) => (
           <Chip
-            key={tab}
-            label={t.tabs[tab]}
-            selected={tab === status}
-            onPress={() => setStatus(tab)}
-            testID={`moderation-tab-${tab}`}
+            key={item}
+            label={t.tabs[item]}
+            selected={item === tab}
+            onPress={() => {
+              setTab(item);
+              if (item !== 'appeals') setStatus(item);
+            }}
+            testID={`moderation-tab-${item}`}
           />
         ))}
       </View>
-      {body}
-      {queue.hasNextPage ? (
+      {tab === 'appeals' ? <Appeals /> : body}
+      {tab !== 'appeals' && queue.hasNextPage ? (
         <SecondaryButton
           label={t.more}
           loading={queue.isFetchingNextPage}
@@ -150,7 +177,7 @@ function Queue() {
         title={sheet?.decision ? t.confirm[sheet.decision].title : t.decide}
         message={
           sheet?.decision
-            ? `${t.confirm[sheet.decision].text} ${t.cascade}`
+            ? `${t.confirm[sheet.decision].text} ${sheet.decision === 'member_restricted' ? `${t.chooseTerm} ` : ''}${t.cascade}`
             : sheet
               ? `${strings.safety.target[sheet.item.report.target.type]} · ${strings.report.reasons[sheet.item.report.reason]}`
               : undefined
@@ -160,6 +187,91 @@ function Queue() {
         testID="moderation-sheet"
       />
     </Screen>
+  );
+}
+
+/** Waiting Апелляции, the oldest first: «Снять ограничение» or «Оставить в силе». */
+function Appeals() {
+  const styles = useStyles();
+  const clock = useClock();
+  const toast = useToast((s) => s.show);
+  const list = useAppeals('pending');
+  const decide = useDecideAppeal();
+  const [picked, setPicked] = useState<ModerationAppealView>();
+  const items = list.data?.pages.flatMap((p) => p.items) ?? [];
+
+  let body: React.ReactNode;
+  if (list.isPending) body = <FeedSkeleton rows={2} />;
+  else if (list.isError && items.length === 0)
+    body = (
+      <ErrorState
+        testID="appeals-error"
+        title={t.errorTitle}
+        text={t.errorText}
+        action={{ label: t.retry, onPress: () => list.refetch(), testID: 'appeals-retry' }}
+      />
+    );
+  else if (items.length === 0)
+    body = <EmptyState testID="appeals-empty" title={t.tabs.appeals} text={t.empty.appeals} />;
+  else
+    body = items.map((item) => (
+      <Pressable
+        key={item.appeal.id}
+        role="button"
+        aria-label={t.appealDecide}
+        onPress={() => setPicked(item)}
+        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+        testID={`appeal-${item.appeal.id}`}
+      >
+        <View style={styles.cardHead}>
+          <AppText variant="bodyStrong" style={styles.grow}>
+            {`${strings.report.reasons[item.restriction.reason]} · ${t.termsShort[item.restriction.term]}`}
+          </AppText>
+          <AppText variant="caption" tone="textMuted">
+            {formatRelative(item.appeal.createdAt, clock)}
+          </AppText>
+        </View>
+        <AuthorRow author={item.person} />
+        <AppText testID="appeal-text">{`«${item.appeal.text}»`}</AppText>
+        <AppText variant="caption" tone="textMuted">
+          {strings.restricted.decidedAt(formatDay(item.restriction.decidedAt, clock))}
+        </AppText>
+      </Pressable>
+    ));
+
+  const choose = (decision: 'lift' | 'uphold') => {
+    if (!picked) return;
+    decide.mutate(
+      { appealId: picked.appeal.id, decision },
+      { onSuccess: () => toast(t.appealDone), onError: () => toast(t.failed) },
+    );
+    setPicked(undefined);
+  };
+
+  return (
+    <>
+      {body}
+      <ActionSheet
+        visible={!!picked}
+        title={t.appealDecide}
+        message={picked ? `«${picked.appeal.text}»` : undefined}
+        actions={[
+          {
+            label: t.appealDecisions.lift,
+            onPress: () => choose('lift'),
+            testID: 'appeal-decide-lift',
+          },
+          {
+            label: t.appealDecisions.uphold,
+            danger: true,
+            onPress: () => choose('uphold'),
+            testID: 'appeal-decide-uphold',
+          },
+        ]}
+        onClose={() => setPicked(undefined)}
+        testID="appeal-sheet"
+      />
+    </>
   );
 }
 

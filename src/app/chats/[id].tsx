@@ -119,6 +119,7 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
   const setBlock = useSetBlock();
   const scroll = useRef<ScrollView>(null);
   const [sheet, setSheet] = useState<Sheet>();
+  const [reporting, setReporting] = useState<string>();
   const peer = chat.peer;
   const name = peer.view === 'member' ? peer.name : undefined;
 
@@ -279,6 +280,7 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
                 message={message}
                 chatId={chat.id}
                 onLayout={message.id === lastUnreadId ? onUnreadLayout(message.id) : undefined}
+                onPress={message.fromMe ? undefined : () => setReporting(message.id)}
               />
             ))
           )}
@@ -308,6 +310,26 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
         onClose={() => setSheet(undefined)}
         testID="chat-sheet"
       />
+      <ActionSheet
+        visible={!!reporting}
+        actions={[
+          {
+            label: t.reportMessage,
+            onPress: () => {
+              const messageId = reporting;
+              setReporting(undefined);
+              if (!messageId) return;
+              router.push({
+                pathname: '/report',
+                params: { targetType: 'message', targetId: messageId },
+              });
+            },
+            testID: 'sheet-report-message',
+          },
+        ]}
+        onClose={() => setReporting(undefined)}
+        testID="message-sheet"
+      />
     </SafeAreaView>
   );
 }
@@ -316,10 +338,13 @@ function Bubble({
   message,
   chatId,
   onLayout,
+  onPress,
 }: {
   message: MessageView;
   chatId: string;
   onLayout?: (e: LayoutChangeEvent) => void;
+  /** Someone else's message: its actions («Пожаловаться на сообщение»). */
+  onPress?: () => void;
 }) {
   const styles = useStyles();
   const clock = useClock();
@@ -327,24 +352,43 @@ function Bubble({
   const retry = useRetryMessage(chatId);
   const mine = message.fromMe;
   const failed = message.status === 'failed';
+  const bubbleStyle = [styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs];
+  // Someone else's message opens its actions; one's own does not press at all, so its
+  // Фото still opens the viewer.
+  const content = (
+    <>
+      {message.photo ? (
+        <View style={styles.bubblePhoto}>
+          <PhotoGallery
+            photos={[message.photo]}
+            testID={`message-${message.id}-photo`}
+            height={180}
+          />
+        </View>
+      ) : null}
+      {message.text ? <AppText tone={mine ? 'onPrimary' : 'text'}>{message.text}</AppText> : null}
+    </>
+  );
   return (
     <View
       style={[styles.line, mine ? styles.lineMine : null]}
       onLayout={onLayout}
       testID={`message-${message.id}`}
     >
-      <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-        {message.photo ? (
-          <View style={styles.bubblePhoto}>
-            <PhotoGallery
-              photos={[message.photo]}
-              testID={`message-${message.id}-photo`}
-              height={180}
-            />
-          </View>
-        ) : null}
-        {message.text ? <AppText tone={mine ? 'onPrimary' : 'text'}>{message.text}</AppText> : null}
-      </View>
+      {onPress ? (
+        <Pressable
+          onPress={onPress}
+          aria-label={t.messageActions}
+          style={bubbleStyle}
+          testID={`message-${message.id}-bubble`}
+        >
+          {content}
+        </Pressable>
+      ) : (
+        <View style={bubbleStyle} testID={`message-${message.id}-bubble`}>
+          {content}
+        </View>
+      )}
       <View style={styles.meta}>
         <AppText variant="caption" tone="textMuted">
           {formatRelative(message.createdAt, clock)}

@@ -80,6 +80,18 @@ import type {
   ReportReceipt,
   SetBlockInput,
 } from './safety';
+import type {
+  AppealsQuery,
+  AppealView,
+  CreateAppealInput,
+  CreateSupportRequestInput,
+  DecideAppealInput,
+  ModerationAppealPage,
+  ModerationAppealView,
+  MyRestriction,
+  SupportRequestPage,
+  SupportRequestView,
+} from './restriction';
 import type { SearchPage, SearchQuery } from './search';
 import type { Session } from './session';
 import type { UpdateSettingsInput, UserSettings } from './settings';
@@ -202,6 +214,16 @@ export interface AituRepository {
   setBlock(input: SetBlockInput): Promise<BlockState>;
   listBlocked(query: ListQuery): Promise<BlockedPage>;
 
+  // Ограничение, Апелляция and Поддержка.
+  /** The current person's Ограничение while it lasts, otherwise null. */
+  getMyRestriction(): Promise<MyRestriction | null>;
+  /** The one Апелляция on the current Ограничение; a retry returns the same one. */
+  createAppeal(input: CreateAppealInput): Promise<AppealView>;
+  /** Anyone with an Aitu Passport identity, the restricted included. */
+  createSupportRequest(input: CreateSupportRequestInput): Promise<SupportRequestView>;
+  /** «Мои обращения», newest first. */
+  listMySupportRequests(query: ListQuery): Promise<SupportRequestPage>;
+
   // Moderation. Only sessions with the `moderator` role; everyone else gets FORBIDDEN.
   /** Newest first; reports about the moderator's own content are not theirs to decide. */
   listReports(query: ReportsQuery): Promise<ModerationReportPage>;
@@ -214,6 +236,10 @@ export interface AituRepository {
    */
   resolveReport(input: ResolveReportInput): Promise<ModerationReportView>;
   moderateMember(input: ModerateMemberInput): Promise<ModerationResult>;
+  /** Waiting Апелляции first by age; decided ones newest first. */
+  listAppeals(query: AppealsQuery): Promise<ModerationAppealPage>;
+  /** «Снять ограничение» or «Оставить в силе»; a decided one is a CONFLICT. */
+  decideAppeal(input: DecideAppealInput): Promise<ModerationAppealView>;
 
   // Settings.
   getSettings(): Promise<UserSettings>;

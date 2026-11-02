@@ -164,6 +164,7 @@ describe('resolveReport', () => {
     const decided = await mod.resolveReport({
       reportId: 'report4',
       resolution: 'member_restricted',
+      term: 'days_30',
     });
     expect(decided.subject).toMatchObject({ person: { id: planAuthor }, restricted: true });
     await expect(
@@ -171,7 +172,11 @@ describe('resolveReport', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
     // Another open report on the same person: restricting again makes no sense.
     await expect(
-      mod.resolveReport({ reportId: other.report.id, resolution: 'member_restricted' }),
+      mod.resolveReport({
+        reportId: other.report.id,
+        resolution: 'member_restricted',
+        term: 'days_7',
+      }),
     ).rejects.toMatchObject({ code: 'CONFLICT' });
     // It can still be decided otherwise.
     expect(

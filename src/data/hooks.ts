@@ -11,10 +11,15 @@ import type {
   AccessFlowState,
   MyActionsQuery,
   CommentPage,
+  MessagePage,
+  MessageView,
   CommentSort,
   CommentView,
   CreatePostInput,
   CreateReportInput,
+  CreateAppealInput,
+  CreateSupportRequestInput,
+  DecideAppealInput,
   ActivityQuery,
   CreatePlanInput,
   FeedContent,
@@ -643,6 +648,21 @@ export function useCachedCommentById(commentId: string): CommentView | undefined
   return undefined;
 }
 
+/** A message already loaded by its chat; never fetches on its own. */
+export function useCachedMessage(messageId: string): MessageView | undefined {
+  const client = useQueryClient();
+  if (!messageId) return undefined;
+  for (const [, data] of client.getQueriesData<InfiniteData<MessagePage>>({
+    queryKey: ['messages'],
+  })) {
+    for (const page of data?.pages ?? []) {
+      const found = page.items.find((m) => m.id === messageId);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
 /** A post already loaded by the feed or the post screen; never fetches on its own. */
 export function useCachedPost(postId: string): PostView | undefined {
   const client = useQueryClient();
@@ -776,10 +796,85 @@ export function useResolveReport() {
     mutationFn: (input: ResolveReportInput) => repository.resolveReport(input),
     onSuccess: () =>
       Promise.all(
-        ['moderation', 'feed', 'post', 'comments', 'profile-posts', 'my-reports'].map((key) =>
+        [
+          'moderation',
+          'feed',
+          'post',
+          'comments',
+          'profile-posts',
+          'my-reports',
+          'messages',
+          'chats',
+        ].map((key) => client.invalidateQueries({ queryKey: [key] })),
+      ),
+  });
+}
+
+/** The current person's Ограничение while it lasts, with their Апелляция. */
+export function useMyRestriction(enabled: boolean) {
+  const repository = useRepository();
+  return useQuery({
+    queryKey: ['my-restriction'],
+    queryFn: () => repository.getMyRestriction(),
+    enabled,
+  });
+}
+
+/** Sends the one Апелляция; the restriction screen shows its status. */
+export function useCreateAppeal() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateAppealInput) => repository.createAppeal(input),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['my-restriction'] }),
+  });
+}
+
+/** Апелляции for moderation: waiting or decided. */
+export function useAppeals(status: 'pending' | 'decided', enabled = true) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: ['moderation', 'appeals', status],
+    queryFn: ({ pageParam }) => repository.listAppeals({ status, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
+  });
+}
+
+/** Lifting returns the person to the club: every content query reloads. */
+export function useDecideAppeal() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DecideAppealInput) => repository.decideAppeal(input),
+    onSuccess: () =>
+      Promise.all(
+        ['moderation', 'feed', 'post', 'profile', 'profile-posts', 'search'].map((key) =>
           client.invalidateQueries({ queryKey: [key] }),
         ),
       ),
+  });
+}
+
+/** «Мои обращения», newest first. */
+export function useMySupportRequests(enabled: boolean) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: ['support-requests'],
+    queryFn: ({ pageParam }) => repository.listMySupportRequests({ cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled,
+  });
+}
+
+export function useCreateSupportRequest() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateSupportRequestInput) => repository.createSupportRequest(input),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['support-requests'] }),
   });
 }
 

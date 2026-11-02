@@ -9,6 +9,20 @@ import {
   ChatPage,
   ChatRef,
   ChatSummary,
+  APPEAL_WINDOW_DAYS,
+  AppealsQuery,
+  AppealView,
+  CreateAppealInput,
+  CreateSupportRequestInput,
+  DecideAppealInput,
+  ModerationAppealPage,
+  ModerationAppealView,
+  MyRestriction,
+  RESTRICTION_DAYS,
+  SupportRequestPage,
+  SupportRequestView,
+  type ReportReason,
+  type RestrictionTerm,
   type ChatContext,
   type ChatContextView,
   MarkChatReadInput,
@@ -398,7 +412,86 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
   /** Ограничение comes from the seed or from a moderation decision during the demo. */
   function isRestricted(record: MemberRecord): boolean {
-    return record.restricted || state.restrictedSubjects.includes(record.aituSubjectId);
+    return record.restricted || restrictedNow(record.aituSubjectId);
+  }
+
+  /** A decision during the demo still in force: it ends by itself once its term is over. */
+  function restrictedNow(subject: string): boolean {
+    if (!state.restrictedSubjects.includes(subject)) return false;
+    const endsAt = state.restrictionDetails[subject]?.endsAt;
+    return !endsAt || new Date(endsAt) > clock.now();
+  }
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  /** The one Апелляция on an Ограничение, if sent. */
+  const appealOf = (restrictionId: string) =>
+    state.appeals.find((a) => a.restrictionId === restrictionId);
+
+  /** The end of the 7 calendar days (Asia/Almaty) after a decision. */
+  function appealDeadline(decidedAt: string): Date {
+    const day = almatyDate(new Date(decidedAt));
+    const end = new Date(`${day}T23:59:59.999+05:00`);
+    return new Date(end.getTime() + APPEAL_WINDOW_DAYS * DAY_MS);
+  }
+
+  function myRestriction(subject: string): MyRestriction {
+    const details = state.restrictionDetails[subject] ?? {
+      id: `restriction-of-${subject}`,
+      reason: 'other' as const,
+      term: 'permanent' as const,
+      decidedAt: clock.now().toISOString(),
+    };
+    const appeal = appealOf(details.id);
+    const until = appealDeadline(details.decidedAt);
+    return MyRestriction.parse({
+      id: details.id,
+      reason: details.reason,
+      term: details.term,
+      decidedAt: details.decidedAt,
+      ...(details.endsAt ? { endsAt: details.endsAt } : {}),
+      ...(appeal ? { appeal: appealView(appeal) } : {}),
+      appealUntil: until.toISOString(),
+      canAppeal: !appeal && clock.now() <= until,
+    });
+  }
+
+  function moderationAppeal(
+    appeal: MockState['appeals'][number],
+    details: MockState['restrictionDetails'][string] | undefined,
+  ): ModerationAppealView | undefined {
+    const person = allMembers().find((m) => m.aituSubjectId === appeal.subjectId);
+    if (!person || !details) return undefined;
+    return ModerationAppealView.parse({
+      appeal: appealView(appeal),
+      person: authorView(person, { accessState: 'ACTIVE_MEMBER' }),
+      restriction: {
+        reason: details.reason,
+        term: details.term,
+        decidedAt: details.decidedAt,
+        ...(details.endsAt ? { endsAt: details.endsAt } : {}),
+      },
+    });
+  }
+
+  function supportView(request: MockState['supportRequests'][number]): SupportRequestView {
+    return SupportRequestView.parse({
+      id: request.id,
+      topic: request.topic,
+      text: request.text,
+      status: 'received',
+      createdAt: request.createdAt,
+    });
+  }
+
+  function appealView(appeal: MockState['appeals'][number]): AppealView {
+    return AppealView.parse({
+      id: appeal.id,
+      text: appeal.text,
+      status: appeal.status,
+      createdAt: appeal.createdAt,
+      ...(appeal.decidedAt ? { decidedAt: appeal.decidedAt } : {}),
+    });
   }
 
   /**
@@ -481,8 +574,10 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const post = allPosts().find((p) => p.planId === id);
         return plan ? { ...member(plan.authorId)!, text: post?.text } : undefined;
       }
-      case 'message':
-        return undefined;
+      case 'message': {
+        const message = allMessages().find((m) => m.id === id);
+        return message ? { ...member(message.authorId)!, text: message.text } : undefined;
+      }
     }
   }
 
@@ -601,8 +696,12 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const plan = planById(id);
         return plan ? visibleMember(plan.authorId) : undefined;
       }
-      case 'message':
-        return undefined;
+      case 'message': {
+        const message = allMessages().find((m) => m.id === id);
+        return message && !state.deletedMessageIds.includes(id)
+          ? visibleMember(message.authorId)
+          : undefined;
+      }
     }
   }
 
@@ -613,9 +712,47 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return passportCandidates.find((c) => c.id === session.candidateId)?.aituSubjectId;
   }
 
-  async function setRestricted(subjectId: string, restricted: boolean) {
-    const others = state.restrictedSubjects.filter((id) => id !== subjectId);
-    await saveState({ ...state, restrictedSubjects: restricted ? [...others, subjectId] : others });
+  /** The state after restricting a subject for a reason and a term. */
+  function withRestriction(
+    base: MockState,
+    subjectId: string,
+    reason: ReportReason,
+    term: RestrictionTerm,
+  ): MockState {
+    const now = clock.now();
+    const days = RESTRICTION_DAYS[term];
+    const others = base.restrictedSubjects.filter((id) => id !== subjectId);
+    const count = Object.keys(base.restrictionDetails).length + base.appeals.length;
+    return {
+      ...base,
+      restrictedSubjects: [...others, subjectId],
+      restrictionDetails: {
+        ...base.restrictionDetails,
+        [subjectId]: {
+          id: `restriction-${count + 1}-${now.getTime()}`,
+          reason,
+          term,
+          decidedAt: now.toISOString(),
+          ...(days ? { endsAt: new Date(now.getTime() + days * DAY_MS).toISOString() } : {}),
+        },
+      },
+    };
+  }
+
+  async function setRestricted(
+    subjectId: string,
+    restricted: boolean,
+    reason: ReportReason = 'other',
+    term: RestrictionTerm = 'days_7',
+  ) {
+    if (restricted) {
+      await saveState(withRestriction(state, subjectId, reason, term));
+      return;
+    }
+    await saveState({
+      ...state,
+      restrictedSubjects: state.restrictedSubjects.filter((id) => id !== subjectId),
+    });
   }
 
   function flowResult(requestId: string, outcome: access.Outcome<MockState['accessFlow'] & {}>) {
@@ -671,7 +808,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   function effectiveSession(): Session {
     // Ограничение wins over every other mode; the stored mode comes back when lifted.
     const subject = currentSubject();
-    if (subject && state.restrictedSubjects.includes(subject)) {
+    if (subject && restrictedNow(subject)) {
       return { ...session, accessState: 'BLOCKED' };
     }
     const record = session.userId ? member(session.userId) : undefined;
@@ -856,9 +993,10 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     return chat;
   }
 
+  /** A chat's messages, oldest first; those moderation removed are gone for both. */
   function chatMessages(chatId: string): MessageRecord[] {
     return allMessages()
-      .filter((m) => m.chatId === chatId)
+      .filter((m) => m.chatId === chatId && !state.deletedMessageIds.includes(m.id))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
@@ -2628,7 +2766,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     resolveReport: (input) =>
       respond('data', async (requestId) => {
         const moderator = requireModerator(requestId);
-        const { reportId, resolution } = parseOrFail(ResolveReportInput, input, requestId);
+        const { reportId, resolution, term } = parseOrFail(ResolveReportInput, input, requestId);
         const record = moderatedReport(requestId, moderator, reportId);
         if (record.status === 'resolved') {
           fail(requestId, { code: 'CONFLICT', message: 'The report is already decided.' });
@@ -2652,6 +2790,11 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
               ...next,
               deletedCommentIds: [...new Set([...next.deletedCommentIds, record.targetId])],
             };
+          } else if (record.targetType === 'message') {
+            next = {
+              ...next,
+              deletedMessageIds: [...new Set([...next.deletedMessageIds, record.targetId])],
+            };
           } else {
             fail(requestId, { code: 'CONFLICT', message: 'There is no content to remove.' });
           }
@@ -2660,10 +2803,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           if (!person || isRestricted(person)) {
             fail(requestId, { code: 'CONFLICT', message: 'Nobody to restrict here.' });
           }
-          next = {
-            ...next,
-            restrictedSubjects: [...new Set([...next.restrictedSubjects, person.aituSubjectId])],
-          };
+          next = withRestriction(next, person.aituSubjectId, record.reason, term ?? 'days_30');
         }
 
         // One decision closes every open report on the same target.
@@ -2931,8 +3071,153 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         }
         const target = member(parsed.data.memberId);
         if (!target) fail(requestId, { code: 'NOT_FOUND', message: 'Member not found.' });
-        await setRestricted(target.aituSubjectId, parsed.data.decision === 'restrict');
+        await setRestricted(
+          target.aituSubjectId,
+          parsed.data.decision === 'restrict',
+          parsed.data.reason,
+          parsed.data.term,
+        );
         return ModerationResult.parse({ memberId: target.id, restricted: isRestricted(target) });
+      }),
+
+    listAppeals: (input) =>
+      respond('data', (requestId) => {
+        requireModerator(requestId);
+        const { status, cursor } = parseOrFail(AppealsQuery, input ?? {}, requestId);
+        const restrictionById = new Map(
+          Object.entries(state.restrictionDetails).map(([subject, d]) => [d.id, { subject, d }]),
+        );
+        const waiting = status !== 'decided';
+        const items = state.appeals
+          .filter((a) => (status ? (a.status === 'pending') === waiting : true))
+          // Waiting ones by age, the oldest first; decided ones newest first.
+          .sort((a, b) =>
+            a.status === 'pending' && b.status === 'pending'
+              ? a.createdAt.localeCompare(b.createdAt)
+              : b.createdAt.localeCompare(a.createdAt),
+          )
+          .flatMap((appeal) => {
+            const view = moderationAppeal(appeal, restrictionById.get(appeal.restrictionId)?.d);
+            return view ? [view] : [];
+          });
+        return ModerationAppealPage.parse(page(items, cursor, DEFAULT_PAGE_SIZE, requestId));
+      }),
+
+    decideAppeal: (input) =>
+      respond('data', async (requestId) => {
+        requireModerator(requestId);
+        const { appealId, decision } = parseOrFail(DecideAppealInput, input, requestId);
+        const appeal = state.appeals.find((a) => a.id === appealId);
+        if (!appeal) fail(requestId, { code: 'NOT_FOUND', message: 'Appeal not found.' });
+        if (appeal.status !== 'pending') {
+          fail(requestId, { code: 'CONFLICT', message: 'The appeal is already decided.' });
+        }
+        const decided = {
+          ...appeal,
+          status: decision === 'lift' ? ('lifted' as const) : ('upheld' as const),
+          decidedAt: clock.now().toISOString(),
+        };
+        const details = state.restrictionDetails[appeal.subjectId];
+        // Lifting applies to the decision appealed; a newer Ограничение is not touched.
+        const lifts = decision === 'lift' && details?.id === appeal.restrictionId;
+        await saveState({
+          ...state,
+          appeals: state.appeals.map((a) => (a.id === appeal.id ? decided : a)),
+          restrictedSubjects: lifts
+            ? state.restrictedSubjects.filter((id) => id !== appeal.subjectId)
+            : state.restrictedSubjects,
+        });
+        const restriction = Object.values(state.restrictionDetails).find(
+          (d) => d.id === appeal.restrictionId,
+        );
+        const view = moderationAppeal(decided, restriction);
+        if (!view) fail(requestId, { code: 'NOT_FOUND', message: 'Appeal not found.' });
+        return view;
+      }),
+
+    getMyRestriction: () =>
+      respond('data', () => {
+        const subject = currentSubject();
+        if (!subject || !restrictedNow(subject)) return null;
+        return myRestriction(subject);
+      }),
+
+    createAppeal: (input) =>
+      respond('data', async (requestId) => {
+        const parsed = CreateAppealInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the appeal.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const subject = currentSubject();
+        if (!subject || !restrictedNow(subject)) {
+          fail(requestId, { code: 'CONFLICT', message: 'There is no restriction to appeal.' });
+        }
+        const details = state.restrictionDetails[subject];
+        if (!details) fail(requestId, { code: 'CONFLICT', message: 'Nothing to appeal.' });
+        // One Апелляция per decision: a retry, or a second try, returns the first.
+        const existing = appealOf(details.id);
+        if (existing) return appealView(existing);
+        if (clock.now() > appealDeadline(details.decidedAt)) {
+          fail(requestId, { code: 'CONFLICT', message: 'The appeal window has closed.' });
+        }
+        const appeal = {
+          id: `appeal-${state.appeals.length + 1}`,
+          restrictionId: details.id,
+          subjectId: subject,
+          text: parsed.data.text,
+          status: 'pending' as const,
+          createdAt: clock.now().toISOString(),
+          idempotencyKey: parsed.data.idempotencyKey,
+        };
+        await saveState({ ...state, appeals: [...state.appeals, appeal] });
+        return appealView(appeal);
+      }),
+
+    createSupportRequest: (input) =>
+      respond('data', async (requestId) => {
+        const subject = currentSubject();
+        if (!subject) {
+          fail(requestId, { code: 'UNAUTHENTICATED', message: 'Sign in with Aitu Passport.' });
+        }
+        const parsed = CreateSupportRequestInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Check the request.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const { topic, text, idempotencyKey } = parsed.data;
+        const existing = state.supportRequests.find((r) => r.idempotencyKey === idempotencyKey);
+        if (existing) return supportView(existing);
+        const request = {
+          id: `support-${state.supportRequests.length + 1}`,
+          subjectId: subject,
+          topic,
+          text,
+          createdAt: clock.now().toISOString(),
+          idempotencyKey,
+        };
+        await saveState({ ...state, supportRequests: [...state.supportRequests, request] });
+        return supportView(request);
+      }),
+
+    listMySupportRequests: (input) =>
+      respond('data', (requestId) => {
+        const subject = currentSubject();
+        if (!subject) {
+          fail(requestId, { code: 'UNAUTHENTICATED', message: 'Sign in with Aitu Passport.' });
+        }
+        const { cursor, limit } = parseOrFail(ListQuery, input ?? {}, requestId);
+        const mine = state.supportRequests
+          .filter((r) => r.subjectId === subject)
+          .reverse()
+          .map(supportView);
+        return SupportRequestPage.parse(page(mine, cursor, limit ?? DEFAULT_PAGE_SIZE, requestId));
       }),
 
     async getDemoFlags(): Promise<DemoFlags> {
