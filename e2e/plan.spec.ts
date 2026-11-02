@@ -46,10 +46,15 @@ test.describe('План встречи', () => {
     await expect(page).toHaveURL(/\/renew/);
   });
 
-  test('a member sees the place, responds, withdraws and responds again', async ({ page }) => {
+  test('a member sees where roughly, responds, withdraws and responds again', async ({ page }) => {
     await joinAsMadina(page);
     await openPlan(page);
-    await expect(page.getByTestId('plan-place')).toHaveText(place);
+    // The exact place waits for an accepted Отклик.
+    await expect(page.getByTestId('plan-place-area')).toHaveText('Кофейня в центре');
+    await expect(page.getByTestId('plan-place-hidden')).toHaveText(
+      'Точное место откроется после принятия отклика.',
+    );
+    await expect(page.getByTestId('screen-plan')).not.toContainText(place);
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-message').fill('Люблю утренний кофе, буду рада компании.');
     await page.getByTestId('plan-send').click();
@@ -84,11 +89,14 @@ test.describe('План встречи', () => {
 
     await openPlan(page, 'm02');
     await expect(page.getByTestId('plan-matched')).toBeVisible();
+    // The chosen one now sees the exact place; the declined one does not.
+    await expect(page.getByTestId('plan-place')).toHaveText(place);
     await page.getByTestId('plan-write').click();
     await expect(page.getByTestId('screen-chat')).toBeVisible();
 
     await openPlan(page, 'm03');
     await expect(page.getByTestId('plan-declined')).toHaveText('Автор выбрал другой вариант.');
+    await expect(page.getByTestId('plan-place')).toHaveCount(0);
   });
 
   test('the author closes the set, then cancels the plan', async ({ page }) => {

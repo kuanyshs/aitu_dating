@@ -8,6 +8,7 @@ import {
   meetingFormatLabels,
   meetingGoalLabels,
   paymentPolicyLabels,
+  planBudgetLabels,
   topicLabels,
 } from '@/catalogs';
 import type { Clock } from '@/clock';
@@ -51,6 +52,14 @@ type Props = {
 };
 
 const COLLAPSE_AFTER = 320;
+
+/** Who pays, and the budget per person when the author named one. */
+export function budgetLine(plan: Pick<PlanSummary, 'paymentPolicy' | 'budget'>): string {
+  const payment = paymentPolicyLabels[plan.paymentPolicy];
+  return plan.budget === 'not_specified'
+    ? payment
+    : `${payment} · ${planBudgetLabels[plan.budget]}`;
+}
 
 /** Why «Для тебя» picked this post: a shared interest or a matching answer. */
 function reasonText(reason: FeedReason): string {
@@ -267,7 +276,8 @@ function PlanCard({ plan, clock }: { plan: PlanSummary; clock: Clock }) {
         MapPin,
         `${cityLabels[plan.city]}${plan.isPublicPlace ? ` · ${strings.plan.publicPlace}` : ''}`,
       )}
-      {detail(Wallet, paymentPolicyLabels[plan.paymentPolicy])}
+      {detail(MapPin, plan.placeArea)}
+      {detail(Wallet, budgetLine(plan))}
       {plan.status !== 'published' ? (
         <AppText variant="caption" tone="textMuted" testID="plan-card-status">
           {strings.planScreen.status[plan.status]}

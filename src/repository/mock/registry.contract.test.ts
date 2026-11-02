@@ -69,6 +69,8 @@ const samples: { [K in RepositoryMethod]: Parameters<AituRepository[K]>[0] } = {
     durationMinutes: 60,
     goal: 'talk',
     paymentPolicy: 'each_pays',
+    budget: 'from_3000_to_7000',
+    placeArea: 'Центр города',
     description: 'Кофе и разговор.',
     place: 'Кофейня у парка',
     isPublicPlace: true,

@@ -68,12 +68,23 @@ export type MeetingGoal = (typeof meetingGoals)[number];
 export const paymentPolicies = ['each_pays', 'creator_pays', 'agree_in_advance'] as const;
 export type PaymentPolicy = (typeof paymentPolicies)[number];
 
+/** Бюджет: approximate spend per person on a План. */
+export const planBudgets = [
+  'up_to_3000',
+  'from_3000_to_7000',
+  'from_7000_to_15000',
+  'over_15000',
+  'not_specified',
+] as const;
+export type PlanBudget = (typeof planBudgets)[number];
+
 /** Shared by the plan builder, search filters and the plan card; never duplicate these lists. */
 export const meetingCatalog = {
   formats: meetingFormats,
   durations: meetingDurations,
   goals: meetingGoals,
   paymentPolicies,
+  budgets: planBudgets,
 } as const;
 
 export const membershipTiers = ['paid'] as const;

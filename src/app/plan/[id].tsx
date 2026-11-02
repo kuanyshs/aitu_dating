@@ -2,12 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import {
-  cityLabels,
-  meetingFormatLabels,
-  meetingGoalLabels,
-  paymentPolicyLabels,
-} from '@/catalogs';
+import { cityLabels, meetingFormatLabels, meetingGoalLabels } from '@/catalogs';
 import {
   isRepositoryError,
   LIMITS,
@@ -50,6 +45,7 @@ import {
   Wallet,
   type Icon,
 } from '@/ui/icons';
+import { budgetLine } from '@/ui/components/PostRow';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
@@ -288,6 +284,7 @@ function Summary({ plan }: { plan: PlanView }) {
         MapPin,
         `${cityLabels[plan.city]}${plan.isPublicPlace ? ` · ${strings.plan.publicPlace}` : ''}`,
       )}
+      {line(MapPin, plan.placeArea, 'plan-place-area')}
       {plan.place ? (
         line(MapPin, plan.place, 'plan-place')
       ) : (
@@ -295,7 +292,7 @@ function Summary({ plan }: { plan: PlanView }) {
           {t.placeHidden}
         </AppText>
       )}
-      {line(Wallet, paymentPolicyLabels[plan.paymentPolicy])}
+      {line(Wallet, budgetLine(plan), 'plan-budget')}
     </View>
   );
 }

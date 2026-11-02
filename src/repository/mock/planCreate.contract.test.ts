@@ -29,6 +29,8 @@ const plan = (patch: Partial<CreatePlanInput> = {}): CreatePlanInput => ({
   durationMinutes: 60,
   goal: 'talk',
   paymentPolicy: 'each_pays',
+  budget: 'from_3000_to_7000',
+  placeArea: 'Центр города',
   description: 'Кофе и спокойный разговор после работы.',
   place: 'Кофейня у парка',
   isPublicPlace: true,
@@ -38,7 +40,7 @@ const plan = (patch: Partial<CreatePlanInput> = {}): CreatePlanInput => ({
 });
 
 describe('creating a plan', () => {
-  it('publishes the plan and its post, the place for members only', async () => {
+  it('publishes the plan and its post, the exact place for the author only', async () => {
     const store = createMemoryStore();
     const created = PlanView.parse(await on(store, as('m01')).createPlan(plan()));
     expect(created).toMatchObject({
@@ -67,11 +69,28 @@ describe('creating a plan', () => {
     expect(feed.items.map((p) => p.id)).toContain(created.postId);
 
     const other = await on(store, as('m02')).getPlan({ planId: created.id });
-    expect(other.place).toBe('Кофейня у парка');
+    // Another member sees where roughly; the exact place waits for an accepted Отклик.
+    expect(other.place).toBeUndefined();
+    expect(other.placeArea).toBe('Центр города');
     expect(other.pendingResponses).toBeUndefined();
     const guest = await on(store).getPlan({ planId: created.id });
     expect(guest.place).toBeUndefined();
     expect(guest.author.view).toBe('safe');
+  });
+
+  it('carries the budget and where roughly to everyone, guests too', async () => {
+    const store = createMemoryStore();
+    const created = await on(store, as('m01')).createPlan(plan());
+    expect(created).toMatchObject({ budget: 'from_3000_to_7000', placeArea: 'Центр города' });
+    const guest = await on(store).getPlan({ planId: created.id });
+    expect(guest).toMatchObject({ budget: 'from_3000_to_7000', placeArea: 'Центр города' });
+    await expect(on(store, as('m01')).createPlan(plan({ placeArea: '  ' }))).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      fieldErrors: { placeArea: 'required' },
+    });
+    await expect(
+      on(store, as('m01')).createPlan(plan({ budget: 'cheap' as never })),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
   });
 
   it('publishes once for a retried request', async () => {

@@ -9,6 +9,7 @@ import {
   meetingGoals,
   membershipTiers,
   paymentPolicies,
+  planBudgets,
   questionnaire,
 } from '@/catalogs';
 import {
@@ -88,9 +89,13 @@ export const PlanRecord = z.strictObject({
   durationMinutes: z.union(meetingDurations.map((d) => z.literal(d))),
   format: z.enum(meetingFormats),
   place: z.string().min(1),
+  /** Where roughly; plans saved before it existed show the exact place's text. */
+  placeArea: z.string().min(1).optional(),
   isPublicPlace: z.boolean(),
   goal: z.enum(meetingGoals),
   paymentPolicy: z.enum(paymentPolicies),
+  /** Plans saved before it existed read «Не указывать». */
+  budget: z.enum(planBudgets).optional(),
   description: z.string().max(500),
   status: StoredPlanStatus,
   createdAt: IsoDateTime,

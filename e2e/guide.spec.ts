@@ -307,7 +307,7 @@ test.describe('guide @guide', () => {
   test('plan-member', async ({ page }) => {
     await joinAsMadina(page);
     await page.goto('/plan/plan1');
-    await expect(page.getByTestId('plan-place')).toBeVisible();
+    await expect(page.getByTestId('plan-place-area')).toBeVisible();
     await shot(page, 'plan-member');
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-message').fill('Люблю утренний кофе, буду рада компании.');
@@ -568,7 +568,7 @@ test.describe('guide dark @guide', () => {
   test('dark-plan', async ({ page }) => {
     await joinAsMadina(page);
     await page.goto('/plan/plan1');
-    await expect(page.getByTestId('plan-place')).toBeVisible();
+    await expect(page.getByTestId('plan-place-area')).toBeVisible();
     await shot(page, 'dark-plan');
   });
 

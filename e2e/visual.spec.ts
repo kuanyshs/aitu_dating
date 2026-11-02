@@ -332,11 +332,11 @@ test.describe('visual baselines @visual', () => {
     await snap(page, 'card-edit');
   });
 
-  test('План: a member with the place and an Отклик being written', async ({ page }) => {
+  test('План: a member with where roughly and an Отклик being written', async ({ page }) => {
     test.setTimeout(90_000);
     await joinAsMadina(page);
     await page.goto('/plan/plan1');
-    await expect(page.getByTestId('plan-place')).toBeVisible();
+    await expect(page.getByTestId('plan-place-area')).toBeVisible();
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-message').fill('Люблю утренний кофе, буду рада компании.');
     await snap(page, 'plan-member');

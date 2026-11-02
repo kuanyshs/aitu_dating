@@ -8,6 +8,8 @@ async function fill(page: Page, { date, place, description }: Record<string, str
   await page.getByTestId(`new-plan-date-${date}`).click();
   await page.getByTestId('new-plan-time-18:00').click();
   await page.getByTestId('new-plan-format-walk').click();
+  await page.getByTestId('new-plan-budget-up_to_3000').click();
+  await page.getByTestId('new-plan-place-area').fill('Центральный парк');
   await page.getByTestId('new-plan-place').fill(place!);
   await page.getByTestId('new-plan-description').fill(description!);
 }
@@ -48,14 +50,20 @@ test.describe('Новый план', () => {
 
     await expect(page.getByTestId('screen-plan')).toBeVisible();
     await expect(page.getByTestId('plan-place')).toHaveText('Центральный парк, у фонтана');
+    await expect(page.getByTestId('plan-place-area')).toHaveText('Центральный парк');
+    await expect(page.getByTestId('plan-budget')).toHaveText('Каждый за себя · До 3 000 ₸');
     await expect(page.getByTestId('plan-responses-empty')).toBeVisible();
 
     await page.goto('/');
     await showFeed(page, 'popular');
     await page.getByTestId('feed-content-plans').click();
-    await expect(
-      page.getByRole('article').filter({ hasText: 'Вечерняя прогулка и разговор о книгах.' }),
-    ).toHaveCount(1);
+    const card = page
+      .getByRole('article')
+      .filter({ hasText: 'Вечерняя прогулка и разговор о книгах.' });
+    await expect(card).toHaveCount(1);
+    await expect(card).toContainText('До 3 000 ₸');
+    await expect(card).toContainText('Центральный парк');
+    await expect(card).not.toContainText('у фонтана');
   });
 
   test('today offers only the times still ahead', async ({ page }) => {

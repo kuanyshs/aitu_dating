@@ -278,6 +278,8 @@ describe('«Мои планы» and «Мои отклики»', () => {
     durationMinutes: 60,
     goal: 'talk',
     paymentPolicy: 'each_pays',
+    budget: 'from_3000_to_7000',
+    placeArea: 'Центр города',
     description: `План на ${date}`,
     place: 'Кофейня у парка',
     isPublicPlace: true,
@@ -325,7 +327,8 @@ describe('«Мои планы» and «Мои отклики»', () => {
       [expect.any(String), 'plan1'],
     ]);
     expect(page.items[0]?.plan.myResponse?.status).toBe('pending');
-    expect(page.items[0]?.plan.place).toBeTruthy();
+    // A waiting Отклик does not open the exact place yet.
+    expect(page.items[0]?.plan.place).toBeUndefined();
   });
 
   it('is for members, expired ones too', async () => {
@@ -349,5 +352,23 @@ describe('persistence', () => {
       id: sent.id,
       status: 'accepted',
     });
+  });
+});
+
+describe('the exact place', () => {
+  it('opens to the person whose Отклик the author accepts, and to nobody else', async () => {
+    const store = createMemoryStore();
+    const chosen = await respond(store, 'm02', 'plan1');
+    await respond(store, 'm03', 'plan1');
+    expect((await on(store, 'm02').getPlan({ planId: 'plan1' })).place).toBeUndefined();
+
+    // plan1 is m06's.
+    const author = on(store, 'm06');
+    expect((await author.getPlan({ planId: 'plan1' })).place).toBeTruthy();
+    await author.acceptPlanResponse({ responseId: chosen.id });
+
+    expect((await on(store, 'm02').getPlan({ planId: 'plan1' })).place).toBeTruthy();
+    expect((await on(store, 'm03').getPlan({ planId: 'plan1' })).place).toBeUndefined();
+    expect((await on(store, 'm04').getPlan({ planId: 'plan1' })).place).toBeUndefined();
   });
 });

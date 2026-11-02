@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-import { meetingDurations, meetingFormats, meetingGoals, paymentPolicies } from '@/catalogs';
+import {
+  meetingDurations,
+  meetingFormats,
+  meetingGoals,
+  paymentPolicies,
+  planBudgets,
+} from '@/catalogs';
 
 import { Id, IsoDate, IsoDateTime, Page } from './common';
 import { LIMITS } from './limits';
@@ -8,8 +14,9 @@ import { AuthorView, CityKey } from './people';
 import { PlanSummary, TopicKey } from './post';
 
 /**
- * A План in full. One to one, no capacity. `place` is the exact spot and reaches active
- * members only; guests and expired members see the city and the public-place flag.
+ * A План in full. One to one, no capacity. `place` is the exact spot and reaches only the
+ * author and, after acceptance, the person whose Отклик was accepted; everyone else sees
+ * the city, where roughly and the public-place flag.
  */
 export const PlanView = PlanSummary.extend({
   postId: Id,
@@ -41,7 +48,11 @@ export const CreatePlanInput = z
     durationMinutes: z.union(meetingDurations.map((d) => z.literal(d))),
     goal: z.enum(meetingGoals),
     paymentPolicy: z.enum(paymentPolicies),
+    budget: z.enum(planBudgets),
     description: z.string().trim().min(1, 'required').max(LIMITS.planDescription, 'too_long'),
+    /** Where roughly, shown to everyone who sees the plan. */
+    placeArea: z.string().trim().min(1, 'required').max(LIMITS.placeArea, 'too_long'),
+    /** The exact place, for the author and the accepted participant only. */
     place: z.string().trim().min(1, 'required'),
     /** The creator must confirm the place is public. */
     isPublicPlace: z.literal(true),

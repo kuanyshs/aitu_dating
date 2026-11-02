@@ -6,6 +6,7 @@ import {
   meetingFormats,
   meetingGoals,
   paymentPolicies,
+  planBudgets,
   questionKeys,
   topics,
 } from '@/catalogs';
@@ -48,6 +49,9 @@ export const PlanSummary = z.strictObject({
   durationMinutes: z.union(meetingDurations.map((d) => z.literal(d))),
   goal: z.enum(meetingGoals),
   paymentPolicy: z.enum(paymentPolicies),
+  budget: z.enum(planBudgets),
+  /** Where roughly: a general description of the place, for everyone who sees the plan. */
+  placeArea: z.string().min(1),
   isPublicPlace: z.boolean(),
   status: PlanStatus,
   /** Owner only: how many Отклики are waiting. */

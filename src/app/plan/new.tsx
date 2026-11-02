@@ -13,6 +13,9 @@ import {
   meetingGoals,
   paymentPolicies,
   paymentPolicyLabels,
+  planBudgetLabels,
+  planBudgets,
+  type PlanBudget,
   topicLabels,
   topics as topicKeys,
   type City,
@@ -87,6 +90,8 @@ type Draft = {
   durationMinutes: MeetingDuration;
   goal: MeetingGoal;
   paymentPolicy: PaymentPolicy;
+  budget: PlanBudget;
+  placeArea: string;
   place: string;
   isPublicPlace: boolean;
   description: string;
@@ -106,6 +111,8 @@ function PlanForm({ me }: { me: MyProfile }) {
     durationMinutes: 60,
     goal: 'get_acquainted',
     paymentPolicy: 'each_pays',
+    budget: 'not_specified',
+    placeArea: '',
     place: '',
     isPublicPlace: false,
     description: '',
@@ -133,6 +140,7 @@ function PlanForm({ me }: { me: MyProfile }) {
     !!draft.date &&
     !!draft.timeStart &&
     times.includes(draft.timeStart) &&
+    draft.placeArea.trim().length > 0 &&
     draft.place.trim().length > 0 &&
     draft.description.trim().length > 0 &&
     draft.isPublicPlace;
@@ -145,6 +153,7 @@ function PlanForm({ me }: { me: MyProfile }) {
         date: draft.date,
         timeStart: draft.timeStart,
         isPublicPlace: true,
+        placeArea: draft.placeArea.trim(),
         place: draft.place.trim(),
         description: draft.description.trim(),
         idempotencyKey,
@@ -291,6 +300,26 @@ function PlanForm({ me }: { me: MyProfile }) {
             ))}
           </Group>
 
+          <Group label={t.budget}>
+            {planBudgets.map((budget) => (
+              <Chip
+                key={budget}
+                label={planBudgetLabels[budget]}
+                selected={draft.budget === budget}
+                onPress={() => set({ budget })}
+                testID={`new-plan-budget-${budget}`}
+              />
+            ))}
+          </Group>
+
+          <TextArea
+            label={t.placeArea}
+            value={draft.placeArea}
+            onChangeText={(placeArea) => set({ placeArea })}
+            placeholder={t.placeAreaPlaceholder}
+            maxLength={LIMITS.placeArea}
+            testID="new-plan-place-area"
+          />
           <TextArea
             label={t.place}
             value={draft.place}

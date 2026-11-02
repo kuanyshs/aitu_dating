@@ -185,12 +185,13 @@ describe('searching plans', () => {
     const guest = on();
     const found = SearchPage.parse(await guest.search({ kind: 'plans', text: 'КОФЕ' }));
     expect(planIds(found)).toEqual(['plan1', 'plan5']);
-    // A guest sees no exact place, a member does.
+    // Nobody but the author and an accepted participant gets the exact place.
     const first = found.items[0];
     expect(first?.kind === 'plan' && first.plan.place).toBeFalsy();
     const member = await on(createMemoryStore(), as('m02')).search({ kind: 'plans', text: 'кофе' });
     const hit = member.items[0];
-    expect(hit?.kind === 'plan' && hit.plan.place).toBe('Кофейня на Панфилова');
+    expect(hit?.kind === 'plan' && hit.plan.place).toBeFalsy();
+    expect(hit?.kind === 'plan' && hit.plan.placeArea).toBe('Кофейня в центре');
   });
 
   it('lists every open plan without text; a Встреча is not open', async () => {

@@ -749,12 +749,14 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const full = seesFullView(viewer);
     const standing = standingResponses(plan.id);
     const mine = standing.find((r) => r.authorId === viewer.userId);
+    // The exact place is for the author and the person whose Отклик was accepted.
+    const seesPlace = full && (plan.authorId === viewer.userId || mine?.status === 'accepted');
     return PlanView.parse({
       ...toPlanSummary(plan, pendingFor(plan, viewer)),
       postId: post.id,
       author: authorView(author, viewer),
       description: plan.description,
-      ...(full ? { place: plan.place } : {}),
+      ...(seesPlace ? { place: plan.place } : {}),
       createdAt: plan.createdAt,
       ...(mine && mine.status !== 'withdrawn'
         ? { myResponse: { id: mine.id, status: mine.status } }

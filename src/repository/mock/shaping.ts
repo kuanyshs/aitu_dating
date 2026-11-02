@@ -69,6 +69,8 @@ export function toPlanSummary(plan: CurrentPlan, pendingResponses?: number): Pla
     durationMinutes: plan.durationMinutes,
     goal: plan.goal,
     paymentPolicy: plan.paymentPolicy,
+    budget: plan.budget ?? 'not_specified',
+    placeArea: plan.placeArea ?? plan.place,
     isPublicPlace: plan.isPublicPlace,
     status: plan.status,
     ...(pendingResponses !== undefined ? { pendingResponses } : {}),

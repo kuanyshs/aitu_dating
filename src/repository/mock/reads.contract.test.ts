@@ -151,11 +151,12 @@ describe('plan', () => {
     expect(Object.keys(plan.author).sort()).toEqual(safeKeys);
   });
 
-  it('shows the place to an active member', async () => {
+  it('shows an active member where roughly, not the exact place', async () => {
     const repo = repositoryOn();
     await join(repo);
     const plan = await repo.getPlan({ planId: 'plan1' });
-    expect(plan.place).toBeTruthy();
+    expect(plan.place).toBeUndefined();
+    expect(plan.placeArea).toBeTruthy();
     expect(plan.postId).toBeTruthy();
     expect(plan.pendingResponses).toBeUndefined();
   });

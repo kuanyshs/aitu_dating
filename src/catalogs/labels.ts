@@ -10,6 +10,7 @@ import type {
   MeetingGoal,
   MembershipTier,
   PaymentPolicy,
+  PlanBudget,
   QuestionKey,
   Topic,
 } from './keys';
@@ -104,6 +105,14 @@ export const meetingGoalLabels: Record<MeetingGoal, string> = {
   get_acquainted: 'Познакомиться',
   talk: 'Поговорить',
   joint_activity: 'Совместное занятие',
+};
+
+export const planBudgetLabels: Record<PlanBudget, string> = {
+  up_to_3000: 'До 3 000 ₸',
+  from_3000_to_7000: '3 000–7 000 ₸',
+  from_7000_to_15000: '7 000–15 000 ₸',
+  over_15000: 'Больше 15 000 ₸',
+  not_specified: 'Не указывать',
 };
 
 export const paymentPolicyLabels: Record<PaymentPolicy, string> = {
