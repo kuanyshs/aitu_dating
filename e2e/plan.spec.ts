@@ -152,6 +152,33 @@ test.describe('План встречи', () => {
     await expect(page.getByTestId('chats-list').getByRole('link')).not.toHaveCount(0);
   });
 
+  test('a cancelled Встреча stays in the pair’s one chat, open for messages', async ({ page }) => {
+    // m02 and m06 already talk (chat3, a mutual Подписка): the Встреча joins that chat.
+    await respond(page, 'm02');
+    await openPlan(page, 'm06');
+    await page.getByTestId('plan-accept-response-1').click();
+    await page.getByTestId('sheet-confirm-accept').click();
+    await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
+    await openPlan(page, 'm02');
+    await page.getByTestId('plan-write').click();
+    await expect(page).toHaveURL(/\/chats\/chat3$/);
+    await expect(page.getByTestId('chat-context')).toContainText('Встреча: ');
+    await expect(page.getByTestId('chat-contexts-1')).toHaveText('Взаимная подписка');
+
+    await openPlan(page, 'm06');
+    await page.getByTestId('plan-menu').click();
+    await page.getByTestId('sheet-cancel-plan').click();
+    await page.getByTestId('sheet-confirm-cancel').click();
+    await expect(page.getByTestId('plan-status')).toHaveText('Отменён');
+
+    await signInAs(page, 'm02');
+    await page.goto('/chats/chat3');
+    await expect(page.getByTestId('chat-context')).toContainText('Встреча отменена: ');
+    await page.getByTestId('chat-input').fill('Жаль, давай в другой раз.');
+    await page.getByTestId('chat-send').click();
+    await expect(page.getByTestId('chat-messages')).toContainText('Жаль, давай в другой раз.');
+  });
+
   test('the author closes the set, then cancels the plan', async ({ page }) => {
     await respond(page, 'm02');
     await openPlan(page, 'm06');

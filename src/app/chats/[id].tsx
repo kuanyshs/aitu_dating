@@ -1,6 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -31,7 +34,7 @@ import { PhotoGallery } from '@/features/photo/PhotoGallery';
 import { PhotoSlotsEditor } from '@/features/photo/PhotoSlotsEditor';
 import { usePhotoSlots } from '@/features/photo/usePhotoSlots';
 import { newIdempotencyKey } from '@/features/access/steps';
-import { ContextLine } from '@/features/chat/ContextLine';
+import { ContextLine, ContextText } from '@/features/chat/ContextLine';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { ActionSheet, type SheetAction } from '@/ui/components/ActionSheet';
 import { Avatar } from '@/ui/components/Avatar';
@@ -119,15 +122,44 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
   const peer = chat.peer;
   const name = peer.view === 'member' ? peer.name : undefined;
 
-  // Opening the chat reads it: the counts in the list and on Home clear.
-  const { mutate: read } = markRead;
-  const unread = chat.unreadCount > 0;
-  useEffect(() => {
-    if (unread) read(undefined);
-  }, [unread, read]);
-
   // Pages go back in time; on screen the oldest comes first.
   const items = [...(messages.data?.pages ?? [])].reverse().flatMap((p) => p.items);
+
+  // The chat reads up to the last unread message only once that one has been on screen.
+  const lastUnread = items.findLast((m) => !m.fromMe && m.status === 'sent');
+  const lastUnreadId = chat.unreadCount > 0 ? lastUnread?.id : undefined;
+  const { mutate: read } = markRead;
+  const viewport = useRef({ y: 0, height: 0 });
+  const unreadBox = useRef<{ id: string; y: number; height: number }>(undefined);
+  const marked = useRef<string>(undefined);
+  const readIfShown = () => {
+    const box = unreadBox.current;
+    const { y, height } = viewport.current;
+    if (!lastUnreadId || !box || box.id !== lastUnreadId || height === 0) return;
+    if (marked.current === lastUnreadId) return;
+    const shown = box.y < y + height && box.y + box.height > y;
+    if (!shown) return;
+    marked.current = lastUnreadId;
+    read(lastUnreadId);
+  };
+  // A new last unread message may already be in view when it arrives.
+  useEffect(() => readIfShown());
+  const onViewport = (e: LayoutChangeEvent) => {
+    viewport.current = { ...viewport.current, height: e.nativeEvent.layout.height };
+    readIfShown();
+  };
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    viewport.current = {
+      y: e.nativeEvent.contentOffset.y,
+      height: e.nativeEvent.layoutMeasurement.height,
+    };
+    readIfShown();
+  };
+  const onUnreadLayout = (id: string) => (e: LayoutChangeEvent) => {
+    const { y, height } = e.nativeEvent.layout;
+    unreadBox.current = { id, y, height };
+    readIfShown();
+  };
 
   const block = () => {
     setSheet(undefined);
@@ -204,6 +236,17 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
             testID="chat-menu"
           />
         </View>
+        {chat.contexts.length > 1 ? (
+          <View
+            style={styles.contexts}
+            aria-label={strings.chats.contextsLabel}
+            testID="chat-contexts"
+          >
+            {chat.contexts.map((context, i) => (
+              <ContextText key={i} context={context} testID={`chat-contexts-${i}`} />
+            ))}
+          </View>
+        ) : null}
 
         <ScrollView
           ref={scroll}
@@ -211,6 +254,9 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
           keyboardShouldPersistTaps="handled"
           // New messages arrive at the bottom: keep them in view.
           onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })}
+          onLayout={onViewport}
+          onScroll={onScroll}
+          scrollEventThrottle={100}
           testID="chat-messages"
         >
           {messages.hasNextPage ? (
@@ -227,7 +273,14 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
               {t.empty}
             </AppText>
           ) : (
-            items.map((message) => <Bubble key={message.id} message={message} chatId={chat.id} />)
+            items.map((message) => (
+              <Bubble
+                key={message.id}
+                message={message}
+                chatId={chat.id}
+                onLayout={message.id === lastUnreadId ? onUnreadLayout(message.id) : undefined}
+              />
+            ))
           )}
         </ScrollView>
 
@@ -259,7 +312,15 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
   );
 }
 
-function Bubble({ message, chatId }: { message: MessageView; chatId: string }) {
+function Bubble({
+  message,
+  chatId,
+  onLayout,
+}: {
+  message: MessageView;
+  chatId: string;
+  onLayout?: (e: LayoutChangeEvent) => void;
+}) {
   const styles = useStyles();
   const clock = useClock();
   const toast = useToast((s) => s.show);
@@ -267,7 +328,11 @@ function Bubble({ message, chatId }: { message: MessageView; chatId: string }) {
   const mine = message.fromMe;
   const failed = message.status === 'failed';
   return (
-    <View style={[styles.line, mine ? styles.lineMine : null]} testID={`message-${message.id}`}>
+    <View
+      style={[styles.line, mine ? styles.lineMine : null]}
+      onLayout={onLayout}
+      testID={`message-${message.id}`}
+    >
       <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
         {message.photo ? (
           <View style={styles.bubblePhoto}>
@@ -389,6 +454,15 @@ const useStyles = createStyles((colors) => ({
     alignItems: 'center',
     gap: spacing.xs,
     paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  contexts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,

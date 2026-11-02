@@ -11,6 +11,8 @@ import {
   ChatPage,
   ChatRef,
   ChatSummary,
+  MarkChatReadInput,
+  UnreadCount,
   ListQuery,
   MessagePage,
   MessageRef,
@@ -158,7 +160,8 @@ export const repositoryContract = {
   listMessages: { input: MessagesQuery, output: MessagePage },
   sendMessage: { input: SendMessageInput, output: MessageView },
   retryMessage: { input: MessageRef, output: MessageView },
-  markChatRead: { input: ChatRef, output: ChatSummary },
+  markChatRead: { input: MarkChatReadInput, output: ChatSummary },
+  countUnreadMessages: { input: z.undefined(), output: UnreadCount },
   listActivity: { input: ActivityQuery, output: ActivityPage },
   markActivitySeen: { input: none, output: ActivitySeen },
 

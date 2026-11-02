@@ -26,8 +26,47 @@ test.describe('Сообщения', () => {
     await expect(page.getByTestId('chat-row-chat2-context')).toHaveText('Из комментария');
     await expect(page.getByTestId('chat-row-chat2-preview')).toContainText('Вы: ');
 
+    // The list alone reads nothing; its header counts what waits.
+    await expect(page.getByTestId('chats-unread-total')).toHaveText('Непрочитанных: 2');
+    await expect(page.getByTestId('tab-chats-count')).toHaveText('2');
+
     await page.getByTestId('chat-row-chat1').click();
     await expect(page.getByTestId('screen-chat')).toBeVisible();
+    // The last message is on screen: the chat is read.
+    await expect(page.getByTestId('message-chat1-m25')).toBeInViewport();
+    await page.getByTestId('chat-back').click();
+    await expect(page.getByTestId('chat-row-chat1-unread')).toHaveCount(0);
+    await expect(page.getByTestId('tab-chats-count')).toHaveCount(0);
+    await expect(page.getByTestId('chats-unread-total')).toHaveCount(0);
+  });
+
+  test('an incoming message shows in the list and the count at once', async ({ page }) => {
+    await signInAs(page, 'm01');
+    await page.goto('/');
+    // chat2 gets the latest message, and chat1 is read: chat2 is on top.
+    await page.getByTestId('tab-chats').click();
+    await page.getByTestId('chat-row-chat1').click();
+    await expect(page.getByTestId('message-chat1-m25')).toBeInViewport();
+    await page.getByTestId('chat-back').click();
+    await expect(page.getByTestId('tab-chats-count')).toHaveCount(0);
+    await page.getByTestId('chat-row-chat2').click();
+    await page.getByTestId('chat-input').fill('Как дела?');
+    await page.getByTestId('chat-send').click();
+    await expect(page.getByTestId('chat-input')).toHaveValue('');
+    await page.getByTestId('chat-back').click();
+    const rows = page.getByTestId('chats-list').getByRole('link');
+    await expect(rows.first()).toHaveAttribute('data-testid', 'chat-row-chat2');
+
+    // The other side of the latest chat (chat2) answers while the app is open.
+    await openDemoPanel(page);
+    await page.getByTestId('demo-incoming-message').click();
+    await expect(page.getByText('Пришло новое сообщение')).toBeVisible();
+    await page.getByTestId('settings-close').click();
+    await expect(page.getByTestId('tab-chats-count')).toHaveText('1');
+    await page.getByTestId('tab-chats').click();
+    await expect(rows.first()).toHaveAttribute('data-testid', 'chat-row-chat2');
+    await expect(page.getByTestId('chat-row-chat2-unread')).toHaveText('1');
+    await expect(page.getByTestId('chats-unread-total')).toHaveText('Непрочитанных: 1');
   });
 
   test('a new member sees where chats come from', async ({ page }) => {

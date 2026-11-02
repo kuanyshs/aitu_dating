@@ -9,6 +9,10 @@ import {
   ChatPage,
   ChatRef,
   ChatSummary,
+  type ChatContext,
+  type ChatContextView,
+  MarkChatReadInput,
+  UnreadCount,
   MessagePage,
   MessageRef,
   MessagesQuery,
@@ -122,6 +126,7 @@ import {
 } from './records';
 import { loadSeed } from './seed';
 import { passportCandidates } from './seed/candidates';
+import { incomingLines } from './seed/chats';
 import {
   isMemberViewer,
   seesFullView,
@@ -878,20 +883,68 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     });
   }
 
+  /** Every Контекст of a chat, oldest first: the one it started from, then the added ones. */
+  function contextsOf(chat: ChatRecord): ChatContext[] {
+    return [chat.context, ...(state.chatContexts[chat.id] ?? [])];
+  }
+
+  const sameContext = (a: ChatContext, b: ChatContext) =>
+    a.kind === 'comment'
+      ? b.kind === 'comment' && a.commentId === b.commentId
+      : a.kind === 'plan_response'
+        ? b.kind === 'plan_response' && a.responseId === b.responseId
+        : a.kind === b.kind;
+
+  /** A Контекст as it stands now: a cancelled Встреча, or «Переписка» once its source is gone. */
+  function contextView(context: ChatContext, chat: ChatRecord): ChatContextView {
+    if (context.kind === 'comment') {
+      const comment = allComments().find((c) => c.id === context.commentId);
+      const post = postById(context.postId);
+      const gone = !comment || comment.deleted || !post || !isVisible(post);
+      return gone ? { kind: 'conversation' } : context;
+    }
+    if (context.kind === 'mutual_follow') {
+      const [a, b] = chat.memberIds;
+      return isFollowing(a, b) && isFollowing(b, a) ? context : { kind: 'conversation' };
+    }
+    const plan = planById(context.planId);
+    const response = state.planResponses.find((r) => r.id === context.responseId);
+    const cancelled = !plan || plan.status === 'cancelled' || response?.status !== 'accepted';
+    return { ...context, cancelled };
+  }
+
+  /** Newest first; «Переписка» twice in a row reads once. */
+  function contextViews(chat: ChatRecord): ChatContextView[] {
+    const views = contextsOf(chat)
+      .map((c) => contextView(c, chat))
+      .reverse();
+    return views.filter((v, i) => !(v.kind === 'conversation' && views[i - 1]?.kind === v.kind));
+  }
+
+  /** Messages from the other side after the member's read mark. */
+  function unreadIn(chat: ChatRecord, me: string): number {
+    const mark = readMark(chat.id, me);
+    return chatMessages(chat.id).filter(
+      (m) => m.authorId !== me && m.status === 'sent' && (!mark || m.createdAt > mark),
+    ).length;
+  }
+
+  /** The member's chats whose other side they may see. */
+  const chatsOf = (me: string) =>
+    allChats().filter((c) => c.memberIds.includes(me) && isShown(member(peerIdOf(c, me))));
+
   function chatSummary(chat: ChatRecord, viewer: Viewer): ChatSummary {
     const me = viewer.userId!;
     const peer = member(peerIdOf(chat, me))!;
-    const all = chatMessages(chat.id);
-    const last = all.at(-1);
-    const mark = readMark(chat.id, me);
+    const last = chatMessages(chat.id).at(-1);
+    const contexts = contextViews(chat);
     return ChatSummary.parse({
       id: chat.id,
-      context: chat.context,
+      context: contexts[0],
+      contexts,
       peer: authorView(peer, viewer),
       ...(last ? { lastMessage: messageView(last, chat, me) } : {}),
-      unreadCount: all.filter(
-        (m) => m.authorId !== me && m.status === 'sent' && (!mark || m.createdAt > mark),
-      ).length,
+      unreadCount: unreadIn(chat, me),
       // Expired members read their chats but cannot write.
       readOnly: viewer.accessState !== 'ACTIVE_MEMBER',
     });
@@ -2203,11 +2256,22 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         }
         if (!isShown(member(peerId))) return notFound();
 
-        // Two people share one chat: it keeps the context it started from.
+        // Two people share one chat: a new reason to talk is added to it, never twice.
         const existing = allChats().find(
           (c) => c.memberIds.includes(me.id) && c.memberIds.includes(peerId),
         );
-        if (existing) return chatSummary(existing, viewer);
+        if (existing) {
+          if (!contextsOf(existing).some((c) => sameContext(c, context))) {
+            await saveState({
+              ...state,
+              chatContexts: {
+                ...state.chatContexts,
+                [existing.id]: [...(state.chatContexts[existing.id] ?? []), context],
+              },
+            });
+          }
+          return chatSummary(existing, viewer);
+        }
         const chat = ChatRecord.parse({
           id: `chat-${state.chats.length + 1}`,
           memberIds: [me.id, peerId],
@@ -2223,9 +2287,11 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const me = requireOwnCard(requestId);
         const viewer = viewerOf(effectiveSession());
         const { cursor, limit } = parseOrFail(ListQuery, input ?? {}, requestId);
-        const mine = allChats()
-          .filter((c) => c.memberIds.includes(me.id) && isShown(member(peerIdOf(c, me.id))))
-          .sort((a, b) => lastActivity(b).localeCompare(lastActivity(a)));
+        // Chats with unread messages first, then the rest; each group by its latest message.
+        const unread = (c: ChatRecord) => (unreadIn(c, me.id) > 0 ? 1 : 0);
+        const mine = chatsOf(me.id).sort(
+          (a, b) => unread(b) - unread(a) || lastActivity(b).localeCompare(lastActivity(a)),
+        );
         return ChatPage.parse(
           page(
             mine.map((c) => chatSummary(c, viewer)),
@@ -2326,13 +2392,30 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     markChatRead: (input) =>
       respond('data', async (requestId) => {
         const me = requireOwnCard(requestId);
-        const { chatId } = parseOrFail(ChatRef, input, requestId);
+        const { chatId, upToMessageId } = parseOrFail(MarkChatReadInput, input, requestId);
         const chat = findChat(chatId, me.id, requestId);
-        await saveState({
-          ...state,
-          chatReads: { ...state.chatReads, [`${chat.id}:${me.id}`]: clock.now().toISOString() },
-        });
+        let upTo = clock.now().toISOString();
+        if (upToMessageId) {
+          const shown = chatMessages(chat.id).find((m) => m.id === upToMessageId);
+          if (!shown) fail(requestId, { code: 'NOT_FOUND', message: 'Message not found.' });
+          upTo = shown.createdAt;
+        }
+        // The mark never moves back: a later look at an older message reads nothing new.
+        const mark = readMark(chat.id, me.id);
+        if (!mark || upTo > mark) {
+          await saveState({
+            ...state,
+            chatReads: { ...state.chatReads, [`${chat.id}:${me.id}`]: upTo },
+          });
+        }
         return chatSummary(chat, viewerOf(effectiveSession()));
+      }),
+
+    countUnreadMessages: () =>
+      respond('data', (requestId) => {
+        const me = requireOwnCard(requestId);
+        const count = chatsOf(me.id).reduce((n, c) => n + unreadIn(c, me.id), 0);
+        return UnreadCount.parse({ count });
       }),
     listActivity: (input) =>
       respond('data', (requestId) => {
@@ -2918,6 +3001,30 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         },
       );
       await setSession({ ...session, accessState: 'ACTIVE_MEMBER_EXPIRED' });
+    },
+
+    async receiveDemoMessage() {
+      await ready;
+      const me = session.userId;
+      if (!me) return false;
+      const chat = chatsOf(me).sort((a, b) => lastActivity(b).localeCompare(lastActivity(a)))[0];
+      if (!chat) return false;
+      // Strictly after everything the member has seen, so it always arrives unread.
+      const after = [lastActivity(chat), readMark(chat.id, me) ?? ''].map((iso) =>
+        iso ? new Date(iso).getTime() + 1 : 0,
+      );
+      const createdAt = new Date(Math.max(clock.now().getTime(), ...after)).toISOString();
+      const lines = incomingLines;
+      const message = MessageRecord.parse({
+        id: `message-${state.messages.length + 1}`,
+        chatId: chat.id,
+        authorId: peerIdOf(chat, me),
+        text: lines[state.messages.length % lines.length],
+        createdAt,
+        status: 'sent',
+      });
+      await saveState({ ...state, messages: [...state.messages, message] });
+      return true;
     },
 
     async restoreMembership() {

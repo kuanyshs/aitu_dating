@@ -95,3 +95,10 @@ export const chatReads: ChatReadRecord[] = chats.flatMap((chat) =>
     readAt: chat.id === 'chat1' && userId === 'm01' ? hoursAgo(26) : hoursAgo(1),
   })),
 );
+
+/** What «Входящее сообщение» (demo) says, in turn. */
+export const incomingLines = [
+  'Привет! Как твой день?',
+  'Кстати, нашла ещё одно спокойное место для кофе.',
+  'Если будет время на неделе, давай созвонимся.',
+];

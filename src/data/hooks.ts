@@ -63,6 +63,8 @@ export const queryKeys = {
   myPlans: ['my-plans'] as const,
   myResponses: ['my-responses'] as const,
   chats: ['chats'] as const,
+  /** Under `chats`, so whatever reloads the list reloads the count too. */
+  unreadMessages: ['chats', 'unread'] as const,
   chat: (chatId: string) => ['chat', chatId] as const,
   messages: (chatId: string) => ['messages', chatId] as const,
 };
@@ -490,6 +492,21 @@ export function useSetModeratorRole() {
     onSuccess: async () => {
       await client.resetQueries();
     },
+  });
+}
+
+/** «Входящее сообщение» (demo): the chat list, the counts and an open chat reload at once. */
+export function useReceiveDemoMessage() {
+  const demo = useDemoControls();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => demo!.receiveDemoMessage(),
+    onSuccess: () =>
+      Promise.all(
+        [queryKeys.chats, ['chat'], ['messages']].map((queryKey) =>
+          client.invalidateQueries({ queryKey }),
+        ),
+      ),
   });
 }
 
@@ -989,11 +1006,11 @@ export function useMyResponses(enabled: boolean) {
   });
 }
 
-/** The member's chats, latest message first. */
+/** The member's chats: unread ones first, then by the latest message. */
 export function useChats(enabled: boolean) {
   const repository = useRepository();
   return useInfiniteQuery({
-    queryKey: queryKeys.chats,
+    queryKey: [...queryKeys.chats, 'list'],
     queryFn: ({ pageParam }) => repository.listChats({ cursor: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
@@ -1001,10 +1018,15 @@ export function useChats(enabled: boolean) {
   });
 }
 
-/** Unread messages across the loaded chats, for the badge on Home. */
+/** Unread messages across all chats, for the «Сообщения» tab and its header. */
 export function useUnreadMessages(enabled: boolean): number {
-  const chats = useChats(enabled);
-  return (chats.data?.pages ?? []).flatMap((p) => p.items).reduce((n, c) => n + c.unreadCount, 0);
+  const repository = useRepository();
+  const count = useQuery({
+    queryKey: queryKeys.unreadMessages,
+    queryFn: () => repository.countUnreadMessages(),
+    enabled,
+  });
+  return enabled ? (count.data?.count ?? 0) : 0;
 }
 
 export function useChat(chatId: string, enabled: boolean) {
@@ -1054,9 +1076,12 @@ export function useRetryMessage(chatId: string) {
   return useChatMutation(chatId, (messageId: string) => repository.retryMessage({ messageId }));
 }
 
+/** Reads the chat up to the message that was on screen. */
 export function useMarkChatRead(chatId: string) {
   const repository = useRepository();
-  return useChatMutation(chatId, () => repository.markChatRead({ chatId }));
+  return useChatMutation(chatId, (upToMessageId: string) =>
+    repository.markChatRead({ chatId, upToMessageId }),
+  );
 }
 
 /** Opens the one chat with someone (or the existing one); the chat list reloads. */

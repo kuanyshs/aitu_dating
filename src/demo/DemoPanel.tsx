@@ -4,6 +4,7 @@ import {
   useCandidateStatus,
   useDemoFlags,
   useExpireMembership,
+  useReceiveDemoMessage,
   useResetDemo,
   useRestoreMembership,
   useSession,
@@ -30,6 +31,7 @@ export function DemoPanel() {
   const switchCandidate = useSwitchCandidate();
   const expire = useExpireMembership();
   const restore = useRestoreMembership();
+  const incoming = useReceiveDemoMessage();
   const accessState = session.data?.accessState;
   const setRestricted = useSetRestricted();
   const setModerator = useSetModeratorRole();
@@ -132,6 +134,23 @@ export function DemoPanel() {
         }
         testID="demo-network-error-once"
       />
+      {accessState === 'ACTIVE_MEMBER' || accessState === 'ACTIVE_MEMBER_EXPIRED' ? (
+        <View style={{ gap: spacing.xs }}>
+          <AppText variant="caption" tone="textMuted">
+            {t.incomingMessageHint}
+          </AppText>
+          <SecondaryButton
+            label={t.incomingMessage}
+            loading={incoming.isPending}
+            onPress={() =>
+              incoming.mutate(undefined, {
+                onSuccess: (sent) => toast(sent ? t.incomingMessageDone : t.incomingMessageNone),
+              })
+            }
+            testID="demo-incoming-message"
+          />
+        </View>
+      ) : null}
       <ToggleRow
         label={t.failedMessageOnce}
         hint={t.failedMessageOnceHint}

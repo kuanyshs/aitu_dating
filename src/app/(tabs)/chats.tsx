@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
 import type { ChatSummary } from '@/contracts';
-import { useChats, useSession } from '@/data/hooks';
+import { useChats, useSession, useUnreadMessages } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { ContextLine } from '@/features/chat/ContextLine';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
@@ -23,19 +23,27 @@ import { createStyles } from '@/ui/theme/useStyles';
 const t = strings.chats;
 
 /**
- * «Сообщения»: the member's Контекстные чаты, latest message first, each with where it
- * started and how many messages wait. Expired members read them and are offered renewal.
+ * «Сообщения»: the member's Контекстные чаты, unread ones first, then by the latest message,
+ * each with its latest context and how many messages wait. Expired members read them and are offered renewal.
  */
 export default function ChatsScreen() {
   const session = useSession();
   const state = session.data?.accessState;
   const isMember = state === 'ACTIVE_MEMBER' || state === 'ACTIVE_MEMBER_EXPIRED';
+  const unread = useUnreadMessages(isMember);
 
   return (
     <Screen testID="screen-chats">
-      <AppText variant="display" role="heading">
-        {t.title}
-      </AppText>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm }}>
+        <AppText variant="display" role="heading">
+          {t.title}
+        </AppText>
+        {unread ? (
+          <AppText tone="textMuted" testID="chats-unread-total">
+            {t.unreadTotal(unread)}
+          </AppText>
+        ) : null}
+      </View>
       {state === 'ACTIVE_MEMBER_EXPIRED' ? <RenewBanner testID="chats-renew" /> : null}
       {isMember ? (
         <ChatList />

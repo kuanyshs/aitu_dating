@@ -9,6 +9,8 @@ import type {
   ChatPage,
   ChatRef,
   ChatSummary,
+  MarkChatReadInput,
+  UnreadCount,
   ListQuery,
   MessagePage,
   MessageRef,
@@ -185,7 +187,10 @@ export interface AituRepository {
   sendMessage(input: SendMessageInput): Promise<MessageView>;
   /** Resends a `failed` message with its original idempotency key. */
   retryMessage(input: MessageRef): Promise<MessageView>;
-  markChatRead(input: ChatRef): Promise<ChatSummary>;
+  /** Reads a chat up to the message shown on screen; opening «Сообщения» reads nothing. */
+  markChatRead(input: MarkChatReadInput): Promise<ChatSummary>;
+  /** Unread messages across all chats, for the «Сообщения» tab and its header. */
+  countUnreadMessages(): Promise<UnreadCount>;
   listActivity(query: ActivityQuery): Promise<ActivityPage>;
   /** Marks everything in «Активность» so far as seen. */
   markActivitySeen(): Promise<ActivitySeen>;

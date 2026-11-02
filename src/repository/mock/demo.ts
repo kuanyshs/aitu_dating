@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  ChatContext,
   AccessFlowStep,
   FeedFilters,
   StoredPlanStatus,
@@ -125,6 +126,8 @@ export const MockState = z.strictObject({
   chats: z.array(ChatRecord),
   /** Messages written during the demo. */
   messages: z.array(MessageRecord),
+  /** Контексты added to a chat after its first one, oldest first, by chat id. */
+  chatContexts: z.record(z.string(), z.array(ChatContext)),
   /** Read marks by `chatId:userId`, seed chats too. */
   chatReads: z.record(z.string(), z.string()),
   /** When each member last opened «Уведомления». */
@@ -142,7 +145,7 @@ export const MockState = z.strictObject({
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 19;
+export const MOCK_STATE_VERSION = 20;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -200,6 +203,8 @@ export const mockStateMigrations = [
   (v17: unknown) => JSON.parse(JSON.stringify(v17).replaceAll('"free_verified"', '"paid"')),
   // v19 adds uploaded Фото and their idempotency keys.
   (v18: unknown) => ({ ...(v18 as object), photos: {}, photoKeys: {} }),
+  // v20 lets one chat gather several Контексты.
+  (v19: unknown) => ({ ...(v19 as object), chatContexts: {} }),
 ];
 
 export const defaultMockState = (): MockState => ({
@@ -234,6 +239,7 @@ export const defaultMockState = (): MockState => ({
   planResponses: [],
   chats: [],
   messages: [],
+  chatContexts: {},
   chatReads: {},
   activitySeenAt: {},
   feedFilters: {},
@@ -255,6 +261,11 @@ export interface DemoControls {
   listCandidateStatus(): Promise<{ candidateId: string; name: string; hasCard: boolean }[]>;
   /** Ends the current member's membership now; the card stays. */
   expireMembership(): Promise<void>;
+  /**
+   * «Входящее сообщение»: the other side of the member's latest chat writes, as if it came
+   * while the app is open. False when the member has no chat to receive it in.
+   */
+  receiveDemoMessage(): Promise<boolean>;
   /** Undoes «Истечь membership»: the saved end date, or a fresh period if it has passed. */
   restoreMembership(): Promise<void>;
   /**

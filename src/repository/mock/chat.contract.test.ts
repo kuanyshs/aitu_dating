@@ -91,7 +91,7 @@ describe('the chat list', () => {
 });
 
 describe('opening a chat', () => {
-  it('returns the existing chat of the pair with its first context', async () => {
+  it('returns the existing chat of the pair, adding the new context to it', async () => {
     const store = createMemoryStore();
     const chat = ChatSummary.parse(
       await on(store, 'm01').openChat({ kind: 'mutual_follow', memberId: 'm09' }),
@@ -104,7 +104,7 @@ describe('opening a chat', () => {
     if (comment) {
       const again = await on(store, 'm01').openChat({ kind: 'comment', commentId: comment.id });
       expect(again.id).toBe('chat1');
-      expect(again.context.kind).toBe('mutual_follow');
+      expect(again.contexts.map((c) => c.kind)).toEqual(['comment', 'mutual_follow']);
     }
   });
 
@@ -156,6 +156,7 @@ describe('opening a chat', () => {
       kind: 'plan_response',
       planId: 'plan1',
       responseId: response.id,
+      cancelled: false,
     });
     const fromResponder = await on(store, 'm04').openChat({
       kind: 'plan_response',
