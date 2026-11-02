@@ -87,8 +87,8 @@ test.describe('visual baselines @visual', () => {
     await expect(page.getByTestId('profile-name')).toHaveText('Айдана Кенжебаева');
     // The counters load on their own after the card.
     await expect(page.getByTestId('profile-stat-followers')).toBeVisible();
-    // «Встречи» load on their own too.
-    await expect(page.getByTestId('my-plans-empty')).toBeVisible();
+    // The sections show their counts once the profile has loaded.
+    await expect(page.getByTestId('profile-section-posts')).toBeVisible();
     await snap(page, 'profile-member');
 
     await page.getByRole('button', { name: 'Выйти в preview' }).click();
