@@ -10,6 +10,7 @@ export const storageKeys = {
   state: 'aitu.demo.state.v1',
   session: 'aitu.demo.session.v1',
   drafts: 'aitu.demo.drafts.v1',
+  responseDrafts: 'aitu.demo.response-drafts.v1',
   settings: 'aitu.demo.settings.v1',
   clock: 'aitu.demo.clock.v1',
   /** Each uploaded Фото is stored under this prefix plus its id. */

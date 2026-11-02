@@ -32,7 +32,30 @@ test.describe('План встречи', () => {
     await expect(page.getByTestId('plan-place-hidden')).toBeVisible();
     await expect(page.getByTestId('screen-plan')).not.toContainText(place);
     await page.getByTestId('plan-respond').click();
+    await page.getByTestId('plan-join').click();
     await expect(page).toHaveURL(/\/access/);
+  });
+
+  test('a guest’s Отклик waits through Вступление and is sent as a member', async ({ page }) => {
+    await page.goto('/plan/plan1');
+    await page.getByTestId('plan-respond').click();
+    await page.getByTestId('plan-message').fill('Люблю утренний кофе, буду рада компании.');
+    await page.getByTestId('plan-join').click();
+    await expect(page).toHaveURL(/\/access/);
+
+    await joinAsMadina(page);
+    await openPlan(page);
+    await expect(page.getByTestId('plan-draft-restored')).toBeVisible();
+    await expect(page.getByTestId('plan-message')).toHaveValue(
+      'Люблю утренний кофе, буду рада компании.',
+    );
+    await page.getByTestId('plan-send').click();
+    await expect(page.getByTestId('plan-pending')).toBeVisible();
+
+    // Sent once: coming back shows the waiting Отклик, not the draft.
+    await openPlan(page);
+    await expect(page.getByTestId('plan-pending')).toBeVisible();
+    await expect(page.getByTestId('plan-draft-restored')).toHaveCount(0);
   });
 
   test('an expired member is offered renewal', async ({ page }) => {

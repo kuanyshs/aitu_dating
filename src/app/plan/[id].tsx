@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { cityLabels, meetingFormatLabels, meetingGoalLabels } from '@/catalogs';
@@ -24,6 +24,7 @@ import {
   useWithdrawResponse,
 } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
+import { responseDrafts } from '@/drafts';
 import { newIdempotencyKey } from '@/features/access/steps';
 import { useWriteTo } from '@/features/chat/useWriteTo';
 import { useSocialGate } from '@/features/post/usePostActions';
@@ -341,6 +342,21 @@ function RespondArea({ plan }: { plan: PlanView }) {
   const [leaving, setLeaving] = useState(false);
   const [composing, setComposing] = useState(false);
   const [message, setMessage] = useState('');
+  const [restored, setRestored] = useState(false);
+  // A member back on a План they started an Отклик on as a guest finds the text waiting.
+  useEffect(() => {
+    if (!isMember || plan.myResponse) return;
+    let alive = true;
+    void responseDrafts.load(plan.id).then((text) => {
+      if (!alive || !text) return;
+      setMessage(text);
+      setComposing(true);
+      setRestored(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [isMember, plan.id, plan.myResponse]);
   const [idempotencyKey, setKey] = useState(newIdempotencyKey);
   const mine = plan.myResponse;
 
@@ -416,12 +432,41 @@ function RespondArea({ plan }: { plan: PlanView }) {
       </View>
     ) : null;
   }
-  if (!isMember) {
-    // A guest joins, an expired member renews: the gate sends them there.
+  if (isExpired) {
+    // An expired member renews: the gate sends them there.
     return (
       <View style={styles.notice}>
-        <AppText tone="textMuted">{isExpired ? t.expiredHint : t.guestHint}</AppText>
+        <AppText tone="textMuted">{t.expiredHint}</AppText>
         <PrimaryButton label={t.respond} onPress={() => allow()} testID="plan-respond" />
+      </View>
+    );
+  }
+  if (!isMember && !composing) {
+    return (
+      <View style={styles.notice}>
+        <AppText tone="textMuted">{t.guestHint}</AppText>
+        <PrimaryButton label={t.respond} onPress={() => setComposing(true)} testID="plan-respond" />
+      </View>
+    );
+  }
+  if (!isMember) {
+    // A guest writes now; the text waits on this device and the gate opens Вступление.
+    const join = async () => {
+      if (message.trim()) await responseDrafts.save(plan.id, message.trim());
+      allow();
+    };
+    return (
+      <View style={styles.notice} testID="plan-compose">
+        <AppText tone="textMuted">{t.guestCompose}</AppText>
+        <TextArea
+          label={t.messageLabel}
+          value={message}
+          onChangeText={setMessage}
+          placeholder={t.messagePlaceholder}
+          maxLength={LIMITS.commentText}
+          testID="plan-message"
+        />
+        <PrimaryButton label={t.joinToRespond} onPress={() => void join()} testID="plan-join" />
       </View>
     );
   }
@@ -439,13 +484,16 @@ function RespondArea({ plan }: { plan: PlanView }) {
           setComposing(false);
           setMessage('');
           setKey(newIdempotencyKey());
+          void responseDrafts.clear(plan.id);
         },
         onError: () => toast(t.failed),
       },
     );
   return (
     <View style={styles.notice} testID="plan-compose">
-      <AppText tone="textMuted">{t.respondHint}</AppText>
+      <AppText tone="textMuted" testID={restored ? 'plan-draft-restored' : undefined}>
+        {restored ? t.draftRestored : t.respondHint}
+      </AppText>
       <TextArea
         label={t.messageLabel}
         value={message}
