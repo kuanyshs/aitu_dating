@@ -152,22 +152,26 @@ _Avoid_: activity (former name), feed (reserved for Home)
 ### Meetings
 
 **План** (`Plan`):
-A one-to-one meeting invitation published by its author: city, date, time, format, place, duration, **Цель встречи** and payment policy. Never has capacity or group participants. Only an active **Участник** creates one, in a public place they confirm («Это публичное место»), and holds at most 3 open future **Планы** at a time. The exact place is shown to active **Участники** only; the count of waiting **Отклики** to the author only. Under a **Блокировка** the **План** is not found.
+A one-to-one meeting invitation published by its author: **Населённый пункт**, date and time (Asia/Almaty), format, duration, **Цель встречи**, who pays, an approximate budget per person, where roughly (a general description of the place, shown to everyone), the exact place, a description and up to two **Темы**. Never has capacity or group participants. Only an active **Участник** creates one, in a public place they confirm («Это публичное место»), and holds at most 3 open future **Планы** at a time. The exact place is shown only to the author and, once an **Отклик** is accepted, to its sender; the count of waiting **Отклики** to the author only. Under a **Блокировка** the **План** is not found. A cancelled or past **План** stays in «Мои планы», «Мои отклики», **Уведомления** and the chat it started.
 _Avoid_: event, meetup, встреча (for the unpublished or unmatched thing)
 
 **Статус плана** (`PlanStatus`):
 Открыт (takes **Отклики**), «Набор закрыт» (the author stopped new **Отклики**; waiting ones are still decided), **Встреча** («Встреча договорена»), Отменён (by the author, from any status; waiting **Отклики** are declined) and Прошёл (the start time has come for an open or closed **План**; computed, never stored). A past **План** takes no **Отклики** and leaves every **Лента**.
+
+**Бюджет** (`PlanBudget`):
+The approximate spend per person a **План** names: «До 3 000 ₸», «3 000–7 000 ₸», «7 000–15 000 ₸», «Больше 15 000 ₸» or «Не указывать».
+_Avoid_: price, cost
 
 **Цель встречи** (`MeetingGoal`):
 Why a specific **План** exists: познакомиться, поговорить or совместное занятие.
 _Avoid_: intent (unqualified)
 
 **Отклик** (`MeetingRequest`):
-Another **Участник**'s request to join a **План**, with an optional message up to 360 characters. Only an active **Участник**, never on their own **План**, and only on an open future one. One standing **Отклик** per person and **План**: sending again returns the same one; after «Отозвать» a new one may be sent. It is waiting, accepted, declined (the sender reads «Автор выбрал другой вариант») or withdrawn.
+Another **Участник**'s request to join a **План**, with an optional message up to 360 characters. A **Гость** who starts one is sent to **Вступление**, and the message is kept on the device and offered again on that **План** once they are a **Участник**. Only an active **Участник**, never on their own **План**, and only on an open future one. One standing **Отклик** per person and **План**: sending again returns the same one; after «Отозвать» a new one may be sent. It is waiting, accepted, declined (the sender reads «Автор выбрал другой вариант») or withdrawn.
 _Avoid_: join, application, заявка
 
 **Встреча** (matched **План**):
-A **План** whose author accepted an **Отклик**, after a confirmation; all other waiting **Отклики** are declined at once. Acceptance is never undone — only the whole **План** can be cancelled. Both people see «Встреча договорена» and «Написать», which opens their contextual chat.
+A **План** whose author accepted an **Отклик**, after a confirmation; all other waiting **Отклики** are declined at once. The author does not undo the acceptance — only the whole **План** can be cancelled. The chosen **Участник** may «Отказаться от встречи»: their **Отклик** becomes withdrawn and a future **План** is open again for new **Отклики**. Both people see «Встреча договорена» and «Написать», which opens their contextual chat; the chat stays after a cancellation.
 
 ## Relationships
 
