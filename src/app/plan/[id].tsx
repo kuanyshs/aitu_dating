@@ -20,6 +20,7 @@ import {
   useRespondToPlan,
   useSession,
   useSetBlock,
+  useLeaveMeeting,
   useWithdrawResponse,
 } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
@@ -336,6 +337,8 @@ function RespondArea({ plan }: { plan: PlanView }) {
   const { isMember, isExpired, allow } = useSocialGate();
   const respond = useRespondToPlan();
   const withdraw = useWithdrawResponse();
+  const leave = useLeaveMeeting();
+  const [leaving, setLeaving] = useState(false);
   const [composing, setComposing] = useState(false);
   const [message, setMessage] = useState('');
   const [idempotencyKey, setKey] = useState(newIdempotencyKey);
@@ -350,6 +353,33 @@ function RespondArea({ plan }: { plan: PlanView }) {
           label={t.write}
           onPress={() => void write({ kind: 'plan_response', responseId: mine.id })}
           testID="plan-write"
+        />
+        <TextButton
+          label={t.leave}
+          onPress={() => setLeaving(true)}
+          loading={leave.isPending}
+          testID="plan-leave"
+        />
+        <ActionSheet
+          visible={leaving}
+          title={t.leaveTitle}
+          message={t.leaveText}
+          actions={[
+            {
+              label: t.leaveConfirm,
+              danger: true,
+              onPress: () => {
+                setLeaving(false);
+                leave.mutate(plan.id, {
+                  onSuccess: () => toast(t.left),
+                  onError: () => toast(t.leaveFailed),
+                });
+              },
+              testID: 'sheet-confirm-leave',
+            },
+          ]}
+          onClose={() => setLeaving(false)}
+          testID="plan-leave-sheet"
         />
       </View>
     );

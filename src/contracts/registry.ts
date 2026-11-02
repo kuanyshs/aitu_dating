@@ -146,6 +146,7 @@ export const repositoryContract = {
   acceptPlanResponse: { input: PlanResponseRef, output: PlanResponseView },
   declinePlanResponse: { input: PlanResponseRef, output: PlanResponseView },
   withdrawPlanResponse: { input: PlanResponseRef, output: PlanResponseView },
+  leaveMeeting: { input: PlanRef, output: PlanView },
   listMyPlans: { input: ListQuery, output: PlanPage },
   listMyResponses: { input: ListQuery, output: MyResponsePage },
 

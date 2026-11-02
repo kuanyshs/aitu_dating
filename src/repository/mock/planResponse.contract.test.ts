@@ -372,3 +372,33 @@ describe('the exact place', () => {
     expect((await on(store, 'm04').getPlan({ planId: 'plan1' })).place).toBeUndefined();
   });
 });
+
+describe('«Отказаться от встречи»', () => {
+  it('lets the chosen participant step out: the plan opens again and the author hears', async () => {
+    const store = createMemoryStore();
+    const chosen = await respond(store, 'm02', 'plan1');
+    await on(store, 'm06').acceptPlanResponse({ responseId: chosen.id });
+    expect((await on(store, 'm02').getPlan({ planId: 'plan1' })).status).toBe('matched');
+
+    // Nobody else may do it, not even the author.
+    await expect(on(store, 'm06').leaveMeeting({ planId: 'plan1' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(on(store, 'm03').leaveMeeting({ planId: 'plan1' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+
+    const left = await on(store, 'm02').leaveMeeting({ planId: 'plan1' });
+    expect(left.status).toBe('published');
+    expect(left.myResponse).toBeUndefined();
+    expect(left.place).toBeUndefined();
+    // Twice is the same as once.
+    expect((await on(store, 'm02').leaveMeeting({ planId: 'plan1' })).status).toBe('published');
+
+    const activity = await on(store, 'm06').listActivity({ category: 'plans' });
+    expect(activity.items.map((i) => i.kind)).toContain('meeting_left');
+
+    // The plan takes Отклики again.
+    await expect(respond(store, 'm03', 'plan1')).resolves.toMatchObject({ status: 'pending' });
+  });
+});

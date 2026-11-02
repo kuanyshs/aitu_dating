@@ -989,6 +989,12 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           r.authorId,
         );
       }
+      if (plan.authorId === me.id && r.leftAt) {
+        push(
+          { id: `left-${r.id}`, kind: 'meeting_left', createdAt: r.leftAt, planId: plan.id },
+          r.authorId,
+        );
+      }
       if (r.authorId === me.id && (r.status === 'accepted' || r.status === 'declined')) {
         push(
           {
@@ -1023,7 +1029,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     conversations: ['comment', 'reply', 'mention'],
     mentions: ['mention'],
     reactions: ['reaction', 'repost'],
-    plans: ['plan_response', 'response_accepted', 'response_declined'],
+    plans: ['plan_response', 'response_accepted', 'response_declined', 'meeting_left'],
     system: ['membership_expiring', 'system'],
   };
 
@@ -1996,6 +2002,35 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         }
         const saved = state.planResponses.find((r) => r.id === response.id)!;
         return responseView(saved, viewerOf(effectiveSession()));
+      }),
+
+    leaveMeeting: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const { planId } = parseOrFail(PlanRef, input, requestId);
+        const plan = findPlan(planId, requestId);
+        const accepted = state.planResponses.find(
+          (r) => r.planId === plan.id && r.authorId === me.id && r.status === 'accepted',
+        );
+        const left = state.planResponses.find(
+          (r) => r.planId === plan.id && r.authorId === me.id && r.leftAt,
+        );
+        // Stepping out twice is the same as once.
+        if (!accepted && left) return planView(planById(plan.id)!, viewerOf(effectiveSession()));
+        if (!accepted) {
+          fail(requestId, { code: 'FORBIDDEN', message: 'Only the chosen participant may leave.' });
+        }
+        // The Отклик is withdrawn; a matched plan takes Отклики again (a past one stays past).
+        await saveResponses(
+          (r) =>
+            r.id === accepted.id
+              ? { ...r, status: 'withdrawn', leftAt: clock.now().toISOString() }
+              : r,
+          plan.status === 'matched'
+            ? { planUpdates: { ...state.planUpdates, [plan.id]: { status: 'published' } } }
+            : {},
+        );
+        return planView(planById(plan.id)!, viewerOf(effectiveSession()));
       }),
 
     listMyPlans: (input) =>

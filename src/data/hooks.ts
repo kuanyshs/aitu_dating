@@ -932,6 +932,12 @@ export function useWithdrawResponse() {
   return usePlanMutation((responseId: string) => repository.withdrawPlanResponse({ responseId }));
 }
 
+/** The chosen participant steps out of the Встреча. */
+export function useLeaveMeeting() {
+  const repository = useRepository();
+  return usePlanMutation((planId: string) => repository.leaveMeeting({ planId }));
+}
+
 export function useAcceptResponse() {
   const repository = useRepository();
   return usePlanMutation((responseId: string) => repository.acceptPlanResponse({ responseId }));

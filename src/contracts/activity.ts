@@ -15,6 +15,7 @@ export const ActivityKind = z.enum([
   'plan_response',
   'response_accepted',
   'response_declined',
+  'meeting_left',
   'membership_expiring',
   'system',
 ]);

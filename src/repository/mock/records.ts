@@ -113,6 +113,8 @@ export const PlanResponseRecord = z.strictObject({
   createdAt: IsoDateTime,
   /** When the author accepted or declined it (Активность shows the decision then). */
   decidedAt: IsoDateTime.optional(),
+  /** When the chosen participant stepped out of the Встреча. */
+  leftAt: IsoDateTime.optional(),
 });
 export type PlanResponseRecord = z.infer<typeof PlanResponseRecord>;
 

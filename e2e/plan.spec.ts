@@ -99,6 +99,36 @@ test.describe('План встречи', () => {
     await expect(page.getByTestId('plan-place')).toHaveCount(0);
   });
 
+  test('the chosen participant steps out: the plan opens again, the chat stays', async ({
+    page,
+  }) => {
+    await respond(page, 'm02');
+    await openPlan(page, 'm06');
+    await page.getByTestId('plan-accept-response-1').click();
+    await page.getByTestId('sheet-confirm-accept').click();
+    await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
+
+    await openPlan(page, 'm02');
+    await page.getByTestId('plan-write').click();
+    await expect(page.getByTestId('screen-chat')).toBeVisible();
+    await openPlan(page, 'm02');
+    await page.getByTestId('plan-leave').click();
+    await expect(page.getByTestId('plan-leave-sheet')).toContainText('Отказаться от встречи?');
+    await page.getByTestId('sheet-confirm-leave').click();
+    await expect(page.getByTestId('toast')).toContainText('Вы отказались от встречи');
+    await expect(page.getByTestId('plan-respond')).toBeVisible();
+    await expect(page.getByTestId('plan-place')).toHaveCount(0);
+
+    await openPlan(page, 'm06');
+    await expect(page.getByTestId('plan-status')).toHaveCount(0);
+    await page.goto('/activity');
+    await expect(page.getByTestId('screen-activity')).toContainText(
+      'Участник отказался от встречи',
+    );
+    await page.goto('/chats');
+    await expect(page.getByTestId('chats-list').getByRole('link')).not.toHaveCount(0);
+  });
+
   test('the author closes the set, then cancels the plan', async ({ page }) => {
     await respond(page, 'm02');
     await openPlan(page, 'm06');

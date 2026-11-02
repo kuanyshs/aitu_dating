@@ -166,6 +166,8 @@ export interface AituRepository {
   acceptPlanResponse(input: PlanResponseRef): Promise<PlanResponseView>;
   declinePlanResponse(input: PlanResponseRef): Promise<PlanResponseView>;
   withdrawPlanResponse(input: PlanResponseRef): Promise<PlanResponseView>;
+  /** The chosen participant steps out of a Встреча; a future План opens again. */
+  leaveMeeting(input: PlanRef): Promise<PlanView>;
   /** The member's own plans, cancelled and past ones too. */
   listMyPlans(query: ListQuery): Promise<PlanPage>;
   /** The member's standing Отклики with their plans, newest first. */
