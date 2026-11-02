@@ -2,7 +2,11 @@
 // what docs/product-guide.html says. Only the markup build-guide.mjs emits is handled.
 
 const unesc = (s) =>
-  s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&');
 
 /** Inline markup: <strong> back to **…**, everything else dropped. */
 const inline = (s) =>
@@ -34,9 +38,9 @@ const list = (html, ordered) =>
     .join('\n');
 
 function screens(html) {
-  const captions = [...html.matchAll(/<figcaption><span class="num">\d+<\/span><span>(.*?)<\/span>/g)].map(
-    (m) => inline(m[1]),
-  );
+  const captions = [
+    ...html.matchAll(/<figcaption><span class="num">\d+<\/span><span>(.*?)<\/span>/g),
+  ].map((m) => inline(m[1]));
   return `_Экраны в HTML-версии: ${captions.join('; ')}._`;
 }
 

@@ -21,7 +21,7 @@
     "e2e:visual": "playwright test --grep @visual",
     "e2e:visual:update": "playwright test --grep @visual --update-snapshots",
     "e2e:visual:docker": "node scripts/visual-docker.mjs",
-    "guide": "pnpm build:web && playwright test --grep @guide && node scripts/build-guide.mjs"
+    "guide": "pnpm build:web && playwright test --grep @guide && node scripts/build-guide.mjs && prettier --write docs/product-guide.md"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",

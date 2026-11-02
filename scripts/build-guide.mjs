@@ -3,6 +3,8 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
+import { sectionMarkdown } from './guide-markdown.mjs';
+
 const shotsDir = process.env.GUIDE_SHOTS ?? path.join('docs', 'guide-shots');
 const out = process.argv[2] ?? path.join('docs', 'product-guide.html');
 
@@ -580,7 +582,7 @@ const sections = [
         [
           ['restricted', 'Экран ограничения: **причина и срок**'],
           ['restricted-appeal-form', '**Апелляция**: одна, в течение 7 дней'],
-          ['restricted-support', 'Апелляция **на рассмотрении** и поддержка'],
+          ['restricted-support', '**Поддержка** на экране ограничения и «Мои обращения»'],
           ['moderation-appeals', 'Модератор: вкладка **«Апелляции»**'],
         ],
       ),
@@ -926,3 +928,22 @@ if (missing.length) {
 }
 writeFileSync(out, html);
 console.log(`written ${out} (${(html.length / 1024 / 1024).toFixed(1)} MB)`);
+
+// The same text as Markdown, for reading on GitHub and converting to Word.
+const mdOut = out.replace(/\.html$/, '.md');
+const markdown = [
+  '# Aitu Dating — описание продукта и инструкция',
+  '_Собрано из `scripts/build-guide.mjs`; экраны — в `docs/product-guide.html`._',
+  'Закрытое verified-сообщество для знакомств. Здесь знакомятся не свайпом по фотографиям, а через разговор: пост, вопрос сообществу или план встречи один на один в публичном месте.',
+  '- **Aitu Passport.** Каждый подтверждает личность. Имя, возраст, пол и город берутся из Passport и не редактируются.\n- **Первая встреча — в публичном месте.** План не опубликовать без подтверждения «Это публичное место».\n- **Жалобы и блокировка.** Любого можно заблокировать или пожаловаться на него; жалобы разбирает модерация.',
+  '## Содержание',
+  sections.map((s, i) => `${i + 1}. ${s.title}`).join('\n'),
+  ...sections.map((s, i) =>
+    sectionMarkdown(
+      `<h2>${esc(s.title)}</h2>${s.lead ? `<p class="lead">${md(s.lead)}</p>` : ''}${s.body.join('')}`,
+      i + 1,
+    ),
+  ),
+].join('\n\n');
+writeFileSync(mdOut, `${markdown}\n`);
+console.log(`written ${mdOut}`);

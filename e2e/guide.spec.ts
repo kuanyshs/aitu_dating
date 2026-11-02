@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina, openDemoPanel, signInAs } from './helpers';
+import { joinAsMadina, openDemoPanel, showFeed, signInAs } from './helpers';
 
 /**
  * Screens for the product guide (`docs/product-guide.html`): one test per screenshot, each
@@ -181,7 +181,8 @@ test.describe('guide @guide', () => {
 
   test('feed-liked', async ({ page }) => {
     await joinAsMadina(page);
-    const post = page.getByTestId('post-p02');
+    await showFeed(page, 'popular');
+    const post = page.getByTestId('screen-home').getByRole('article').first();
     await post.getByTestId('post-like').click();
     await post.getByTestId('post-repost').click();
     await expect(post.getByTestId('post-like')).toHaveAttribute('aria-pressed', 'true');
@@ -207,8 +208,14 @@ test.describe('guide @guide', () => {
 
   test('compose-quote', async ({ page }) => {
     await joinAsMadina(page);
-    await page.getByTestId('post-p02').getByTestId('post-quote').click();
-    await expect(page.getByTestId('compose-quoted-p02')).toBeVisible();
+    await showFeed(page, 'popular');
+    await page
+      .getByTestId('screen-home')
+      .getByRole('article')
+      .first()
+      .getByTestId('post-quote')
+      .click();
+    await expect(page.locator('[data-testid^="compose-quoted-p"]')).toBeVisible();
     await page.getByTestId('compose-input').fill('Мне ближе импровизация, но с запасным планом.');
     await shot(page, 'compose-quote');
   });
@@ -235,7 +242,7 @@ test.describe('guide @guide', () => {
     await joinAsMadina(page);
     await page.getByTestId('tab-profile').click();
     await expect(page.getByTestId('profile-stat-followers')).toBeVisible();
-    await expect(page.getByTestId('my-plans-empty')).toBeVisible();
+    await expect(page.getByTestId('profile-section-posts')).toBeVisible();
     await shot(page, 'own-profile');
   });
 
@@ -346,9 +353,9 @@ test.describe('guide @guide', () => {
 
   test('my-plans', async ({ page }) => {
     await signInAs(page, 'm06');
-    await page.goto('/profile');
-    await expect(page.getByTestId('my-plans')).toBeVisible();
-    await page.getByTestId('my-plans').scrollIntoViewIfNeeded();
+    await page.goto('/my-plans');
+    await expect(page.getByTestId('screen-my-plans')).toBeVisible();
+    await page.waitForTimeout(800);
     await shot(page, 'my-plans');
   });
 
@@ -509,6 +516,8 @@ test.describe('guide @guide', () => {
     await expect(page.getByTestId('moderation-confirm')).toBeVisible();
     await shot(page, 'moderation-confirm');
     await page.getByTestId('moderation-sheet-cancel').click();
+    // Opened, report5 is now under review.
+    await page.getByTestId('moderation-tab-reviewing').click();
     await page.getByTestId('moderation-report5').click();
     await page.getByTestId('moderation-decide-member_restricted').click();
     await expect(page.getByTestId('moderation-term-days_7')).toBeVisible();
@@ -516,14 +525,14 @@ test.describe('guide @guide', () => {
   });
 
   test('appeal', async ({ page }) => {
-    await page.goto('/settings');
-    await page.getByTestId('demo-candidate-passport-2').click();
+    await joinAsMadina(page);
+    await openDemoPanel(page);
     await page.getByTestId('demo-restrict').click();
     await expect(page.getByTestId('screen-restricted')).toBeVisible();
     await page.getByTestId('restricted-appeal-open').click();
     await page
       .getByTestId('restricted-appeal-text')
-      .fill('Я ничего не нарушал: человек сам предложил обменяться контактами.');
+      .fill('Я ничего не нарушала: человек сам предложил обменяться контактами.');
     await shot(page, 'restricted-appeal-form');
     await page.getByTestId('restricted-appeal-send').click();
     await expect(page.getByTestId('restricted-appeal-status')).toHaveText(
