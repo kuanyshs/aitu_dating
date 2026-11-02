@@ -370,6 +370,38 @@ test.describe('guide @guide', () => {
     await shot(page, 'chat');
   });
 
+  test('chat-message-report', async ({ page }) => {
+    await signInAs(page, 'm01');
+    await page.goto('/chats/chat1');
+    await page.getByTestId('message-chat1-m25-bubble').click();
+    await expect(page.getByTestId('sheet-report-message')).toBeVisible();
+    await shot(page, 'chat-message-report');
+  });
+
+  test('chat-meeting-cancelled', async ({ page }) => {
+    // m02 and m06 talk already (a mutual Подписка); a Встреча joins, then is cancelled.
+    await signInAs(page, 'm02');
+    await page.goto('/plan/plan1');
+    await page.getByTestId('plan-respond').click();
+    await page.getByTestId('plan-send').click();
+    await expect(page.getByTestId('plan-pending')).toBeVisible();
+    await signInAs(page, 'm06');
+    await page.goto('/plan/plan1');
+    await page.getByTestId('plan-accept-response-1').click();
+    await page.getByTestId('sheet-confirm-accept').click();
+    await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
+    await page.getByTestId('plan-write').click();
+    await expect(page.getByTestId('screen-chat')).toBeVisible();
+    await page.goto('/plan/plan1');
+    await page.getByTestId('plan-menu').click();
+    await page.getByTestId('sheet-cancel-plan').click();
+    await page.getByTestId('sheet-confirm-cancel').click();
+    await expect(page.getByTestId('plan-status')).toHaveText('Отменён');
+    await page.goto('/chats/chat3');
+    await expect(page.getByTestId('chat-context')).toContainText('Встреча отменена');
+    await shot(page, 'chat-meeting-cancelled');
+  });
+
   test('chat-failed', async ({ page }) => {
     await signInAs(page, 'm01');
     await page.goto('/settings');
@@ -476,6 +508,54 @@ test.describe('guide @guide', () => {
     await page.getByTestId('moderation-decide-content_removed').click();
     await expect(page.getByTestId('moderation-confirm')).toBeVisible();
     await shot(page, 'moderation-confirm');
+    await page.getByTestId('moderation-sheet-cancel').click();
+    await page.getByTestId('moderation-report5').click();
+    await page.getByTestId('moderation-decide-member_restricted').click();
+    await expect(page.getByTestId('moderation-term-days_7')).toBeVisible();
+    await shot(page, 'moderation-term');
+  });
+
+  test('appeal', async ({ page }) => {
+    await page.goto('/settings');
+    await page.getByTestId('demo-candidate-passport-2').click();
+    await page.getByTestId('demo-restrict').click();
+    await expect(page.getByTestId('screen-restricted')).toBeVisible();
+    await page.getByTestId('restricted-appeal-open').click();
+    await page
+      .getByTestId('restricted-appeal-text')
+      .fill('Я ничего не нарушал: человек сам предложил обменяться контактами.');
+    await shot(page, 'restricted-appeal-form');
+    await page.getByTestId('restricted-appeal-send').click();
+    await expect(page.getByTestId('restricted-appeal-status')).toHaveText(
+      'Апелляция на рассмотрении',
+    );
+    await page.getByTestId('restricted-support').scrollIntoViewIfNeeded();
+    await page.getByTestId('restricted-support-text').fill('Как долго рассматривают апелляцию?');
+    await page.getByTestId('restricted-support-send').click();
+    await expect(page.getByTestId('restricted-support-sent')).toBeVisible();
+    await shot(page, 'restricted-support');
+
+    // A moderator elsewhere sees it in «Апелляции».
+    await signInAs(page, 'm05');
+    await demoToggle(page, 'demo-moderator', 'demo-panel');
+    await expect(page.getByTestId('demo-moderator')).toHaveAttribute('aria-checked', 'true');
+    await page.goto('/moderator');
+    await page.getByTestId('moderation-tab-appeals').click();
+    await expect(page.getByTestId('appeal-appeal-1')).toBeVisible();
+    await shot(page, 'moderation-appeals');
+  });
+
+  test('support', async ({ page }) => {
+    await joinAsMadina(page);
+    await page.goto('/safety');
+    await page.getByTestId('safety-support-button').click();
+    await page.getByTestId('support-topic-safety').click();
+    await page
+      .getByTestId('support-text')
+      .fill('На встрече человек настаивал на поездке в другое место.');
+    await page.getByTestId('support-send').click();
+    await expect(page.getByTestId('support-sent')).toBeVisible();
+    await shot(page, 'support');
   });
 
   test('restricted', async ({ page }) => {
