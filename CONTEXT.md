@@ -145,8 +145,12 @@ What another **Участник**'s profile reads when they are in a **Блок�
 _Avoid_: deleted account
 
 **Контекстный чат** (`Chat`):
-The single conversation between two **Участники**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Отклик** (by its two people only); it keeps the context it started from, and opening it again from anywhere returns the same one. Only an active **Участник** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. A message holds up to 2 000 characters and at most one **Фото**; it is sent, read, or failed with «Повторить», keeping its text and **Фото** — nothing is resent behind the user's back.
+The single conversation between two **Участники**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Отклик** (by its two people only); opening it again from anywhere returns the same one, and a new reason to talk is added to it as another **Контекст чата** rather than starting a second chat. Only an active **Участник** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. A message holds up to 2 000 characters and at most one **Фото**; it is «Отправлено», «Прочитано» or «Не отправлено» with «Повторить», keeping its text and **Фото** — nothing is resent behind the user's back. Messages count as read only once the last unread one has been on screen; opening «Сообщения» reads nothing. Chats with unread messages come first, then the rest by their latest message.
 _Avoid_: DM, direct message
+
+**Контекст чата** (`ChatContext`):
+Why two people talk, shown under their name in the chat and in «Сообщения»: «Из комментария», «Взаимная подписка», «Встреча: …» for an accepted **Отклик**, «Встреча отменена: …» once that **План** is cancelled or the chosen **Участник** stepped out, and «Переписка» when the source is gone (the **Комментарий** deleted or hidden, the **Подписка** no longer mutual). A chat lists all its contexts, the latest first in one line.
+_Avoid_: topic, thread
 
 **Мои действия** (`MyActions`):
 What the **Участник** did themselves, newest first: reactions to **Посты**, **Комментарии**, **Ответы**, **Репосты** and **Подписки**. Seen by the owner only, in their profile; nothing hidden from them (blocked, restricted, deleted) is listed. It never replaces **Уведомления**, which are what others did around them.
@@ -188,7 +192,7 @@ A **План** whose author accepted an **Отклик**, after a confirmation; 
 - A **Репост** adds nothing to the original **Пост** but its count; a **Цитата** is a separate **Пост** of its own.
 - A **Цитата** points to exactly one **Пост**; when that one is deleted or hidden, the **Цитата** stays and shows «Публикация недоступна» in its place.
 - A **План** has many **Отклики** and at most one accepted, which turns it into a **Встреча**; a **Участник** has at most one standing **Отклик** per **План**.
-- Two **Участники** share at most one **Контекстный чат**; a **Комментарий**, a mutual **Подписка** or an accepted **Отклик** opens it if it does not exist.
+- Two **Участники** share at most one **Контекстный чат**; a **Комментарий**, a mutual **Подписка** or an accepted **Отклик** opens it if it does not exist and adds its **Контекст чата** to it if it does.
 - A **Блокировка** is between two **Участники**; an **Ограничение** is between moderation and one person.
 - A **Жалоба** targets exactly one person or piece of content; many **Жалобы** on one target share one **Итог жалобы**.
 
