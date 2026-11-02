@@ -2,8 +2,7 @@ import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { useLogout, useMyProfile, useProfile, useSession, useUnreadMessages } from '@/data/hooks';
-import { MyPlans } from '@/features/profile/MyPlans';
-import { MyPosts } from '@/features/profile/MyPosts';
+import { ProfileSections } from '@/features/profile/ProfileSections';
 import { ProfileStats } from '@/features/profile/ProfileStats';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { TextButton } from '@/ui/components/buttons';
@@ -72,19 +71,21 @@ export default function ProfileScreen() {
           }
         />
       ) : null}
+      {me.data ? (
+        <ProfileSections
+          memberId={me.data.id}
+          posts={own.data?.stats.posts}
+          followers={own.data?.stats.followers}
+          following={own.data?.stats.following}
+          unread={unread}
+          peopleLists={state === 'ACTIVE_MEMBER'}
+        />
+      ) : null}
       <TextButton
-        label={strings.profile.editCard}
-        onPress={() => router.push('/card-edit')}
-        testID="profile-edit-card"
+        label={strings.uiKit.open}
+        onPress={() => router.push('/ui-kit')}
+        testID="open-ui-kit"
       />
-      <TextButton
-        label={unread ? strings.profile.messagesUnread(unread) : strings.profile.messages}
-        onPress={() => router.navigate('/chats')}
-        testID="profile-messages"
-      />
-      {me.data ? <MyPlans canCreate={!isExpired} /> : null}
-      {me.data ? <MyPosts memberId={me.data.id} canWrite={!isExpired} /> : null}
-      <ProfileLinks />
       <TextButton
         label={strings.session.logout}
         accessibilityLabel={strings.session.logoutLabel}

@@ -231,3 +231,20 @@ describe('persistence', () => {
     expect(await repo.takeResetNotice()).toBeUndefined();
   });
 });
+
+describe('«Подписки» of someone else', () => {
+  it('are hidden: no count and no list, while «Подписчики» stay open', async () => {
+    const other = on(createMemoryStore(), as('m03'));
+    const profile = await other.getProfile({ memberId: 'm01' });
+    expect(profile.stats.following).toBeUndefined();
+    expect(profile.stats.followers).toBeGreaterThanOrEqual(0);
+    await expect(other.listFollowing({ memberId: 'm01' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(other.listFollowers({ memberId: 'm01' })).resolves.toBeTruthy();
+
+    const own = on(createMemoryStore(), as('m01'));
+    expect((await own.getProfile({ memberId: 'm01' })).stats.following).toBeGreaterThanOrEqual(0);
+    await expect(own.listFollowing({ memberId: 'm01' })).resolves.toBeTruthy();
+  });
+});

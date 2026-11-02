@@ -64,6 +64,9 @@ export default function RootLayout() {
                 <Stack.Screen name="feed-filters" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="photo" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="profile-photos" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="my-actions" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="my-posts" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="my-plans" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="renew" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="card-edit" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="moderator" options={{ presentation: 'modal' }} />

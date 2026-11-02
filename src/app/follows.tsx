@@ -22,15 +22,18 @@ const t = strings.follows;
 type Tab = 'followers' | 'following';
 const tabs: Tab[] = ['followers', 'following'];
 
-/** «Подписчики» and «Подписки» of a member, for active members. */
+/** «Подписчики» of a member, for active members, and «Подписки» of one's own. */
 export default function FollowsScreen() {
   const styles = useStyles();
   const router = useRouter();
   const params = useLocalSearchParams<{ memberId: string; tab?: string }>();
   const memberId = String(params.memberId);
-  const tab: Tab = params.tab === 'following' ? 'following' : 'followers';
   const session = useSession();
   const state = session.data?.accessState;
+  // «Подписки» are the owner's own business: someone else's profile has only «Подписчики».
+  const isOwn = !!session.data?.userId && session.data.userId === memberId;
+  const visibleTabs = isOwn ? tabs : (['followers'] as Tab[]);
+  const tab: Tab = isOwn && params.tab === 'following' ? 'following' : 'followers';
   const owner = useCachedProfile(memberId)?.person;
   const title = owner?.view === 'member' ? owner.name : t.title;
 
@@ -55,7 +58,7 @@ export default function FollowsScreen() {
         <View style={styles.spacer} />
       </View>
       <View role="radiogroup" aria-label={t.tabsLabel} style={styles.tabs}>
-        {tabs.map((item) => (
+        {visibleTabs.map((item) => (
           <Chip
             key={item}
             label={t.tabs[item]}

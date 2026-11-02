@@ -6,7 +6,7 @@ import { joinAsMadina, showFeed, signInAs } from './helpers';
 
 async function openProfile(page: Page, userId: string) {
   await signInAs(page, userId);
-  await page.goto('/profile');
+  await page.goto('/my-plans');
   await expect(page.getByTestId('my-plans')).toBeVisible();
 }
 
@@ -17,7 +17,8 @@ test.describe('Мои планы и отклики', () => {
 
   test('a new member sees empty lists and the way to create a plan', async ({ page }) => {
     await joinAsMadina(page);
-    await page.goto('/profile');
+    await page.getByTestId('tab-profile').click();
+    await page.getByTestId('profile-section-plans').click();
     await expect(page.getByTestId('my-plans-empty')).toBeVisible();
     await page.getByTestId('my-plans-tab-responses').click();
     await expect(page.getByTestId('my-responses-empty')).toBeVisible();

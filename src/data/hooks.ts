@@ -9,6 +9,7 @@ import {
 
 import type {
   AccessFlowState,
+  MyActionsQuery,
   CommentPage,
   CommentSort,
   CommentView,
@@ -1077,6 +1078,17 @@ export function useActivity(category: ActivityQuery['category'], enabled: boolea
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled,
+  });
+}
+
+/** «Мои действия» in one category, newest first. */
+export function useMyActions(category: MyActionsQuery['category']) {
+  const repository = useRepository();
+  return useInfiniteQuery({
+    queryKey: ['my-actions', category],
+    queryFn: ({ pageParam }) => repository.listMyActions({ category, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
   });
 }
 

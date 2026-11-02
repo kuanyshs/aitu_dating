@@ -45,6 +45,7 @@ import type {
   UpdateCardInput,
   UpdatePhotosInput,
 } from './onboarding';
+import type { MyActionsPage, MyActionsQuery } from './myActions';
 import type { PhotoRef, UploadPhotoInput } from './photo';
 import type {
   CreatePlanInput,
@@ -130,6 +131,8 @@ export interface AituRepository {
   /** A member's Фильтры ленты; their own Анкета answers until they change them. */
   getFeedFilters(): Promise<FeedFilters>;
   updateFeedFilters(filters: FeedFilters): Promise<FeedFilters>;
+  /** «Мои действия»: what the member did, newest first; their own card only. */
+  listMyActions(input: MyActionsQuery): Promise<MyActionsPage>;
   /** Stores a Фото for the current active member; a retried key returns the same one. */
   uploadPhoto(input: UploadPhotoInput): Promise<PhotoRef>;
   getPost(input: PostRef): Promise<PostView>;

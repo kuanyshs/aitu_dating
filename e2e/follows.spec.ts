@@ -21,6 +21,16 @@ test.describe('Подписчики и Подписки', () => {
     await expect(page.getByTestId('follows-empty')).toContainText('Пока ни на кого не подписаны');
   });
 
+  test('someone else’s «Подписки» are not shown', async ({ page }) => {
+    await joinAsMadina(page);
+    await page.goto('/member/m01');
+    await expect(page.getByTestId('member-stat-followers')).toBeVisible();
+    await expect(page.getByTestId('member-stat-following')).toHaveCount(0);
+    await page.goto('/follows?memberId=m01&tab=following');
+    await expect(page.getByTestId('follows-tab-following')).toHaveCount(0);
+    await expect(page.getByTestId('follows-tab-followers')).toHaveAttribute('aria-checked', 'true');
+  });
+
   test('following someone lists them, and them it', async ({ page }, testInfo) => {
     await joinAsMadina(page);
     await page.goto('/member/m01');

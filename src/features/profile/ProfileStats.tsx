@@ -15,14 +15,14 @@ type Props = {
   testID: string;
 };
 
-/** Публикации · Подписчики · Подписки, on another member's profile and on one's own. */
+/** Публикации · Подписчики, and Подписки on one's own profile only. */
 export function ProfileStats({ memberId, stats, openLists, testID }: Props) {
   const styles = useStyles();
   const router = useRouter();
   const t = strings.member.stats;
   const cell = (key: keyof ProfileView['stats']) => (
     <>
-      <AppText variant="title">{String(stats[key])}</AppText>
+      <AppText variant="title">{String(stats[key] ?? 0)}</AppText>
       <AppText variant="caption" tone="textMuted">
         {t[key]}
       </AppText>
@@ -33,7 +33,11 @@ export function ProfileStats({ memberId, stats, openLists, testID }: Props) {
       <View style={styles.stat} testID={`${testID}-posts`}>
         {cell('posts')}
       </View>
-      {(['followers', 'following'] as const).map((tab) =>
+      {/* «Подписки» come only with one's own profile. */}
+      {(stats.following === undefined
+        ? (['followers'] as const)
+        : (['followers', 'following'] as const)
+      ).map((tab) =>
         openLists ? (
           <Pressable
             key={tab}

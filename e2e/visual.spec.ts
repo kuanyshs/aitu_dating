@@ -215,12 +215,9 @@ test.describe('visual baselines @visual', () => {
       await page.getByTestId('compose-submit').click();
       await expect(page.getByTestId('screen-compose')).toHaveCount(0);
     }
-    await page.getByTestId('tab-profile').click();
+    await page.goto('/my-posts');
     const section = page.getByTestId('my-posts');
     await expect(section.getByRole('article')).toHaveCount(2);
-    await expect(page.getByTestId('profile-stat-followers')).toBeVisible();
-    await expect(page.getByTestId('my-plans-empty')).toBeVisible();
-    await section.getByRole('heading').scrollIntoViewIfNeeded();
     await snap(page, 'my-posts');
   });
 

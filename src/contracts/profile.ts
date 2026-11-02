@@ -32,7 +32,8 @@ export const ProfileView = z.strictObject({
   stats: z.strictObject({
     posts: z.number().int().min(0),
     followers: z.number().int().min(0),
-    following: z.number().int().min(0),
+    /** How many people they follow: their own profile only. */
+    following: z.number().int().min(0).optional(),
   }),
   relation: ProfileRelation.optional(),
 });

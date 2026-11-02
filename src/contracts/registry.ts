@@ -48,6 +48,7 @@ import {
   UpdateCardInput,
   UpdatePhotosInput,
 } from './onboarding';
+import { MyActionsPage, MyActionsQuery } from './myActions';
 import { PhotoRef, UploadPhotoInput } from './photo';
 import {
   CreatePlanInput,
@@ -119,6 +120,7 @@ export const repositoryContract = {
 
   getHomeFeed: { input: FeedQuery, output: FeedPage },
   getFeedFilters: { input: none, output: FeedFilters },
+  listMyActions: { input: MyActionsQuery, output: MyActionsPage },
   updateFeedFilters: { input: FeedFilters, output: FeedFilters },
   getPost: { input: PostRef, output: PostView },
   createPost: { input: CreatePostInput, output: PostView },

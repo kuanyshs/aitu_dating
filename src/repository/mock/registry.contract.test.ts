@@ -58,7 +58,7 @@ const samples: { [K in RepositoryMethod]: Parameters<AituRepository[K]>[0] } = {
   listProfilePosts: { memberId: 'm01' },
   setFollow: { memberId: 'm01', active: true },
   listFollowers: { memberId: 'm01' },
-  listFollowing: { memberId: 'm01' },
+  listFollowing: { memberId: 'me-passport-1' },
   search: { kind: 'people', text: 'кофе' },
   getPlan: { planId: 'plan1' },
   createPlan: {
@@ -97,6 +97,7 @@ const samples: { [K in RepositoryMethod]: Parameters<AituRepository[K]>[0] } = {
   listActivity: { category: 'all' },
   markActivitySeen: undefined,
   getFeedFilters: undefined,
+  listMyActions: { category: 'all' },
   updateMyPhotos: { photoIds: [] },
   uploadPhoto: {
     mimeType: 'image/jpeg',
@@ -184,6 +185,7 @@ const implemented = new Set<RepositoryMethod>([
   'updateFeedFilters',
   'uploadPhoto',
   'updateMyPhotos',
+  'listMyActions',
   'createReport',
   'listMyReports',
   'setBlock',

@@ -8,6 +8,7 @@ export * from './feed';
 export * from './limits';
 export * from './membership';
 export * from './moderation';
+export * from './myActions';
 export * from './onboarding';
 export * from './people';
 export * from './photo';

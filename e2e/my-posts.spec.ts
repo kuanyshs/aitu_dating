@@ -10,6 +10,13 @@ async function publish(page: Page, text: string) {
   await expect(page.getByTestId('toast')).toContainText('Опубликовано');
 }
 
+/** «Мои публикации» from the profile, without reloading the app. */
+async function openMyPosts(page: Page) {
+  await page.getByTestId('tab-profile').click();
+  await page.getByTestId('profile-section-posts').click();
+  await expect(page.getByTestId('screen-my-posts')).toBeVisible();
+}
+
 test.describe('Мои публикации', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'light', 'layout-independent rule');
@@ -17,7 +24,7 @@ test.describe('Мои публикации', () => {
 
   test('a new member sees an empty section that leads to the editor', async ({ page }) => {
     await joinAsMadina(page);
-    await page.getByTestId('tab-profile').click();
+    await openMyPosts(page);
     await expect(page.getByTestId('my-posts-empty')).toContainText('Вы ещё ничего не публиковали');
     await page.getByTestId('my-posts-write').click();
     await expect(page.getByTestId('compose-input')).toBeVisible();
@@ -30,7 +37,7 @@ test.describe('Мои публикации', () => {
     await publish(page, 'Первый пост Мадины');
     await publish(page, 'Второй пост Мадины');
 
-    await page.getByTestId('tab-profile').click();
+    await openMyPosts(page);
     const section = page.getByTestId('my-posts');
     const rows = section.getByRole('article');
     await expect(rows).toHaveCount(2);
@@ -54,7 +61,7 @@ test.describe('Мои публикации', () => {
 
   test('a seed author sees their posts with their full card', async ({ page }) => {
     await signInAsSeedAuthor(page);
-    await page.goto('/profile');
+    await page.goto('/my-posts');
     const rows = page.getByTestId('my-posts').getByRole('article');
     await expect(rows.first()).toBeVisible();
     await expect(rows.first().getByTestId('author-name')).toBeVisible();
@@ -68,7 +75,7 @@ test.describe('Мои публикации', () => {
     await page.goto('/settings');
     await page.getByTestId('demo-expire').click();
     await expect(page.getByTestId('demo-restore')).toBeVisible();
-    await page.goto('/profile');
+    await page.goto('/my-posts');
     await expect(page.getByTestId('my-posts-empty')).toBeVisible();
     await expect(page.getByTestId('my-posts-write')).toHaveCount(0);
 
@@ -80,7 +87,7 @@ test.describe('Мои публикации', () => {
     await page.goto('/settings');
     await page.getByTestId('demo-expire').click();
     await expect(page.getByTestId('demo-restore')).toBeVisible();
-    await page.goto('/profile');
+    await page.goto('/my-posts');
     const row = page.getByTestId('my-posts').getByRole('article').first();
     await expect(row).toContainText('Пост до истечения');
     await expect(row.getByTestId('author-name')).toHaveText('Мадина');
@@ -90,7 +97,7 @@ test.describe('Мои публикации', () => {
     test.setTimeout(150_000);
     await joinAsMadina(page);
     for (let i = 1; i <= 11; i += 1) await publish(page, `Пост номер ${i}`);
-    await page.getByTestId('tab-profile').click();
+    await openMyPosts(page);
     const rows = page.getByTestId('my-posts').getByRole('article');
     await expect(rows).toHaveCount(10);
     await expect(rows.first()).toContainText('Пост номер 11');

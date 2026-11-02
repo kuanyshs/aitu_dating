@@ -77,7 +77,10 @@ import {
   SetReactionInput,
   SetRepostInput,
   UpdateCardInput,
+  MyActionsPage,
+  MyActionsQuery,
   UpdatePhotosInput,
+  type MyAction,
   UploadPhotoInput,
   type PhotoRef,
   UpdateSettingsInput,
@@ -1163,6 +1166,86 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         return toMyProfile(updated);
       }),
 
+    listMyActions: (input) =>
+      respond('data', (requestId) => {
+        const me = requireOwnCard(requestId);
+        const { category, cursor, limit } = parseOrFail(MyActionsQuery, input, requestId);
+        const viewer = viewerOf(effectiveSession());
+        const snippet = (text: string) => (text.length > 120 ? `${text.slice(0, 117)}…` : text);
+        // Only what the member may still see: a post that is visible, a person who is shown.
+        const onPost = (postId: string) => {
+          const post = postById(postId);
+          if (!post || !isVisible(post)) return undefined;
+          const author = member(post.authorId);
+          if (!author || !isShown(author)) return undefined;
+          return { post, person: authorView(author, viewer) };
+        };
+        const items: MyAction[] = [];
+        for (const r of [...data.reactions, ...state.reactions]) {
+          const target = r.userId === me.id ? onPost(r.postId) : undefined;
+          if (target) {
+            items.push({
+              id: `reaction-${r.postId}`,
+              kind: 'reaction',
+              createdAt: r.createdAt,
+              postId: r.postId,
+              person: target.person,
+              excerpt: snippet(target.post.text),
+            });
+          }
+        }
+        for (const r of [...data.reposts, ...state.reposts]) {
+          const target = r.userId === me.id ? onPost(r.postId) : undefined;
+          if (target) {
+            items.push({
+              id: `repost-${r.postId}`,
+              kind: 'repost',
+              createdAt: r.createdAt,
+              postId: r.postId,
+              person: target.person,
+              excerpt: snippet(target.post.text),
+            });
+          }
+        }
+        for (const c of allComments()) {
+          const target = c.authorId === me.id && !c.deleted ? onPost(c.postId) : undefined;
+          if (target) {
+            items.push({
+              id: `comment-${c.id}`,
+              kind: c.parentCommentId ? 'reply' : 'comment',
+              createdAt: c.createdAt,
+              postId: c.postId,
+              commentId: c.id,
+              person: target.person,
+              excerpt: snippet(c.text),
+            });
+          }
+        }
+        for (const f of allFollows()) {
+          const person = f.followerId === me.id ? member(f.followingId) : undefined;
+          if (person && isShown(person)) {
+            items.push({
+              id: `follow-${person.id}`,
+              kind: 'follow',
+              createdAt: f.createdAt,
+              person: authorView(person, viewer),
+            });
+          }
+        }
+        const kinds: Record<MyActionsQuery['category'], MyAction['kind'][]> = {
+          all: ['reaction', 'comment', 'reply', 'repost', 'follow'],
+          reactions: ['reaction'],
+          comments: ['comment'],
+          replies: ['reply'],
+          reposts: ['repost'],
+          follows: ['follow'],
+        };
+        const chosen = items
+          .filter((item) => kinds[category].includes(item.kind))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        return MyActionsPage.parse(page(chosen, cursor, limit ?? DEFAULT_PAGE_SIZE, requestId));
+      }),
+
     getHomeFeed: (rawQuery) =>
       respond('data', (requestId) => {
         const parsed = FeedQuery.safeParse(rawQuery);
@@ -1535,7 +1618,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             posts: allPosts().filter((p) => p.authorId === record.id && isVisible(p)).length,
             // Counted as the lists show them: without anyone hidden from the viewer.
             followers: followersOf(record.id).length,
-            following: followingOf(record.id).length,
+            // «Подписки» are nobody's business but their owner's.
+            ...(record.id === viewer.userId ? { following: followingOf(record.id).length } : {}),
           },
           ...(full
             ? {
@@ -1726,7 +1810,14 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     listFollowers: (input) =>
       respond('data', (requestId) => followPage(requestId, input, followersOf)),
     listFollowing: (input) =>
-      respond('data', (requestId) => followPage(requestId, input, followingOf)),
+      respond('data', (requestId) => {
+        const me = requireActiveMember(requestId);
+        const { memberId } = parseOrFail(FollowListQuery, input, requestId);
+        if (memberId !== me.id) {
+          fail(requestId, { code: 'FORBIDDEN', message: 'Only the owner sees whom they follow.' });
+        }
+        return followPage(requestId, input, followingOf);
+      }),
     search: (input) =>
       respond('data', (requestId) => {
         const viewer = requireReader(requestId);

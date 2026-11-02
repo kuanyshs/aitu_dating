@@ -21,9 +21,15 @@ const tabs: Tab[] = ['plans', 'responses'];
  * «Встречи» on the Profile tab: the member's own plans (upcoming first) and the plans
  * they responded to, each with its status. A row opens the plan.
  */
-export function MyPlans({ canCreate }: { canCreate: boolean }) {
+export function MyPlans({
+  canCreate,
+  initialTab = 'plans',
+}: {
+  canCreate: boolean;
+  initialTab?: Tab;
+}) {
   const styles = useStyles();
-  const [tab, setTab] = useState<Tab>('plans');
+  const [tab, setTab] = useState<Tab>(initialTab);
   return (
     <View style={styles.section} testID="my-plans">
       <AppText variant="title" role="heading">
