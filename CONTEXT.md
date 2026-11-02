@@ -62,6 +62,9 @@ _Avoid_: inbox, tickets
 
 ### Profile
 
+**Профиль** (own):
+The **Участник**'s own page: their **Карточка** and **Фото**, then «Редактировать карточку», «Мои публикации», «Мои планы», «Мои отклики», «Подписчики», «Подписки», «Мои действия», «Уведомления», «Сообщения» and «Настройки».
+
 **Карточка** (`ProfileCard`):
 A **Участник**'s community profile: bio, **Намерение**, interests, communication style and the **Анкета** answers. Name, surname, age, gender and **Населённый пункт** come from Passport and are read-only. The surname is hidden from others until the owner turns on «Показывать фамилию в профиле»; the owner always sees it.
 _Avoid_: profile card, анкета (the questionnaire is a different thing)
@@ -130,7 +133,7 @@ _Avoid_: tag, @username
 ### Relations and chats
 
 **Подписка** (`Follow`):
-One **Участник** following another; two opposite **Подписки** make a mutual follow. Only an active **Участник** follows; nobody follows themselves. A **Блокировка** removes the **Подписки** both ways, and lifting it does not bring them back. A member's «Подписчики» are those following them, their «Подписки» those they follow.
+One **Участник** following another; two opposite **Подписки** make a mutual follow. Only an active **Участник** follows; nobody follows themselves. A **Блокировка** removes the **Подписки** both ways, and lifting it does not bring them back. A member's «Подписчики» are those following them, their «Подписки» those they follow. «Подписчики» are open to active **Участники**; «Подписки» — the list and its count — to the owner only.
 _Avoid_: subscription (as in **Membership**), friend
 
 **Поиск** (`Search`):
@@ -144,6 +147,10 @@ _Avoid_: deleted account
 **Контекстный чат** (`Chat`):
 The single conversation between two **Участники**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Отклик** (by its two people only); it keeps the context it started from, and opening it again from anywhere returns the same one. Only an active **Участник** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. A message holds up to 2 000 characters and at most one **Фото**; it is sent, read, or failed with «Повторить», keeping its text and **Фото** — nothing is resent behind the user's back.
 _Avoid_: DM, direct message
+
+**Мои действия** (`MyActions`):
+What the **Участник** did themselves, newest first: reactions to **Посты**, **Комментарии**, **Ответы**, **Репосты** and **Подписки**. Seen by the owner only, in their profile; nothing hidden from them (blocked, restricted, deleted) is listed. It never replaces **Уведомления**, which are what others did around them.
+_Avoid_: history, my activity
 
 **Уведомления** (`Activity`):
 What happened around the **Участник**, built from the data rather than stored: new **Подписки** on them, **Комментарии** on their **Посты** and **Ответы** to their **Комментарии**, reactions and **Репосты** of their **Посты**, **Отклики** on their **Планы** and decisions on their own **Отклики**, **Membership** and moderation events. Messages stay in «Сообщения» (a tab, and an entry in one's own profile) and never appear here. Opening the tab marks everything so far as seen; for the rest of that visit, whatever came after the previous look still reads as new, in any category. People hidden from the viewer leave no events.
