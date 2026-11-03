@@ -16,6 +16,7 @@
     "test": "vitest run",
     "build:web": "expo export -p web",
     "serve:web": "node scripts/serve-dist.mjs",
+    "standalone": "pnpm build:web && node scripts/build-standalone.mjs",
     "e2e": "playwright test --grep-invert \"@visual|@guide\"",
     "e2e:full": "pnpm build:web && pnpm e2e",
     "e2e:visual": "playwright test --grep @visual",
