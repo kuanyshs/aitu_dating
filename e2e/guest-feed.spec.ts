@@ -36,7 +36,9 @@ test.describe('guest feed', () => {
     await expect(page.getByTestId('access-passport')).toBeVisible();
   });
 
-  test('each Лента keeps its own content type: Посты, Планы встреч or both', async ({ page }) => {
+  test('«Поиск» and «Мои подписки» share a content type; «Популярное» keeps its own', async ({
+    page,
+  }) => {
     await page.goto('/');
     await expect(page.getByTestId('feed-tab-for_you')).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByTestId('feed-content-all')).toHaveAttribute('aria-checked', 'true');
@@ -58,13 +60,13 @@ test.describe('guest feed', () => {
     await page.reload();
     await page.getByTestId('feed-tab-for_you').click();
     await expect(page.getByTestId('feed-content-plans')).toHaveAttribute('aria-checked', 'true');
+    await page.getByTestId('feed-tab-following').click();
+    await expect(page.getByTestId('feed-content-plans')).toHaveAttribute('aria-checked', 'true');
     await page.getByTestId('feed-tab-popular').click();
     await expect(page.getByTestId('feed-content-posts')).toHaveAttribute('aria-checked', 'true');
   });
 
-  test('«Для тебя» offers search and Фильтры; a guest keeps them on the device', async ({
-    page,
-  }) => {
+  test('«Поиск» offers search and Фильтры; a guest keeps them on the device', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByTestId('post-reasons')).toHaveCount(0);
     await page.getByTestId('home-filters').click();
@@ -72,6 +74,7 @@ test.describe('guest feed', () => {
     await pickSettlement(page, 'feed-filter-city', '790000000', 'Шымкент');
     await page.getByTestId('feed-filters-apply').click();
     await expect(page.getByTestId('home-filters-count')).toHaveText('1');
+    await expect(page.getByTestId('feed-chip-city-790000000')).toBeVisible();
     await expect(page.getByTestId('feed-empty')).toBeVisible();
 
     await page.reload();
@@ -86,10 +89,12 @@ test.describe('guest feed', () => {
     await expect(page).toHaveURL(/\/search/);
   });
 
-  test('«Подписки» asks a guest to join', async ({ page }) => {
+  test('«Мои подписки» asks a guest to join, with the same Фильтры', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('feed-tab-following').click();
     await expect(page.getByTestId('feed-empty')).toBeVisible();
+    await expect(page.getByTestId('home-filters')).toBeVisible();
+    await expect(page.getByTestId('home-search')).toHaveCount(0);
     await page.getByTestId('feed-empty-action').click();
     await expect(page.getByTestId('access-passport')).toBeVisible();
   });

@@ -5,21 +5,17 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  chosenFilterCount,
+  emptyFeedFilters,
   isRepositoryError,
   type FeedContent,
-  type FeedFilters,
   type FeedTab,
   type PostView,
 } from '@/contracts';
-import {
-  useAccessFlow,
-  useDemoFlags,
-  useFeedFilters,
-  useHomeFeed,
-  useLogin,
-  useSession,
-} from '@/data/hooks';
+import { useAccessFlow, useDemoFlags, useHomeFeed, useLogin, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
+import { FeedFilterButton, FeedFilterChips } from '@/features/feedFilter/FeedFilterBar';
+import { useFeedFilter } from '@/features/feedFilter/useFeedFilter';
 import { usePostActions } from '@/features/post/usePostActions';
 import { useSettings } from '@/settings';
 import { IconAction, PrimaryButton } from '@/ui/components/buttons';
@@ -29,7 +25,7 @@ import { PostRow } from '@/ui/components/PostRow';
 import { RenewBanner } from '@/ui/components/RenewBanner';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
-import { Menu, Search, SlidersHorizontal } from '@/ui/icons';
+import { Menu, Search } from '@/ui/icons';
 import { useTabBarInset } from '@/ui/navigation/tabBarInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -39,9 +35,6 @@ import { createStyles } from '@/ui/theme/useStyles';
 
 const tabs: FeedTab[] = ['for_you', 'popular', 'following'];
 const contents: FeedContent[] = ['all', 'posts', 'plans'];
-
-const chosenCount = (filters?: FeedFilters | null) =>
-  filters ? Object.values(filters).filter((options) => options.length > 0).length : 0;
 
 export default function HomeScreen() {
   const styles = useStyles();
@@ -76,18 +69,18 @@ export default function HomeScreen() {
     list.current?.scrollToOffset({ offset: 0, animated: false });
     router.setParams({ feed: undefined });
   }, [requestedTab, router]);
-  const content = useSettings((s) => s.feedContent[tab]);
+  // «Поиск» and «Мои подписки» share one content type and one filter; «Популярное» has neither.
+  const content = useSettings((s) => s.feedContent[tab === 'popular' ? 'popular' : 'feeds']);
   const setFeedContent = useSettings((s) => s.setFeedContent);
-  const guestFilters = useSettings((s) => s.guestFilters);
-  const hasCard = isMember || isExpired;
-  const memberFilters = useFeedFilters(hasCard);
-  const filtersCount = chosenCount(hasCard ? memberFilters.data : guestFilters);
-  // «Подписки» are for members; a guest gets an invitation instead of a request.
+  const filtered = tab !== 'popular';
+  const { hasCard, filters, requestFilters, apply: applyFilters } = useFeedFilter();
+  const filtering = filtered && chosenFilterCount(filters) > 0;
+  // «Мои подписки» need follows of one's own; a guest gets an invitation instead of a request.
   const guestFollowing = tab === 'following' && !hasCard && !!session.data;
-  // A member's filters live with their account; a guest's travel with each request.
+  // A member's filter lives with their account; a guest's travels with each request.
   const feed = useHomeFeed(tab, {
     content,
-    filters: !hasCard && tab === 'for_you' ? (guestFilters ?? undefined) : undefined,
+    filters: filtered ? requestFilters : undefined,
     enabled: !guestFollowing,
   });
   const posts = useMemo(() => feed.data?.pages.flatMap((p) => p.items) ?? [], [feed.data]);
@@ -197,40 +190,29 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      {tab === 'for_you' ? (
-        <View style={styles.tools}>
-          <Pressable
-            role="link"
-            aria-label={strings.home.search}
-            onPress={() => router.push('/search')}
-            style={styles.search}
-            testID="home-search"
-          >
-            <Search size={18} color={colors.textMuted} />
-            <AppText tone="textMuted" numberOfLines={1} style={styles.searchText}>
-              {strings.home.search}
-            </AppText>
-          </Pressable>
-          <Pressable
-            role="button"
-            aria-label={
-              filtersCount ? strings.home.filtersCount(filtersCount) : strings.home.filters
-            }
-            onPress={() => router.push('/feed-filters')}
-            style={styles.filters}
-            testID="home-filters"
-          >
-            <SlidersHorizontal size={18} color={colors.text} />
-            <AppText variant="bodyStrong">{strings.home.filters}</AppText>
-            {filtersCount ? (
-              <View style={styles.count} testID="home-filters-count">
-                <AppText variant="caption" tone="onPrimary">
-                  {String(filtersCount)}
+      {filtered ? (
+        <>
+          <View style={styles.tools}>
+            {tab === 'for_you' ? (
+              <Pressable
+                role="link"
+                aria-label={strings.home.search}
+                onPress={() => router.push('/search')}
+                style={styles.search}
+                testID="home-search"
+              >
+                <Search size={18} color={colors.textMuted} />
+                <AppText tone="textMuted" numberOfLines={1} style={styles.searchText}>
+                  {strings.home.search}
                 </AppText>
-              </View>
-            ) : null}
-          </Pressable>
-        </View>
+              </Pressable>
+            ) : (
+              <View style={styles.searchText} />
+            )}
+            <FeedFilterButton />
+          </View>
+          <FeedFilterChips />
+        </>
       ) : null}
 
       <View style={styles.divider} />
@@ -260,36 +242,46 @@ export default function HomeScreen() {
       />
     );
   } else if (posts.length === 0) {
-    body =
-      content !== 'all' ? (
-        <EmptyState
-          testID="feed-empty"
-          title={strings.feed.emptyTitle}
-          text={strings.feed.emptyContent}
-          action={{
-            label: strings.feed.showAll,
-            onPress: () => setFeedContent(tab, 'all'),
-            testID: 'feed-empty-action',
-          }}
-        />
-      ) : tab === 'following' ? (
-        <EmptyState
-          testID="feed-empty"
-          title={strings.feed.emptyFollowingTitle}
-          text={strings.feed.emptyFollowing}
-          action={{
-            label: strings.feed.findPeople,
-            onPress: () => router.push('/search'),
-            testID: 'feed-empty-action',
-          }}
-        />
-      ) : (
-        <EmptyState
-          testID="feed-empty"
-          title={strings.feed.emptyTitle}
-          text={strings.feed.emptyDefault}
-        />
-      );
+    body = filtering ? (
+      <EmptyState
+        testID="feed-empty"
+        title={strings.feed.emptyFilteredTitle}
+        text={strings.feed.emptyFiltered}
+        action={{
+          label: strings.feed.resetFilters,
+          onPress: () => applyFilters(emptyFeedFilters()),
+          testID: 'feed-empty-action',
+        }}
+      />
+    ) : content !== 'all' ? (
+      <EmptyState
+        testID="feed-empty"
+        title={strings.feed.emptyTitle}
+        text={strings.feed.emptyContent}
+        action={{
+          label: strings.feed.showAll,
+          onPress: () => setFeedContent(tab, 'all'),
+          testID: 'feed-empty-action',
+        }}
+      />
+    ) : tab === 'following' ? (
+      <EmptyState
+        testID="feed-empty"
+        title={strings.feed.emptyFollowingTitle}
+        text={strings.feed.emptyFollowing}
+        action={{
+          label: strings.feed.findPeople,
+          onPress: () => router.push('/search'),
+          testID: 'feed-empty-action',
+        }}
+      />
+    ) : (
+      <EmptyState
+        testID="feed-empty"
+        title={strings.feed.emptyTitle}
+        text={strings.feed.emptyDefault}
+      />
+    );
   }
 
   return (
@@ -379,25 +371,6 @@ const useStyles = createStyles((colors) => ({
     backgroundColor: colors.surface,
   },
   searchText: { flex: 1 },
-  filters: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    minHeight: minTouch,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  count: {
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
   divider: { height: 1, backgroundColor: colors.line },
   footer: { paddingVertical: spacing.xl },
   end: { textAlign: 'center', paddingVertical: spacing.xl },

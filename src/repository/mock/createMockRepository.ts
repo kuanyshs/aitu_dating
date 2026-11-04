@@ -53,6 +53,7 @@ import {
   ConfirmPaymentInput,
   MyProfile,
   FeedFilters,
+  emptyFeedFilters,
   FeedPage,
   FeedQuery,
   ModerateMemberInput,
@@ -124,7 +125,7 @@ import {
 import { buildThreads } from './comments';
 import { almatyDate, currentStatus, planStartsAt, type CurrentPlan } from './plans';
 import { matchPeople, matchPlans, matchPosts } from './search';
-import { emptyFeedFilters, filtersFromAnswers, selectFeed, type PlanStats } from './feed';
+import { selectFeed, type PlanStats } from './feed';
 import {
   BlockRecord,
   ChatRecord,
@@ -325,9 +326,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     };
   }
 
-  /** A member's Фильтры ленты: saved ones, or their own Анкета answers. */
+  /** A member's filter: the one they applied, or nothing chosen. */
   function feedFiltersOf(record: MemberRecord): FeedFilters {
-    return state.feedFilters[record.id] ?? filtersFromAnswers(record.card.questionnaire);
+    return state.feedFilters[record.id] ?? emptyFeedFilters();
   }
   const seedPostsById = new Map(data.posts.map((p) => [p.id, p]));
 
@@ -1474,6 +1475,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           viewerId: viewerRecord?.id,
           now: clock.now(),
           filters,
+          wanted: isMember ? viewerRecord?.card.questionnaire : undefined,
           viewerInterests: new Set(isMember && viewerRecord ? viewerRecord.card.interests : []),
           followingIds,
           withReasons: isMember,
@@ -1483,6 +1485,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             return {
               answers: author?.card.questionnaire,
               interests: author?.card.interests ?? [],
+              city: author?.city,
             };
           },
           plan: (id) => planById(id),

@@ -61,13 +61,15 @@ test.describe('Мои планы и отклики', () => {
     await page.getByTestId('my-plan-plan1').click();
     await expect(page.getByTestId('plan-matched')).toBeVisible();
 
-    // Everyone else reads the label on the feed card; nobody else sees the count.
+    // An agreed Встреча leaves the feeds; everyone else reads its status on its page.
     await signInAs(page, 'm04');
     await page.goto('/');
     await showFeed(page, 'popular');
     await page.getByTestId('feed-content-plans').click();
-    const card = page.getByTestId('post-p-plan1');
-    await expect(card.getByTestId('plan-card-status')).toHaveText('Встреча договорена');
-    await expect(card.getByTestId('plan-card-waiting')).toHaveCount(0);
+    await expect(page.getByRole('article').first()).toBeVisible();
+    await expect(page.getByTestId('post-p-plan1')).toHaveCount(0);
+    await page.goto('/meeting/plan1');
+    await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
+    await expect(page.getByTestId('plan-card-waiting')).toHaveCount(0);
   });
 });

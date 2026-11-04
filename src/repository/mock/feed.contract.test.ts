@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { fixedClock } from '@/clock';
 import { createMemoryStore } from '@/storage';
 import {
+  emptyFeedFilters,
   FeedPage,
   RepositoryError,
   type AituRepository,
@@ -199,7 +200,11 @@ describe('pagination', () => {
       const all = await allPages(repo, { tab, limit: 7 });
       const ids = all.map((p) => p.id);
       expect(new Set(ids).size).toBe(ids.length);
-      expect(ids).toHaveLength(seed.posts.length - 1); // one post belongs to a restricted member
+      // One post belongs to a restricted member; only open Встречи stay in a Лента.
+      const notOpen = seed.posts.filter(
+        (p) => p.planId && seed.plans.find((plan) => plan.id === p.planId)?.status !== 'published',
+      ).length;
+      expect(ids).toHaveLength(seed.posts.length - 1 - notOpen);
     },
   );
 
@@ -218,57 +223,53 @@ describe('pagination', () => {
   });
 });
 
-describe('Фильтры ленты', () => {
-  const m01 = seed.members.find((m) => m.id === 'm01')!;
-
-  it('start from the member’s own answers, can be changed and kept', async () => {
+describe('the filter of «Поиск» and «Мои подписки»', () => {
+  it('starts empty for a member, is kept with the account and narrows both feeds', async () => {
     const store = createMemoryStore();
-    const repo = createMockRepository({
-      clock,
-      latency: 0,
-      store,
-      session: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
-    });
-    const own = await repo.getFeedFilters();
-    expect(own.intent).toEqual(m01.card.questionnaire.intent);
-    expect(own.city).toEqual(m01.card.questionnaire.city);
+    const open = () =>
+      createMockRepository({
+        clock,
+        latency: 0,
+        store,
+        session: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
+      });
+    const repo = open();
+    expect(await repo.getFeedFilters()).toEqual(emptyFeedFilters());
 
-    const wider = { ...own, city: ['750000000', '710000000'] as const, intent: [] };
-    expect(await repo.updateFeedFilters({ ...wider, city: [...wider.city] })).toMatchObject({
-      city: ['750000000', '710000000'],
-      intent: [],
-    });
-    const restarted = createMockRepository({
-      clock,
-      latency: 0,
-      store,
-      session: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
-    });
-    expect((await restarted.getFeedFilters()).city).toEqual(['750000000', '710000000']);
+    const astana = { ...emptyFeedFilters(), city: ['710000000'] };
+    expect(await repo.updateFeedFilters(astana)).toEqual(astana);
+    const restarted = open();
+    expect(await restarted.getFeedFilters()).toEqual(astana);
+
+    const inAstana = (post: PostView) => {
+      // One's own post of the last day leads «Поиск» whatever the filter.
+      if (post.mine) return true;
+      const record = seed.posts.find((p) => p.id === post.id)!;
+      if (record.planId)
+        return seed.plans.find((p) => p.id === record.planId)?.city === '710000000';
+      return seed.members.find((m) => m.id === record.authorId)?.city === '710000000';
+    };
+    for (const tab of ['for_you', 'following'] as const) {
+      const posts = await allPages(restarted, { tab });
+      expect(posts.filter((p) => !inAstana(p)).map((p) => p.id)).toEqual([]);
+    }
+    const popular = await allPages(restarted, { tab: 'popular' });
+    expect(popular.some((p) => !inAstana(p))).toBe(true);
   });
 
-  it('are for members; a guest sends theirs with the request', async () => {
+  it('is for members to keep; a guest sends theirs with the request', async () => {
     await expect(guestRepository().getFeedFilters()).rejects.toMatchObject({
       code: 'UNAUTHENTICATED',
     });
-    const filters = {
-      city: ['710000000'],
-      intent: [],
-      communication: [],
-      pace: [],
-      firstMeeting: [],
-      boundaries: [],
-      dateFormat: [],
-    };
+    const filters = { ...emptyFeedFilters(), interests: ['coffee' as const] };
     const posts = await allPages(guestRepository(), { tab: 'for_you', filters });
-    const astana = new Set(
-      seed.members.filter((m) => m.card.questionnaire.city.includes('710000000')).map((m) => m.id),
+    const coffee = new Set(
+      seed.members.filter((m) => m.card.interests.includes('coffee')).map((m) => m.id),
     );
     expect(posts.length).toBeGreaterThan(0);
-    // Authors stay in the safe view; their Анкета city decides, never shown as such.
     for (const post of posts) {
       const author = seed.posts.find((p) => p.id === post.id)!.authorId;
-      expect(astana.has(author)).toBe(true);
+      expect(coffee.has(author)).toBe(true);
       expect(post.reasons).toBeUndefined();
     }
   });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { emptyFeedFilters } from '@/contracts';
 import { createMemoryStore, storageKeys } from '@/storage';
 
 import { createSettingsStore } from './store';
@@ -34,29 +35,18 @@ describe('settings store', () => {
 });
 
 describe('Ленты on the device', () => {
-  it('keep the content type of each Лента and a guest’s filters across restarts', async () => {
+  it('share one content type between «Поиск» and «Мои подписки» and keep it across restarts', async () => {
     const store = createMemoryStore();
     const first = createSettingsStore(store);
     await first.hydrate();
     first.useSettings.getState().setFeedContent('popular', 'plans');
-    first.useSettings.getState().setGuestFilters({
-      city: ['710000000'],
-      intent: [],
-      communication: [],
-      pace: [],
-      firstMeeting: [],
-      boundaries: [],
-      dateFormat: [],
-    });
+    first.useSettings.getState().setFeedContent('following', 'posts');
+    first.useSettings.getState().setGuestFilters({ ...emptyFeedFilters(), city: ['710000000'] });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     const second = createSettingsStore(store);
     await second.hydrate();
-    expect(second.useSettings.getState().feedContent).toEqual({
-      for_you: 'all',
-      popular: 'plans',
-      following: 'all',
-    });
+    expect(second.useSettings.getState().feedContent).toEqual({ feeds: 'posts', popular: 'plans' });
     expect(second.useSettings.getState().guestFilters?.city).toEqual(['710000000']);
   });
 
@@ -68,8 +58,36 @@ describe('Ленты on the device', () => {
     await hydrate();
     expect(useSettings.getState()).toMatchObject({
       themePreference: 'dark',
-      feedContent: { for_you: 'all', popular: 'all', following: 'all' },
+      feedContent: { feeds: 'all', popular: 'all' },
       guestFilters: null,
+    });
+  });
+
+  it('upgrades v3: «Для тебя» gives the shared content type, the filter keeps city and Намерения', async () => {
+    const store = createMemoryStore({
+      [storageKeys.settings]: JSON.stringify({
+        version: 3,
+        data: {
+          themePreference: 'light',
+          feedContent: { for_you: 'plans', popular: 'posts', following: 'all' },
+          guestFilters: {
+            city: ['750000000'],
+            intent: ['dating'],
+            communication: ['messages_first'],
+            pace: [],
+            firstMeeting: [],
+            boundaries: [],
+            dateFormat: ['walk'],
+          },
+        },
+      }),
+    });
+    const { useSettings, hydrate } = createSettingsStore(store);
+    await hydrate();
+    expect(useSettings.getState()).toMatchObject({
+      themePreference: 'light',
+      feedContent: { feeds: 'plans', popular: 'posts' },
+      guestFilters: { ...emptyFeedFilters(), city: ['750000000'], intent: ['dating'] },
     });
   });
 });

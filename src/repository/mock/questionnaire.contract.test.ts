@@ -104,7 +104,14 @@ describe('saved state from before the settlements directory (v21)', () => {
       store,
       session: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
     });
-    expect((await repo.getFeedFilters()).city).toEqual(['750000000']);
-    expect(MOCK_STATE_VERSION).toBe(22);
+    expect(await repo.takeResetNotice()).toBeUndefined();
+    // v23 keeps the cities and Намерения of the old filter and starts the rest empty.
+    expect(await repo.getFeedFilters()).toMatchObject({
+      city: ['750000000'],
+      intent: ['dating'],
+      interests: [],
+      days: [],
+    });
+    expect(MOCK_STATE_VERSION).toBe(23);
   });
 });

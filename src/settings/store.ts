@@ -1,26 +1,22 @@
 import { z } from 'zod';
 import { create } from 'zustand';
 
-import { FeedContent, FeedFilters, type FeedTab } from '@/contracts';
+import { FeedContent, FeedFilters, fromLegacyFeedFilters, type FeedTab } from '@/contracts';
 import { createSlot, storageKeys, type KeyValueStore } from '@/storage';
 import type { ThemePreference } from '@/ui/theme/scheme';
 
 const Settings = z.strictObject({
   themePreference: z.enum(['system', 'light', 'dark']),
-  /** What each Лента shows: «Все», «Посты» or «Планы встреч». */
-  feedContent: z.strictObject({
-    for_you: FeedContent,
-    popular: FeedContent,
-    following: FeedContent,
-  }),
-  /** A guest's Фильтры ленты; a member's are kept with their account. */
+  /** What a Лента shows: one choice for «Поиск» and «Мои подписки», one for «Популярное». */
+  feedContent: z.strictObject({ feeds: FeedContent, popular: FeedContent }),
+  /** A guest's filter; a member's is kept with their account. */
   guestFilters: FeedFilters.nullable(),
 });
 type Settings = z.infer<typeof Settings>;
 
 const defaults = (): Settings => ({
   themePreference: 'system',
-  feedContent: { for_you: 'all', popular: 'all', following: 'all' },
+  feedContent: { feeds: 'all', popular: 'all' },
   guestFilters: null,
 });
 
@@ -40,7 +36,7 @@ export function createSettingsStore(store: KeyValueStore) {
     store,
     key: storageKeys.settings,
     schema: Settings,
-    version: 3,
+    version: 4,
     // v2 adds the content type of each Лента and a guest's Фильтры ленты.
     // v3: Фильтры ленты name settlements by KATO code; older ones start over.
     migrations: [
@@ -50,6 +46,22 @@ export function createSettingsStore(store: KeyValueStore) {
         guestFilters: null,
       }),
       (v2: unknown) => ({ ...(v2 as object), guestFilters: null }),
+      // v4: one filter and one content type for «Поиск» and «Мои подписки».
+      (v3: unknown) => {
+        const old = v3 as {
+          feedContent?: { for_you?: unknown; popular?: unknown };
+          guestFilters?: unknown;
+        };
+        const content = (value: unknown) => FeedContent.catch('all').parse(value);
+        return {
+          ...old,
+          feedContent: {
+            feeds: content(old.feedContent?.for_you),
+            popular: content(old.feedContent?.popular),
+          },
+          guestFilters: old.guestFilters ? fromLegacyFeedFilters(old.guestFilters) : null,
+        };
+      },
     ],
     defaults,
   });
@@ -67,7 +79,8 @@ export function createSettingsStore(store: KeyValueStore) {
         persist();
       },
       setFeedContent(tab, content) {
-        set({ feedContent: { ...get().feedContent, [tab]: content } });
+        const key = tab === 'popular' ? 'popular' : 'feeds';
+        set({ feedContent: { ...get().feedContent, [key]: content } });
         persist();
       },
       setGuestFilters(guestFilters) {

@@ -1,18 +1,23 @@
 import type { QuestionKey } from '@/catalogs';
-import type {
-  FeedContent,
-  FeedFilters,
-  FeedQuery,
-  FeedReason,
-  QuestionnaireAnswers as QuestionnaireRecord,
+import {
+  chosenFilterCount,
+  type FeedContent,
+  type FeedFilters,
+  type FeedQuery,
+  type FeedReason,
+  type QuestionnaireAnswers as QuestionnaireRecord,
 } from '@/contracts';
 
-import type { CurrentPlan } from './plans';
+import { almatyDate, type CurrentPlan } from './plans';
 import type { PostRecord } from './records';
 import type { PostCounters } from './shaping';
 
 /** What the ranking knows about the person behind a post. */
-export type FeedAuthor = { answers?: QuestionnaireRecord; interests: readonly string[] };
+export type FeedAuthor = {
+  answers?: QuestionnaireRecord;
+  interests: readonly string[];
+  city?: string;
+};
 
 export type PlanStats = { opens: number; responses: number; accepted: boolean };
 
@@ -20,8 +25,10 @@ export type FeedContext = {
   now: Date;
   /** The member asking; their own fresh posts lead «Для тебя». Absent for a guest. */
   viewerId?: string;
-  /** The Фильтры ленты in force; empty lists for a question leave it out. */
+  /** The filter in force for «Поиск» and «Мои подписки»; an empty field is left out. */
   filters: FeedFilters;
+  /** The viewer's own Анкета answers: «Поиск» puts people like them first. Absent for a guest. */
+  wanted?: QuestionnaireRecord;
   /** The viewer's interests; empty for a guest. */
   viewerInterests: ReadonlySet<string>;
   followingIds: ReadonlySet<string>;
@@ -63,53 +70,74 @@ export function planPopularity(stats: PlanStats): number {
   return stats.opens + 2 * stats.responses + (stats.accepted ? 5 : 0);
 }
 
-export const emptyFeedFilters = (): FeedFilters => ({
-  city: [],
-  intent: [],
-  communication: [],
-  pace: [],
-  firstMeeting: [],
-  boundaries: [],
-  dateFormat: [],
-});
-
-/** A member's starting filters: their own answer to each question. */
-export function filtersFromAnswers(answers: QuestionnaireRecord): FeedFilters {
-  return {
-    city: [...answers.city],
-    intent: [...answers.intent],
-    communication: [...answers.communication],
-    pace: [...answers.pace],
-    firstMeeting: [...answers.firstMeeting],
-    boundaries: [...answers.boundaries],
-    dateFormat: [...answers.dateFormat],
-  };
-}
-
-const chosen = (filters: FeedFilters) =>
-  (Object.keys(filters) as QuestionKey[]).filter((q) => filters[q].length > 0);
-
-/** The first of a person's answers to a question that the filters ask for. */
+/** The first of a person's answers to a question that the viewer also gave. */
 function matchedOption(
-  filters: FeedFilters,
+  wanted: QuestionnaireRecord,
   answers: QuestionnaireRecord,
   q: QuestionKey,
 ): string | undefined {
-  const wanted = filters[q] as readonly string[];
-  return (answers[q] as readonly string[]).find((a) => wanted.includes(a));
+  const mine = wanted[q] as readonly string[];
+  return (answers[q] as readonly string[]).find((a) => mine.includes(a));
 }
 
-/** Questions where at least one of the person's answers is among the chosen options. */
-function matchedQuestions(filters: FeedFilters, answers?: QuestionnaireRecord): QuestionKey[] {
-  if (!answers) return [];
-  return chosen(filters).filter((q) => matchedOption(filters, answers, q) !== undefined);
+/** Questions where the person shares at least one answer with the viewer. */
+function matchedQuestions(
+  wanted?: QuestionnaireRecord,
+  answers?: QuestionnaireRecord,
+): QuestionKey[] {
+  if (!wanted || !answers) return [];
+  return (Object.keys(wanted) as QuestionKey[]).filter(
+    (q) => matchedOption(wanted, answers, q) !== undefined,
+  );
 }
 
-/** A cancelled or past План leaves every Лента. */
+const overlaps = (chosen: readonly string[], values: readonly string[] | undefined) =>
+  chosen.length === 0 || (values ?? []).some((v) => chosen.includes(v));
+
+/** The Almaty dates «Ближайшие даты» stand for. */
+function soonDates(soon: FeedFilters['soon'], now: Date): Set<string> {
+  const dates = new Set<string>();
+  const weekday = new Date(`${almatyDate(now)}T12:00:00Z`).getUTCDay();
+  for (const pick of soon) {
+    if (pick === 'today') dates.add(almatyDate(now));
+    if (pick === 'tomorrow') dates.add(almatyDate(now, 1));
+    if (pick === 'week') for (let d = 0; d < 7; d++) dates.add(almatyDate(now, d));
+    if (pick === 'weekend') {
+      // The coming Saturday and Sunday; on a Sunday, just today.
+      const toSaturday = weekday === 0 ? -1 : 6 - weekday;
+      for (const d of [toSaturday, toSaturday + 1]) if (d >= 0) dates.add(almatyDate(now, d));
+    }
+  }
+  return dates;
+}
+
+/** Whether a post passes the filter: every field with a choice, any one value within it. */
+export function matchesFilters(post: PostRecord, ctx: FeedContext): boolean {
+  const f = ctx.filters;
+  if (chosenFilterCount(f) === 0) return true;
+  const author = ctx.author(post);
+  const plan = post.type === 'plan' && post.planId ? ctx.plan(post.planId) : undefined;
+  if (!overlaps(f.city, [plan ? plan.city : (author.city ?? '')].filter(Boolean))) return false;
+  if (!overlaps(f.interests, author.interests)) return false;
+  if (!overlaps(f.topics, post.topics)) return false;
+  if (!overlaps(f.intent, author.answers?.intent)) return false;
+  if (!plan) return true;
+  if (!overlaps(f.format, [plan.format])) return false;
+  if (!overlaps(f.goal, [plan.goal])) return false;
+  if (!overlaps(f.budget, [plan.budget ?? 'not_specified'])) return false;
+  if (!overlaps(f.payment, [plan.paymentPolicy])) return false;
+  if (f.soon.length || f.days.length) {
+    const dates = soonDates(f.soon, ctx.now);
+    for (const day of f.days) dates.add(day);
+    if (!dates.has(plan.date)) return false;
+  }
+  return true;
+}
+
+/** Only an open Встреча stays in a Лента; past, cancelled, closed and agreed ones leave. */
 function isActive(post: PostRecord, ctx: FeedContext): boolean {
   if (post.type !== 'plan' || !post.planId) return true;
-  const status = ctx.plan(post.planId)?.status;
-  return status === 'published' || status === 'closed' || status === 'matched';
+  return ctx.plan(post.planId)?.status === 'published';
 }
 
 function ofContent(post: PostRecord, content: FeedContent): boolean {
@@ -118,10 +146,10 @@ function ofContent(post: PostRecord, content: FeedContent): boolean {
   return true;
 }
 
-/** How well a post fits «Для тебя», and why. */
+/** How well a post fits «Поиск» for this viewer, and why. */
 function forYou(post: PostRecord, ctx: FeedContext): { score: number; reasons: FeedReason[] } {
   const author = ctx.author(post);
-  const matched = matchedQuestions(ctx.filters, author.answers);
+  const matched = matchedQuestions(ctx.wanted, author.answers);
   const shared = author.interests.filter((i) => ctx.viewerInterests.has(i));
   const core = matched.filter((q) => coreQuestions.includes(q)).length + shared.length;
   const has = (q: QuestionKey) => (matched.includes(q) ? 1 : 0);
@@ -137,7 +165,7 @@ function forYou(post: PostRecord, ctx: FeedContext): { score: number; reasons: F
     // A nearer date, and a format and goal the viewer looks for, lift a План.
     const daysAway = (new Date(`${plan.date}T12:00:00Z`).getTime() - ctx.now.getTime()) / DAY_MS;
     score += Math.max(0, 14 - Math.max(daysAway, 0)) / 14;
-    const formats = ctx.filters.dateFormat as readonly string[];
+    const formats = (ctx.wanted?.dateFormat ?? []) as readonly string[];
     if (formats.includes('walk') && plan.format === 'walk') score += 5;
     if (formats.includes('joint_activity') && plan.goal === 'joint_activity') score += 5;
     if (formats.includes('short_meeting') && plan.durationMinutes <= 60) score += 5;
@@ -149,8 +177,8 @@ function forYou(post: PostRecord, ctx: FeedContext): { score: number; reasons: F
   if (shared[0]) reasons.push({ kind: 'interest', interest: shared[0] as never });
   for (const question of reasonOrder) {
     if (reasons.length === 2) break;
-    if (matched.includes(question) && author.answers) {
-      const option = matchedOption(ctx.filters, author.answers, question);
+    if (matched.includes(question) && author.answers && ctx.wanted) {
+      const option = matchedOption(ctx.wanted, author.answers, question);
       if (option) reasons.push({ kind: 'answer', question, option });
     }
   }
@@ -169,15 +197,8 @@ export function selectFeed(posts: PostRecord[], query: FeedQuery, ctx: FeedConte
         post.authorId === ctx.viewerId &&
         ctx.now.getTime() - new Date(post.createdAt).getTime() < DAY_MS;
       const own = candidates.filter(fresh).sort(newestFirst);
-      const filtering = chosen(ctx.filters).length > 0;
       const ranked = candidates
-        .filter((post) => !fresh(post))
-        .filter(
-          (post) =>
-            !filtering ||
-            post.authorId === ctx.viewerId ||
-            matchedQuestions(ctx.filters, ctx.author(post).answers).length > 0,
-        )
+        .filter((post) => !fresh(post) && matchesFilters(post, ctx))
         .map((post) => ({ post, ...forYou(post, ctx) }))
         .sort((a, b) => b.score - a.score || newestFirst(a.post, b.post));
       return [
@@ -203,7 +224,7 @@ export function selectFeed(posts: PostRecord[], query: FeedQuery, ctx: FeedConte
 
     case 'following':
       return candidates
-        .filter((post) => ctx.followingIds.has(post.authorId))
+        .filter((post) => ctx.followingIds.has(post.authorId) && matchesFilters(post, ctx))
         .sort(newestFirst)
         .map((post) => ({ post }));
   }

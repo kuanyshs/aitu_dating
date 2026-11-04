@@ -8,6 +8,7 @@ import {
   SupportTopic,
   AccessFlowStep,
   FeedFilters,
+  fromLegacyFeedFilters,
   StoredPlanStatus,
   UserSettings,
   MembershipSelection,
@@ -173,7 +174,7 @@ export const MockState = z.strictObject({
   chatReads: z.record(z.string(), z.string()),
   /** When each member last opened «Уведомления». */
   activitySeenAt: z.record(z.string(), z.string()),
-  /** Фильтры ленты a member changed; until then their own Анкета answers apply. */
+  /** The filter a member applied; until then nothing is chosen. */
   feedFilters: z.record(z.string(), FeedFilters),
   /** Who opened each План (its author aside), for «Популярное». */
   planOpens: z.record(z.string(), z.array(z.string())),
@@ -186,7 +187,7 @@ export const MockState = z.strictObject({
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 22;
+export const MOCK_STATE_VERSION = 23;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -272,6 +273,16 @@ export const mockStateMigrations = [
   // v22: the five cities become KATO codes («Другой город» is not named any more), and the
   // Анкета answers become lists; the Намерение lives only in the Анкета.
   (v21: unknown) => toSettlementsAndLists(v21),
+  // v23: one filter for «Поиск» and «Мои подписки»; saved ones keep cities and Намерения.
+  (v22: unknown) => {
+    const old = v22 as { feedFilters?: Record<string, unknown> };
+    return {
+      ...old,
+      feedFilters: Object.fromEntries(
+        Object.entries(old.feedFilters ?? {}).map(([id, f]) => [id, fromLegacyFeedFilters(f)]),
+      ),
+    };
+  },
 ];
 
 const legacyCities: Record<string, string | undefined> = {
@@ -297,7 +308,11 @@ function migrateAnswers(answers: Record<string, unknown>): Record<string, unknow
 function toSettlementsAndLists(node: unknown, key?: string): unknown {
   if (Array.isArray(node)) {
     // A list of city keys (Фильтры ленты, or answers already turned into lists).
-    if (key === 'city') return node.map((c) => legacyCities[c as string] ?? c).filter(Boolean);
+    if (key === 'city') {
+      return node
+        .map((c) => (typeof c === 'string' && c in legacyCities ? legacyCities[c] : c))
+        .filter(Boolean);
+    }
     return node.map((item) => toSettlementsAndLists(item));
   }
   if (!node || typeof node !== 'object') return node;

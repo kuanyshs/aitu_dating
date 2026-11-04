@@ -82,7 +82,7 @@ The seven questions answered during onboarding; finishing it publishes the **К�
 _Avoid_: survey, onboarding form
 
 **Фильтры ленты** (`FeedFilters`):
-The **Анкета** questions that rank the «Для тебя» **Лента**: any number of options per question, and a person matches a question when one of their answers is among the chosen options. A **Верифицированный пользователь** starts from their own answers and may change them, keeping them with their account; a **Неверифицированный пользователь** starts with none and keeps them on the device. Ranking puts first the people matching the most chosen questions and sharing interests, then the same **Населённый пункт**, **Намерение** and meeting format, then **Подписки** and newness; for **Встречи** a nearer date and a matching format and goal count too. An active **Верифицированный пользователь** sees up to two reasons on a card («Общие интересы: кино»); nobody sees a percentage or the other person's answers.
+The one filter of «Поиск» and «Мои подписки»: **Населённые пункты**, interests, **Темы**, **Намерения**, and for **Встречи** format, goal, budget, who pays, nearest dates («Сегодня», «Завтра», «Выходные», «7 дней») and single dates up to 14 days ahead. Within a field any one chosen value is enough; every field with a choice must match. A post's place is its author's, a **Встреча**'s is its own; the meeting fields narrow **Встречи** only and never hide **Посты**. It changes only on «Применить» («Сбросить» clears the form, «Отмена» leaves it); the applied values show as chips under the **Лента**, each removable. A **Верифицированный пользователь** keeps it with their account and starts with nothing chosen; a **Неверифицированный пользователь** keeps it on the device. «Популярное» has none. One's own **Пост** of the last day leads «Поиск» whatever is chosen.
 _Avoid_: preferences, matching settings, compatibility score
 
 **Населённый пункт** (`Settlement`):
@@ -96,7 +96,7 @@ _Avoid_: intent (unqualified), goal
 ### Content
 
 **Лента** (`Feed`):
-One of the three streams on Главная: «Для тебя» (ranked by the **Фильтры ленты**), «Популярное» and «Подписки» (people the viewer follows, newest first). Each mixes ordinary **Посты** and **Встречи** and has its own content type, «Все», «Посты» or «Планы встреч», remembered per **Лента**. A cancelled or past **Встреча** leaves every **Лента**. There is no separate feed of **Встречи** and no feed by city. A **Неверифицированный пользователь** sees «Подписки» as an invitation to join; an expired **Верифицированный пользователь** reads it in the **Безопасный вид**.
+One of the three streams on Главная: «Поиск», «Популярное» and «Мои подписки». «Поиск» and «Мои подписки» differ only in the source (the whole community, or the people the viewer follows) and share one **Фильтры ленты** and one content type («Все», «Посты», «Встречи»); «Популярное» keeps a content type of its own and no filter. «Поиск» puts first the people who answered the **Анкета** like the viewer and share interests, then newness; an active **Верифицированный пользователь** sees up to two reasons on a card («Общие интересы: кино»), nobody sees a percentage or the other person's answers. «Мои подписки» go newest first. Only open **Встречи** appear: past, cancelled, closed and agreed ones stay in profiles, «Мои встречи», chats and notifications. There is no feed by city. A **Неверифицированный пользователь** sees «Мои подписки» as an invitation to join, with the same filter; an expired **Верифицированный пользователь** reads them in the **Безопасный вид**.
 _Avoid_: tab (unqualified), timeline
 
 **Пост** (`Post`):
@@ -145,7 +145,7 @@ One **Верифицированный пользователь** following anot
 _Avoid_: subscription (as in **Подписка на клуб**), friend
 
 **Поиск** (`Search`):
-Finding people and **Посты** by text and filters (city, interests, **Намерение**, **Темы**). Opened from «Для тебя»; it is not a tab. A **Неверифицированный пользователь** and an expired **Верифицированный пользователь** search **Посты** only; people are for active **Верифицированные пользователи**. Nobody in a **Блокировка** with the viewer, nobody under **Ограничение** and never oneself shows up.
+Finding people and **Посты** by text and filters (city, interests, **Намерение**, **Темы**). Opened from «Поиск»; it is not a tab. A **Неверифицированный пользователь** and an expired **Верифицированный пользователь** search **Посты** only; people are for active **Верифицированные пользователи**. Nobody in a **Блокировка** with the viewer, nobody under **Ограничение** and never oneself shows up.
 _Avoid_: discovery, explore
 
 **Профиль недоступен** (`profile unavailable`):
