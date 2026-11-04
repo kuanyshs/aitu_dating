@@ -4,7 +4,7 @@ import { membershipTiers } from '@/catalogs';
 
 import { Id, IsoDateTime } from './common';
 import { PartialAnswers, ProfileStepInput } from './onboarding';
-import { CityKey, GenderKey } from './people';
+import { SettlementCode, GenderKey } from './people';
 import { PhotoRef } from './photo';
 
 /** A mock Aitu Passport identity the demo user can enter as. Shown only to its owner. */
@@ -16,7 +16,7 @@ export const PassportCandidate = z.strictObject({
   surname: z.string().min(1),
   gender: GenderKey,
   age: z.number().int().min(18),
-  city: CityKey,
+  city: SettlementCode,
 });
 export type PassportCandidate = z.infer<typeof PassportCandidate>;
 

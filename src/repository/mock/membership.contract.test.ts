@@ -16,13 +16,13 @@ import { createMockRepository, type MockRepository } from './createMockRepositor
 const clock = fixedClock();
 
 const answers: QuestionnaireAnswers = {
-  city: 'astana',
-  intent: 'dating',
-  communication: 'messages_first',
-  pace: 'gradual',
-  firstMeeting: 'coffee_talk',
-  boundaries: 'public_place',
-  dateFormat: 'walk',
+  city: ['710000000'],
+  intent: ['dating'],
+  communication: ['messages_first'],
+  pace: ['gradual'],
+  firstMeeting: ['coffee_talk'],
+  boundaries: ['public_place'],
+  dateFormat: ['walk'],
 };
 
 function repositoryOn(store = createMemoryStore(), now = clock) {

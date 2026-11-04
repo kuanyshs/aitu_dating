@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import {
   answerLabel,
-  cityLabels,
+  settlementName,
   communicationStyleLabels,
   datingIntentLabels,
   interestLabels,
@@ -44,7 +44,7 @@ export function ProfileCardView({ me, stats }: { me: MyProfile; stats?: React.Re
               <BadgeCheck size={22} color={colors.text} strokeWidth={2} aria-label={t.verified} />
             ) : null}
           </View>
-          <AppText tone="textMuted">{t.ageCity(me.age, cityLabels[me.city])}</AppText>
+          <AppText tone="textMuted">{t.ageCity(me.age, settlementName(me.city))}</AppText>
         </View>
         <Avatar avatar={me.avatar} size={72} />
       </View>
@@ -60,7 +60,9 @@ export function ProfileCardView({ me, stats }: { me: MyProfile; stats?: React.Re
       </View>
 
       <Section title={t.intent}>
-        <AppText>{datingIntentLabels[me.card.intent]}</AppText>
+        <AppText testID="profile-intents">
+          {me.card.questionnaire.intent.map((i) => datingIntentLabels[i]).join(', ')}
+        </AppText>
       </Section>
 
       <Section title={t.interests}>
@@ -84,7 +86,11 @@ export function ProfileCardView({ me, stats }: { me: MyProfile; stats?: React.Re
               <AppText variant="caption" tone="textMuted">
                 {questionLabels[key]}
               </AppText>
-              <AppText>{answerLabel(key, me.card.questionnaire[key])}</AppText>
+              <AppText testID={`profile-answer-${key}`}>
+                {me.card.questionnaire[key].length
+                  ? me.card.questionnaire[key].map((o) => answerLabel(key, o)).join(', ')
+                  : strings.settlement.noneChosen}
+              </AppText>
             </View>
           ))}
         </View>

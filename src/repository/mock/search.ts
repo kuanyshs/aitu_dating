@@ -28,8 +28,8 @@ export function matchPeople(
   const text = normalize(query.text ?? '');
   const city = query.city ?? (!text && !hasFilters(query) ? viewerCity : undefined);
   const found = people.filter((person) => {
-    if (city && person.city !== city) return false;
-    if (query.intent && person.card.intent !== query.intent) return false;
+    if (city && !person.card.questionnaire.city.includes(city)) return false;
+    if (query.intent && !person.card.questionnaire.intent.includes(query.intent)) return false;
     if (query.interests?.some((i) => !person.card.interests.includes(i))) return false;
     if (!text) return true;
     const haystack = [

@@ -159,7 +159,12 @@ export function saveAnswer(
   if (!parsed.success) return invalid('Unknown question.', { question: 'unknown' });
   const { question, answer } = parsed.data;
   const answers = PartialAnswers.safeParse({ ...flow.answers, [question]: answer });
-  if (!answers.success) return invalid('Unknown answer.', { [`answers.${question}`]: 'unknown' });
+  if (!answers.success) {
+    // «too_many», «required», «duplicate» or «unknown» for a settlement not in the directory.
+    const reason = answers.error.issues[0]?.message;
+    const code = ['too_many', 'required', 'duplicate'].includes(reason ?? '') ? reason! : 'unknown';
+    return invalid('Check the answer.', { [`answers.${question}`]: code });
+  }
   return ok({ ...flow, answers: answers.data });
 }
 

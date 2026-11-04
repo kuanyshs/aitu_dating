@@ -6,16 +6,14 @@ import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  cityLabels,
+  settlementName,
   communicationStyleLabels,
   communicationStyles,
-  datingIntentLabels,
-  datingIntents,
   genderLabels,
   interestLabels,
   interests,
+  questionKeys,
   type CommunicationStyle,
-  type DatingIntent,
 } from '@/catalogs';
 import {
   BIO_MAX,
@@ -25,6 +23,7 @@ import {
   type MyProfile,
 } from '@/contracts';
 import { useMyProfile, useSession, useUpdateMyCard } from '@/data/hooks';
+import { AnswerInput } from '@/features/questionnaire/AnswerInput';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { ActionSheet } from '@/ui/components/ActionSheet';
 import { Avatar } from '@/ui/components/Avatar';
@@ -48,8 +47,9 @@ const step = strings.access.profileStep;
 type FieldName = 'bio' | 'interests' | 'communicationStyle';
 
 /**
- * Editing one's own Карточка, for active and expired members alike: «О себе», Намерение,
- * interests and communication style. What Passport says stays read-only.
+ * «Редактировать анкету», for active and expired members alike: «О себе», interests,
+ * communication style, photos and every Анкета answer, the Населённые пункты and Намерения
+ * included. What Passport says stays read-only.
  */
 export default function CardEditScreen() {
   const session = useSession();
@@ -88,8 +88,8 @@ function CardForm({ me }: { me: MyProfile }) {
       bio: me.card.bio,
       interests: me.card.interests,
       communicationStyle: me.card.communicationStyle,
-      intent: me.card.intent,
       showSurname: me.card.showSurname,
+      answers: me.card.questionnaire,
     },
     mode: 'onChange',
   });
@@ -135,7 +135,7 @@ function CardForm({ me }: { me: MyProfile }) {
             <View style={styles.grow}>
               <AppText variant="bodyStrong">{fullName(me)}</AppText>
               <AppText variant="caption" tone="textMuted">
-                {`${genderLabels[me.gender]} · ${strings.profile.ageCity(me.age, cityLabels[me.city])}`}
+                {`${genderLabels[me.gender]} · ${strings.profile.ageCity(me.age, settlementName(me.city))}`}
               </AppText>
               <AppText variant="caption" tone="textMuted">
                 {t.passportText}
@@ -165,26 +165,6 @@ function CardForm({ me }: { me: MyProfile }) {
               />
             )}
           />
-
-          <View style={styles.section}>
-            <AppText variant="bodyStrong">{t.intent}</AppText>
-            <Controller
-              control={control}
-              name="intent"
-              render={({ field }) => (
-                <RadioGroup<DatingIntent>
-                  label={t.intent}
-                  options={datingIntents.map((value) => ({
-                    value,
-                    label: datingIntentLabels[value],
-                  }))}
-                  value={field.value}
-                  onChange={field.onChange}
-                  testID="card-edit-intent"
-                />
-              )}
-            />
-          </View>
 
           <View style={styles.section}>
             <AppText variant="bodyStrong">{step.interests}</AppText>
@@ -248,6 +228,28 @@ function CardForm({ me }: { me: MyProfile }) {
                 />
               )}
             />
+          </View>
+
+          <View style={styles.section} testID="card-edit-answers">
+            <AppText variant="title" role="heading">
+              {strings.profile.questionnaire}
+            </AppText>
+            {questionKeys.map((question) => (
+              <Controller
+                key={question}
+                control={control}
+                name={`answers.${question}`}
+                render={({ field }) => (
+                  <AnswerInput
+                    question={question}
+                    value={(field.value as string[] | undefined) ?? []}
+                    onChange={field.onChange}
+                    showLabel
+                    testID={`card-edit-answer-${question}`}
+                  />
+                )}
+              />
+            ))}
           </View>
 
           {me.surname ? (

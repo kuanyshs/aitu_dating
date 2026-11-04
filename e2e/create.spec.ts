@@ -26,7 +26,7 @@ test.describe('Создать', () => {
     await page.getByTestId('compose-cancel').click();
 
     await page.getByTestId('create-plan').click();
-    await expect(page.getByTestId('new-plan-city-karaganda')).toBeVisible();
+    await expect(page.getByTestId('new-plan-city-chosen-351010000')).toBeVisible();
   });
 
   test('a guest is shown the way in', async ({ page }) => {

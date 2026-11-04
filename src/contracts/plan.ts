@@ -10,7 +10,7 @@ import {
 
 import { Id, IsoDate, IsoDateTime, Page } from './common';
 import { LIMITS } from './limits';
-import { AuthorView, CityKey } from './people';
+import { AuthorView, SettlementCode } from './people';
 import { PlanSummary, TopicKey } from './post';
 
 /**
@@ -40,7 +40,7 @@ const Time = z.string().regex(/^\d{2}:\d{2}$/);
 
 export const CreatePlanInput = z
   .strictObject({
-    city: CityKey,
+    city: SettlementCode,
     date: IsoDate,
     timeStart: Time,
     timeEnd: Time.optional(),

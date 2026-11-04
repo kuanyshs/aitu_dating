@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { answerQuestion } from './helpers';
 import { loadSeed } from '../src/repository/mock/seed';
 
 const seed = loadSeed();
@@ -37,7 +38,7 @@ async function fillProfile(page: Page) {
 }
 
 async function answer(page: Page, question: keyof typeof answers) {
-  await page.getByTestId(`question-${question}-${answers[question]}`).click();
+  await answerQuestion(page, question, answers[question]);
 }
 
 test.describe('onboarding', () => {

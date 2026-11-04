@@ -20,13 +20,13 @@ const profile: ProfileStepInput = {
 };
 
 const answers: QuestionnaireAnswers = {
-  city: 'karaganda',
-  intent: 'friendship',
-  communication: 'topic_comment_first',
-  pace: 'gradual',
-  firstMeeting: 'coffee_talk',
-  boundaries: 'public_place',
-  dateFormat: 'walk',
+  city: ['351010000'],
+  intent: ['friendship'],
+  communication: ['topic_comment_first'],
+  pace: ['gradual'],
+  firstMeeting: ['coffee_talk'],
+  boundaries: ['public_place'],
+  dateFormat: ['walk'],
 };
 
 function repositoryOn(store = createMemoryStore()) {
@@ -86,14 +86,14 @@ describe('questionnaire draft', () => {
     const store = createMemoryStore();
     const repo = repositoryOn(store);
     await toQuestionnaire(repo);
-    await repo.saveAnswer({ question: 'city', answer: 'karaganda' });
-    await repo.saveAnswer({ question: 'pace', answer: 'gradual' });
+    await repo.saveAnswer({ question: 'city', answer: ['351010000'] });
+    await repo.saveAnswer({ question: 'pace', answer: ['gradual'] });
 
     const restarted = repositoryOn(store);
     expect(await restarted.getAccessFlow()).toMatchObject({
       step: 'questionnaire',
       profile,
-      answers: { city: 'karaganda', pace: 'gradual' },
+      answers: { city: ['351010000'], pace: ['gradual'] },
     });
   });
 
@@ -101,7 +101,7 @@ describe('questionnaire draft', () => {
     const repo = repositoryOn();
     await toQuestionnaire(repo);
     await expect(
-      repo.saveAnswer({ question: 'pace', answer: 'coffee_talk' }),
+      repo.saveAnswer({ question: 'pace', answer: ['coffee_talk'] }),
     ).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
       fieldErrors: { 'answers.pace': 'unknown' },
@@ -142,10 +142,10 @@ describe('completeOnboarding', () => {
     expect(me).toMatchObject({
       name: 'Мадина',
       age: 29,
-      city: 'karaganda',
+      city: '351010000',
       verified: true,
       avatar: { kind: 'synthetic' },
-      card: { ...profile, intent: 'friendship', questionnaire: answers },
+      card: { ...profile, questionnaire: answers },
       membership: { tier: 'paid', periodMonths: 12, status: 'active' },
     });
     expect(await repo.getSession()).toEqual({
@@ -208,7 +208,7 @@ describe('completeOnboarding', () => {
     const me = await repo.completeOnboarding({ answers, idempotencyKey: 'onboard-0007' });
     expect(me.membership).toMatchObject({ tier: 'paid', periodMonths: 3, status: 'active' });
     expect(me.membership.endsAt.startsWith('2026-12-26')).toBe(true);
-    expect(me.city).toBe('almaty');
+    expect(me.city).toBe('351010000');
   });
 });
 

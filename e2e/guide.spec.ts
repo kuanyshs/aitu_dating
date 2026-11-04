@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina, openDemoPanel, showFeed, signInAs } from './helpers';
+import { joinAsMadina, openDemoPanel, showFeed, signInAs, answerQuestion } from './helpers';
 
 /**
  * Screens for the product guide (`docs/product-guide.html`): one test per screenshot, each
@@ -119,7 +119,7 @@ test.describe('guide @guide', () => {
     await shot(page, 'join-card');
     await page.getByTestId('access-next').click();
     for (const [question, answer] of answers) {
-      await page.getByTestId(`question-${question}-${answer}`).click();
+      await answerQuestion(page, question, answer);
     }
     await page.getByTestId('question-dateFormat-walk').click();
     await shot(page, 'join-questionnaire');

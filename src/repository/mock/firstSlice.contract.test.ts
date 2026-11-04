@@ -16,13 +16,13 @@ import { createMockRepository } from './createMockRepository';
 const safeKeys = ['age', 'avatar', 'city', 'gender', 'view'];
 
 const answers: QuestionnaireAnswers = {
-  city: 'almaty',
-  intent: 'dating',
-  communication: 'messages_first',
-  pace: 'gradual',
-  firstMeeting: 'coffee_talk',
-  boundaries: 'public_place',
-  dateFormat: 'walk',
+  city: ['750000000'],
+  intent: ['dating'],
+  communication: ['messages_first'],
+  pace: ['gradual'],
+  firstMeeting: ['coffee_talk'],
+  boundaries: ['public_place'],
+  dateFormat: ['walk'],
 };
 
 /**
@@ -69,9 +69,9 @@ describe('first slice: guest → member → logout → login → expiry → rene
         idempotencyKey: 'first-slice-onboard-1',
       }),
     );
-    expect(aidana).toMatchObject({ name: 'Айдана', age: 27, city: 'almaty', verified: true });
-    expect(aidana.card.questionnaire[last]).toBe(answers[last]);
-    expect(aidana.card.intent).toBe(answers.intent);
+    expect(aidana).toMatchObject({ name: 'Айдана', age: 27, city: '750000000', verified: true });
+    expect(aidana.card.questionnaire[last]).toEqual(answers[last]);
+    expect(aidana.card.questionnaire.intent).toEqual(answers.intent);
     expect(aidana.membership).toMatchObject({ tier: 'paid', status: 'active' });
     expect((await repo.getSession()).accessState).toBe('ACTIVE_MEMBER');
     const memberFeed = await repo.getHomeFeed({ tab: 'for_you' });

@@ -15,7 +15,7 @@ import type { QuestionKey as QuestionKeyName } from '@/catalogs';
 
 import { Id, IsoDate, IsoDateTime } from './common';
 import { LIMITS } from './limits';
-import { AuthorView, CityKey } from './people';
+import { AuthorView, SettlementCode } from './people';
 import { PHOTO_LIMITS, PhotoRef } from './photo';
 
 export const PostType = z.enum(['post', 'question', 'quote', 'plan']);
@@ -38,7 +38,7 @@ export type StoredPlanStatus = z.infer<typeof StoredPlanStatus>;
 /** Guest-safe summary of a one-to-one plan shown inside its feed post. */
 export const PlanSummary = z.strictObject({
   id: Id,
-  city: CityKey,
+  city: SettlementCode,
   date: IsoDate,
   timeStart: z.string().regex(/^\d{2}:\d{2}$/),
   timeEnd: z

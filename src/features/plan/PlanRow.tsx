@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Pressable } from 'react-native';
 
-import { cityLabels, meetingFormatLabels, meetingGoalLabels } from '@/catalogs';
+import { settlementName, meetingFormatLabels, meetingGoalLabels } from '@/catalogs';
 import type { PlanView } from '@/contracts';
 import { useClock } from '@/data/RepositoryProvider';
 import { AppText } from '@/ui/components/Text';
@@ -43,7 +43,7 @@ export function PlanRow({
         {`${meetingFormatLabels[plan.format]} · ${meetingGoalLabels[plan.goal]}`}
       </AppText>
       <AppText tone="textMuted">
-        {`${formatPlanDate(plan.date, clock)} · ${plan.timeStart} · ${cityLabels[plan.city]}`}
+        {`${formatPlanDate(plan.date, clock)} · ${plan.timeStart} · ${settlementName(plan.city)}`}
       </AppText>
       {status ? (
         <AppText variant="caption" testID={`${testID}-status`}>

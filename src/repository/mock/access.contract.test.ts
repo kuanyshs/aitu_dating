@@ -22,9 +22,9 @@ describe('passport candidates', () => {
   it('lists the three mock identities from the gap-resolution document', async () => {
     const candidates = await repositoryOn().listPassportCandidates();
     expect(candidates.map((c) => [c.name, c.city, c.aituSubjectId])).toEqual([
-      ['Айдана', 'almaty', 'aitu-subject-almaty-102'],
-      ['Тимур', 'astana', 'aitu-subject-astana-207'],
-      ['Мадина', 'karaganda', 'aitu-subject-karaganda-314'],
+      ['Айдана', '750000000', 'aitu-subject-almaty-102'],
+      ['Тимур', '710000000', 'aitu-subject-astana-207'],
+      ['Мадина', '351010000', 'aitu-subject-karaganda-314'],
     ]);
   });
 });

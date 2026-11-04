@@ -40,14 +40,16 @@ export function createSettingsStore(store: KeyValueStore) {
     store,
     key: storageKeys.settings,
     schema: Settings,
-    version: 2,
+    version: 3,
     // v2 adds the content type of each Лента and a guest's Фильтры ленты.
+    // v3: Фильтры ленты name settlements by KATO code; older ones start over.
     migrations: [
       (v1: unknown) => ({
         ...(v1 as object),
         feedContent: defaults().feedContent,
         guestFilters: null,
       }),
+      (v2: unknown) => ({ ...(v2 as object), guestFilters: null }),
     ],
     defaults,
   });

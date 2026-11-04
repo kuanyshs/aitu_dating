@@ -22,7 +22,7 @@ function on(store = createMemoryStore(), session?: Session, now: string = SEED_N
 
 let keyCounter = 0;
 const plan = (patch: Partial<CreatePlanInput> = {}): CreatePlanInput => ({
-  city: 'almaty',
+  city: '750000000',
   date: '2026-09-30',
   timeStart: '18:00',
   format: 'coffee',
@@ -45,7 +45,7 @@ describe('creating a plan', () => {
     const created = PlanView.parse(await on(store, as('m01')).createPlan(plan()));
     expect(created).toMatchObject({
       status: 'published',
-      city: 'almaty',
+      city: '750000000',
       date: '2026-09-30',
       timeStart: '18:00',
       place: 'Кофейня у парка',

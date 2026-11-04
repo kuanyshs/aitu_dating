@@ -1,7 +1,6 @@
 // Russian labels for catalog keys. The only place catalog copy is written.
 import type {
   ActivityCategory,
-  City,
   CommunicationStyle,
   DatingIntent,
   Gender,
@@ -14,14 +13,7 @@ import type {
   QuestionKey,
   Topic,
 } from './keys';
-
-export const cityLabels: Record<City, string> = {
-  almaty: 'Алматы',
-  astana: 'Астана',
-  karaganda: 'Караганда',
-  shymkent: 'Шымкент',
-  other: 'Другой город',
-};
+import { settlementByCode } from './settlements';
 
 export const genderLabels: Record<Gender, string> = {
   woman: 'Женщина',
@@ -63,7 +55,7 @@ export const datingIntentLabels: Record<DatingIntent, string> = {
 };
 
 export const questionLabels: Record<QuestionKey, string> = {
-  city: 'В каком городе ты сейчас живёшь?',
+  city: 'В каком городе или населённом пункте ты сейчас живёшь?',
   intent: 'Что ты сейчас ищешь?',
   communication: 'Как тебе комфортнее начинать общение?',
   pace: 'Какой темп знакомства тебе подходит?',
@@ -135,9 +127,9 @@ export const activityCategoryLabels: Record<ActivityCategory, string> = {
   system: 'Системные',
 };
 
-/** The label of an Анкета option: city and intent options come from their own catalogs. */
+/** The label of an Анкета option: settlement and intent options come from their own catalogs. */
 export function answerLabel(question: QuestionKey, option: string): string {
-  if (question === 'city') return cityLabels[option as City] ?? option;
+  if (question === 'city') return settlementByCode(option)?.name ?? option;
   if (question === 'intent') return datingIntentLabels[option as DatingIntent] ?? option;
   return questionOptionLabels[option] ?? option;
 }

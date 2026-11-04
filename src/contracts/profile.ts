@@ -10,7 +10,8 @@ import { PhotoRef } from './photo';
 /** What an active member may see of another member's Карточка. Never sent to guests. */
 export const PublicCard = z.strictObject({
   bio: z.string().max(LIMITS.bio),
-  intent: z.enum(datingIntents),
+  /** Намерения: up to three, the Анкета's answer. */
+  intents: z.array(z.enum(datingIntents)).min(1).max(3),
   interests: z.array(z.enum(interests)),
   communicationStyle: z.enum(communicationStyles),
 });

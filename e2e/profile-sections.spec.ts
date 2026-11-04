@@ -12,7 +12,7 @@ test.describe('Разделы профиля', () => {
     await page.goto('/profile');
     const sections = page.getByTestId('profile-sections');
     await expect(sections.getByRole('link')).toHaveText([
-      'Редактировать карточку',
+      'Редактировать анкету',
       /^Мои публикации/,
       'Мои встречи',
       'Мои запросы',

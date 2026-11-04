@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import {
   communicationStyles,
-  datingIntents,
   interests,
   meetingDurations,
   meetingFormats,
@@ -10,11 +9,11 @@ import {
   membershipTiers,
   paymentPolicies,
   planBudgets,
-  questionnaire,
 } from '@/catalogs';
 import {
   ChatContext,
-  CityKey,
+  QuestionnaireAnswers,
+  SettlementCode,
   GenderKey,
   Id,
   IsoDate,
@@ -28,19 +27,11 @@ import {
 // Internal storage records of the mock backend. Unlike DTOs they hold everything
 // (names, photo keys, questionnaire answers); shaping decides what leaves the repository.
 
-export const QuestionnaireAnswers = z.strictObject({
-  city: z.enum(questionnaire.city),
-  intent: z.enum(questionnaire.intent),
-  communication: z.enum(questionnaire.communication),
-  pace: z.enum(questionnaire.pace),
-  firstMeeting: z.enum(questionnaire.firstMeeting),
-  boundaries: z.enum(questionnaire.boundaries),
-  dateFormat: z.enum(questionnaire.dateFormat),
-});
+// The Анкета answers are stored as the contract shapes them.
+export { QuestionnaireAnswers };
 
 export const ProfileCardRecord = z.strictObject({
   bio: z.string().min(1).max(160),
-  intent: z.enum(datingIntents),
   interests: z.array(z.enum(interests)).min(1).max(5),
   communicationStyle: z.enum(communicationStyles),
   /** «Показывать фамилию в профиле»; absent means off. */
@@ -66,7 +57,8 @@ export const MemberRecord = z.strictObject({
   surname: z.string().min(1).optional(),
   gender: GenderKey,
   age: z.number().int().min(18),
-  city: CityKey,
+  /** The first Населённый пункт of the Анкета, kept with it; absent when not named. */
+  city: SettlementCode.optional(),
   photoKey: z.string().min(1),
   verified: z.boolean(),
   card: ProfileCardRecord,
@@ -79,7 +71,7 @@ export type MemberRecord = z.infer<typeof MemberRecord>;
 export const PlanRecord = z.strictObject({
   id: Id,
   authorId: Id,
-  city: CityKey,
+  city: SettlementCode,
   date: IsoDate,
   timeStart: z.string().regex(/^\d{2}:\d{2}$/),
   timeEnd: z

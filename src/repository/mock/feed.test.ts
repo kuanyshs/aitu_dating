@@ -21,13 +21,13 @@ const post = (id: string, authorId: string, age: number, extra: Partial<PostReco
   }) as PostRecord;
 
 const answers = (patch: Partial<QuestionnaireAnswers> = {}): QuestionnaireAnswers => ({
-  city: 'almaty',
-  intent: 'dating',
-  communication: 'messages_first',
-  pace: 'gradual',
-  firstMeeting: 'coffee_talk',
-  boundaries: 'public_place',
-  dateFormat: 'walk',
+  city: ['750000000'],
+  intent: ['dating'],
+  communication: ['messages_first'],
+  pace: ['gradual'],
+  firstMeeting: ['coffee_talk'],
+  boundaries: ['public_place'],
+  dateFormat: ['walk'],
   ...patch,
 });
 
@@ -37,24 +37,24 @@ const authors: Record<string, { answers: QuestionnaireAnswers; interests: string
   m02: { answers: answers(), interests: ['cinema'] },
   m03: {
     answers: answers({
-      intent: 'friendship',
-      communication: 'slow_pace',
-      pace: 'meet_soon',
-      firstMeeting: 'active_walk',
-      boundaries: 'respect_boundaries',
-      dateFormat: 'joint_activity',
+      intent: ['friendship'],
+      communication: ['slow_pace'],
+      pace: ['meet_soon'],
+      firstMeeting: ['active_walk'],
+      boundaries: ['respect_boundaries'],
+      dateFormat: ['joint_activity'],
     }),
     interests: ['sport'],
   },
   m04: {
     answers: answers({
-      city: 'astana',
-      intent: 'friendship',
-      communication: 'slow_pace',
-      pace: 'meet_soon',
-      firstMeeting: 'active_walk',
-      boundaries: 'respect_boundaries',
-      dateFormat: 'joint_activity',
+      city: ['710000000'],
+      intent: ['friendship'],
+      communication: ['slow_pace'],
+      pace: ['meet_soon'],
+      firstMeeting: ['active_walk'],
+      boundaries: ['respect_boundaries'],
+      dateFormat: ['joint_activity'],
     }),
     interests: ['sport'],
   },

@@ -186,7 +186,7 @@ export const MockState = z.strictObject({
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 21;
+export const MOCK_STATE_VERSION = 22;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -269,7 +269,57 @@ export const mockStateMigrations = [
       deletedMessageIds: [],
     };
   },
+  // v22: the five cities become KATO codes («Другой город» is not named any more), and the
+  // Анкета answers become lists; the Намерение lives only in the Анкета.
+  (v21: unknown) => toSettlementsAndLists(v21),
 ];
+
+const legacyCities: Record<string, string | undefined> = {
+  almaty: '750000000',
+  astana: '710000000',
+  karaganda: '351010000',
+  shymkent: '790000000',
+  other: undefined,
+};
+
+const answerKeys = ['intent', 'communication', 'pace', 'firstMeeting', 'boundaries', 'dateFormat'];
+
+function migrateAnswers(answers: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...answers };
+  if (typeof out.city === 'string') {
+    const code = legacyCities[out.city];
+    out.city = code ? [code] : [];
+  }
+  for (const key of answerKeys) if (typeof out[key] === 'string') out[key] = [out[key]];
+  return out;
+}
+
+function toSettlementsAndLists(node: unknown, key?: string): unknown {
+  if (Array.isArray(node)) {
+    // A list of city keys (Фильтры ленты, or answers already turned into lists).
+    if (key === 'city') return node.map((c) => legacyCities[c as string] ?? c).filter(Boolean);
+    return node.map((item) => toSettlementsAndLists(item));
+  }
+  if (!node || typeof node !== 'object') return node;
+  // Answers first, so their single city becomes a list before the walk below.
+  const source = { ...(node as Record<string, unknown>) };
+  for (const k of ['questionnaire', 'answers']) {
+    const v = source[k];
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      source[k] = migrateAnswers(v as Record<string, unknown>);
+    }
+  }
+  const obj = Object.fromEntries(
+    Object.entries(source).map(([k, v]) => [k, toSettlementsAndLists(v, k)]),
+  ) as Record<string, unknown>;
+  if (typeof obj.city === 'string' && obj.city in legacyCities) {
+    const code = legacyCities[obj.city];
+    if (code) obj.city = code;
+    else delete obj.city;
+  }
+  if (obj.questionnaire && typeof obj.intent === 'string') delete obj.intent;
+  return obj;
+}
 
 export const defaultMockState = (): MockState => ({
   demoFlags: defaultDemoFlags(),

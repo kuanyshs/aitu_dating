@@ -3,8 +3,6 @@ import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import {
-  cities,
-  cityLabels,
   datingIntentLabels,
   datingIntents,
   interestLabels,
@@ -15,7 +13,6 @@ import {
   meetingGoals,
   topicLabels,
   topics,
-  type City,
   type DatingIntent,
   type Interest,
   type MeetingFormat,
@@ -24,6 +21,7 @@ import {
 } from '@/catalogs';
 import type { SearchHit, SearchKind } from '@/contracts';
 import { useSearch, useSession } from '@/data/hooks';
+import { SettlementField } from '@/features/settlement/SettlementPicker';
 import { useClock } from '@/data/RepositoryProvider';
 import { PlanRow } from '@/features/plan/PlanRow';
 import { usePostActions } from '@/features/post/usePostActions';
@@ -51,10 +49,10 @@ const kinds: Kind[] = ['people', 'posts', 'plans'];
 const MAX_INTERESTS = 5;
 const MAX_TOPICS = 4;
 
-type PeopleFilters = { city?: City; interests: Interest[]; intent?: DatingIntent };
+type PeopleFilters = { city?: string; interests: Interest[]; intent?: DatingIntent };
 const noFilters: PeopleFilters = { interests: [] };
 
-type PlanFilters = { city?: City; goal?: MeetingGoal; format?: MeetingFormat };
+type PlanFilters = { city?: string; goal?: MeetingGoal; format?: MeetingFormat };
 
 /**
  * Поиск: people (active members only), posts and plans (anyone who reads). The text
@@ -154,17 +152,13 @@ export default function SearchScreen() {
           </View>
           {filtersOpen && kind === 'plans' ? (
             <View style={styles.filterPanel} testID="search-filter-panel">
-              <FilterGroup title={t.city}>
-                {cities.map((c) => (
-                  <Chip
-                    key={c}
-                    label={cityLabels[c]}
-                    selected={planFilters.city === c}
-                    onPress={() => pick('city', c)}
-                    testID={`search-plan-city-${c}`}
-                  />
-                ))}
-              </FilterGroup>
+              <SettlementField
+                label={t.city}
+                value={planFilters.city ? [planFilters.city] : []}
+                onChange={(codes) => setPlanFilters((f) => ({ ...f, city: codes[0] }))}
+                max={1}
+                testID="search-plan-city"
+              />
               <FilterGroup title={t.goal}>
                 {meetingGoals.map((g) => (
                   <Chip
@@ -190,19 +184,13 @@ export default function SearchScreen() {
             </View>
           ) : filtersOpen ? (
             <View style={styles.filterPanel} testID="search-filter-panel">
-              <FilterGroup title={t.city}>
-                {cities.map((c) => (
-                  <Chip
-                    key={c}
-                    label={cityLabels[c]}
-                    selected={filters.city === c}
-                    onPress={() =>
-                      setFilters((f) => ({ ...f, city: f.city === c ? undefined : c }))
-                    }
-                    testID={`search-city-${c}`}
-                  />
-                ))}
-              </FilterGroup>
+              <SettlementField
+                label={t.city}
+                value={filters.city ? [filters.city] : []}
+                onChange={(codes) => setFilters((f) => ({ ...f, city: codes[0] }))}
+                max={1}
+                testID="search-city"
+              />
               <FilterGroup title={t.interests} hint={t.interestsHint}>
                 {interests.map((i) => (
                   <Chip

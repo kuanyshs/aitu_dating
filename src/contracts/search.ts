@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { datingIntents, interests, meetingFormats, meetingGoals, topics } from '@/catalogs';
 
 import { Page } from './common';
-import { AuthorView, CityKey } from './people';
+import { AuthorView, SettlementCode } from './people';
 import { PlanView } from './plan';
 import { PostView } from './post';
 import { PublicCard } from './profile';
@@ -25,7 +25,7 @@ export type SearchKind = z.infer<typeof SearchKind>;
 export const SearchQuery = z.strictObject({
   kind: SearchKind,
   text: z.string().trim().max(100).optional(),
-  city: CityKey.optional(),
+  city: SettlementCode.optional(),
   interests: z.array(z.enum(interests)).max(5).optional(),
   intent: z.enum(datingIntents).optional(),
   topics: z.array(z.enum(topics)).max(4).optional(),

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import {
-  cityLabels,
+  settlementName,
   communicationStyleLabels,
   datingIntentLabels,
   genderLabels,
@@ -237,7 +237,7 @@ function Identity({ profile }: { profile: ProfileView }) {
           ) : null}
         </View>
         <AppText tone="textMuted">
-          {strings.profile.ageCity(person.age, cityLabels[person.city])}
+          {strings.profile.ageCity(person.age, settlementName(person.city))}
         </AppText>
       </View>
     </View>
@@ -292,7 +292,7 @@ function Card({ card }: { card: NonNullable<ProfileView['card']> }) {
     <View style={styles.card} testID="member-card">
       {card.bio ? <AppText testID="member-bio">{card.bio}</AppText> : null}
       <Section title={p.intent}>
-        <AppText>{datingIntentLabels[card.intent]}</AppText>
+        <AppText>{card.intents.map((i) => datingIntentLabels[i]).join(', ')}</AppText>
       </Section>
       <Section title={p.interests}>
         <View style={styles.tags}>

@@ -4,6 +4,26 @@ import { loadSeed } from '../src/repository/mock/seed';
 
 const seed = loadSeed();
 
+const LAST_QUESTION = 'dateFormat';
+
+/**
+ * Answers one Анкета question: picks the option and moves on with «Далее» (the last one
+ * waits for «Создать карточку»). The Населённый пункт keeps the Passport city.
+ */
+export async function answerQuestion(page: Page, question: string, answer: string) {
+  if (question !== 'city') await page.getByTestId(`question-${question}-${answer}`).click();
+  if (question !== LAST_QUESTION) await page.getByTestId('questionnaire-next').click();
+}
+
+/** Picks a Населённый пункт in a settlements field by searching its name. */
+export async function pickSettlement(page: Page, field: string, code: string, name: string) {
+  await page.getByTestId(`${field}-open`).click();
+  await page.getByTestId(`${field}-picker-search`).fill(name);
+  await page.getByTestId(`${field}-picker-option-${code}`).click();
+  await page.getByTestId(`${field}-picker-done`).click();
+  await expect(page.getByTestId(`${field}-chosen-${code}`)).toBeVisible();
+}
+
 /** Madina joins with a paid 12-month membership and a published card. */
 export async function joinAsMadina(page: Page) {
   await page.goto('/access');
@@ -19,8 +39,8 @@ export async function joinAsMadina(page: Page) {
   await page.getByTestId('interest-books').click();
   await page.getByTestId('profile-style-calm_dialogue').click();
   await page.getByTestId('access-next').click();
-  for (const [question, answer] of [
-    ['city', 'almaty'],
+  for (const [question, answer] of <[string, string][]>[
+    ['city', 'passport'],
     ['intent', 'friendship'],
     ['communication', 'topic_comment_first'],
     ['pace', 'gradual'],
@@ -28,7 +48,7 @@ export async function joinAsMadina(page: Page) {
     ['boundaries', 'public_place'],
     ['dateFormat', 'walk'],
   ]) {
-    await page.getByTestId(`question-${question}-${answer}`).click();
+    await answerQuestion(page, question, answer);
   }
   await page.getByTestId('questionnaire-create').click();
   await expect(page.getByTestId('access-welcome')).toBeVisible();

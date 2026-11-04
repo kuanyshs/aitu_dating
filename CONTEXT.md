@@ -74,15 +74,15 @@ _Avoid_: inbox, tickets
 The **Верифицированный пользователь**'s own page: their **Карточка** and **Фото**, then «Редактировать карточку», «Мои публикации», «Мои встречи», «Мои запросы», «Подписчики», «Подписки», «Мои действия», «Уведомления», «Сообщения» and «Настройки».
 
 **Карточка** (`ProfileCard`):
-A **Верифицированный пользователь**'s community profile: bio, **Намерение**, interests, communication style and the **Анкета** answers. Name, surname, age, gender and **Населённый пункт** come from Passport and are read-only. The surname is hidden from others until the owner turns on «Показывать фамилию в профиле»; the owner always sees it.
+A **Верифицированный пользователь**'s community profile: bio, **Намерения**, interests, communication style and the **Анкета** answers. Name, surname, age, gender and **Населённый пункт** come from Passport and are read-only. The surname is hidden from others until the owner turns on «Показывать фамилию в профиле»; the owner always sees it.
 _Avoid_: profile card, анкета (the questionnaire is a different thing)
 
 **Анкета** (`Questionnaire`):
-The seven mandatory single-choice questions answered during onboarding; finishing it publishes the **Карточка**.
+The seven questions answered during onboarding; finishing it publishes the **Карточка**. Each takes several options up to its own limit (two **Населённые пункты**, three **Намерения**, one pace); only the **Населённый пункт** may be left empty («Не указан»). It is edited later in «Редактировать анкету», and the profile's **Населённый пункт** follows the first one chosen.
 _Avoid_: survey, onboarding form
 
 **Фильтры ленты** (`FeedFilters`):
-The **Анкета** questions that rank the «Для тебя» **Лента**: any number of options per question, and a person matches a question when their answer is one of the chosen options. A **Верифицированный пользователь** starts from their own answers and may change them, keeping them with their account; a **Неверифицированный пользователь** starts with none and keeps them on the device. Ranking puts first the people matching the most chosen questions and sharing interests, then the same **Населённый пункт**, **Намерение** and meeting format, then **Подписки** and newness; for **Встречи** a nearer date and a matching format and goal count too. An active **Верифицированный пользователь** sees up to two reasons on a card («Общие интересы: кино»); nobody sees a percentage or the other person's answers.
+The **Анкета** questions that rank the «Для тебя» **Лента**: any number of options per question, and a person matches a question when one of their answers is among the chosen options. A **Верифицированный пользователь** starts from their own answers and may change them, keeping them with their account; a **Неверифицированный пользователь** starts with none and keeps them on the device. Ranking puts first the people matching the most chosen questions and sharing interests, then the same **Населённый пункт**, **Намерение** and meeting format, then **Подписки** and newness; for **Встречи** a nearer date and a matching format and goal count too. An active **Верифицированный пользователь** sees up to two reasons on a card («Общие интересы: кино»); nobody sees a percentage or the other person's answers.
 _Avoid_: preferences, matching settings, compatibility score
 
 **Населённый пункт** (`Settlement`):

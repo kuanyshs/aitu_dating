@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { pickSettlement } from './helpers';
 import { loadSeed } from '../src/repository/mock/seed';
 
 const seed = loadSeed();
@@ -68,7 +69,7 @@ test.describe('guest feed', () => {
     await expect(page.getByTestId('post-reasons')).toHaveCount(0);
     await page.getByTestId('home-filters').click();
     await expect(page.getByTestId('feed-filters-guest-note')).toBeVisible();
-    await page.getByTestId('feed-filter-city-shymkent').click();
+    await pickSettlement(page, 'feed-filter-city', '790000000', 'Шымкент');
     await page.getByTestId('feed-filters-apply').click();
     await expect(page.getByTestId('home-filters-count')).toHaveText('1');
     await expect(page.getByTestId('feed-empty')).toBeVisible();

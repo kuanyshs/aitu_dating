@@ -40,7 +40,7 @@ describe('Ленты on the device', () => {
     await first.hydrate();
     first.useSettings.getState().setFeedContent('popular', 'plans');
     first.useSettings.getState().setGuestFilters({
-      city: ['astana'],
+      city: ['710000000'],
       intent: [],
       communication: [],
       pace: [],
@@ -57,7 +57,7 @@ describe('Ленты on the device', () => {
       popular: 'plans',
       following: 'all',
     });
-    expect(second.useSettings.getState().guestFilters?.city).toEqual(['astana']);
+    expect(second.useSettings.getState().guestFilters?.city).toEqual(['710000000']);
   });
 
   it('upgrades v1 settings without losing the theme', async () => {

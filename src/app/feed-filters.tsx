@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { answerLabel, questionKeys, questionnaire, type QuestionKey } from '@/catalogs';
 import type { FeedFilters } from '@/contracts';
+import { SettlementField } from '@/features/settlement/SettlementPicker';
 import { useFeedFilters, useMyProfile, useSession, useUpdateFeedFilters } from '@/data/hooks';
 import { useSettings } from '@/settings';
 import { PrimaryButton, TextButton } from '@/ui/components/buttons';
@@ -54,7 +55,7 @@ export default function FeedFiltersScreen() {
     if (!hasCard) return setDraft(empty());
     if (!answers) return;
     setDraft(
-      Object.fromEntries(questionKeys.map((q) => [q, [answers[q]]])) as unknown as FeedFilters,
+      Object.fromEntries(questionKeys.map((q) => [q, [...answers[q]]])) as unknown as FeedFilters,
     );
   };
 
@@ -116,16 +117,26 @@ export default function FeedFiltersScreen() {
                 aria-label={strings.feedFilters.questions[question]}
                 style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}
               >
-                {questionnaire[question].map((option) => (
-                  <Chip
-                    key={option}
-                    role="checkbox"
-                    label={answerLabel(question, option)}
-                    selected={(filters[question] as readonly string[]).includes(option)}
-                    onPress={() => toggle(question, option)}
-                    testID={`feed-filter-${question}-${option}`}
+                {question === 'city' ? (
+                  <SettlementField
+                    value={filters.city}
+                    onChange={(city) => setDraft({ ...filters, city })}
+                    max={20}
+                    testID="feed-filter-city"
                   />
-                ))}
+                ) : null}
+                {(question === 'city' ? [] : (questionnaire[question] as readonly string[])).map(
+                  (option) => (
+                    <Chip
+                      key={option}
+                      role="checkbox"
+                      label={answerLabel(question, option)}
+                      selected={(filters[question] as readonly string[]).includes(option)}
+                      onPress={() => toggle(question, option)}
+                      testID={`feed-filter-${question}-${option}`}
+                    />
+                  ),
+                )}
               </View>
             </View>
           ))}

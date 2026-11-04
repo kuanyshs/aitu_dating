@@ -2,9 +2,10 @@ import { z } from 'zod';
 
 import {
   communicationStyles,
-  datingIntents,
   interests,
   membershipTiers,
+  QUESTION_MAX,
+  questionKeys,
   questionnaire,
   type QuestionKey,
 } from '@/catalogs';
@@ -12,7 +13,7 @@ import {
 import { LIMITS } from './limits';
 
 import { Id, IsoDateTime } from './common';
-import { AvatarRef, CityKey, GenderKey } from './people';
+import { AvatarRef, GenderKey, SettlementCode } from './people';
 import { PHOTO_LIMITS, PhotoRef } from './photo';
 
 /** Up to four different profile Фото, in order. */
@@ -43,34 +44,43 @@ export const ProfileStepInput = z.strictObject({
 });
 export type ProfileStepInput = z.infer<typeof ProfileStepInput>;
 
-/**
- * Editing one's own Карточка: the profile step's fields and, optionally, the Намерение.
- * The Намерение is also the Анкета's answer to the same question, so both change together.
- */
-export const UpdateCardInput = ProfileStepInput.extend({
-  intent: z.enum(datingIntents).optional(),
-});
-export type UpdateCardInput = z.infer<typeof UpdateCardInput>;
+const unique = <T>(list: T[]) => new Set(list).size === list.length;
 
-/** All seven single-choice answers of the Анкета, stored as catalog keys. */
+/** One Анкета question's options: at least one, at most its limit, no repeats. */
+const choices = <T extends readonly [string, ...string[]]>(values: T, max: number) =>
+  z.array(z.enum(values)).min(1, 'required').max(max, 'too_many').refine(unique, 'duplicate');
+
+/**
+ * The seven answers of the Анкета. Several options are allowed where it makes sense
+ * (QUESTION_MAX); the Населённый пункт takes up to two settlements, or none — «Не указывать».
+ */
 export const QuestionnaireAnswers = z.strictObject({
-  city: z.enum(questionnaire.city),
-  intent: z.enum(questionnaire.intent),
-  communication: z.enum(questionnaire.communication),
-  pace: z.enum(questionnaire.pace),
-  firstMeeting: z.enum(questionnaire.firstMeeting),
-  boundaries: z.enum(questionnaire.boundaries),
-  dateFormat: z.enum(questionnaire.dateFormat),
+  city: z.array(SettlementCode).max(QUESTION_MAX.city, 'too_many').refine(unique, 'duplicate'),
+  intent: choices(questionnaire.intent, QUESTION_MAX.intent),
+  communication: choices(questionnaire.communication, QUESTION_MAX.communication),
+  pace: choices(questionnaire.pace, QUESTION_MAX.pace),
+  firstMeeting: choices(questionnaire.firstMeeting, QUESTION_MAX.firstMeeting),
+  boundaries: choices(questionnaire.boundaries, QUESTION_MAX.boundaries),
+  dateFormat: choices(questionnaire.dateFormat, QUESTION_MAX.dateFormat),
 });
 export type QuestionnaireAnswers = z.infer<typeof QuestionnaireAnswers>;
 
-/** A draft with any subset of answers; every present answer is still a valid key. */
+/** A draft with any subset of answers; every present answer is still valid. */
 export const PartialAnswers = QuestionnaireAnswers.partial();
 export type PartialAnswers = z.infer<typeof PartialAnswers>;
 
+/**
+ * «Редактировать анкету»: the card fields and, when given, the Анкета's answers; the
+ * Намерения are the answer to its second question.
+ */
+export const UpdateCardInput = ProfileStepInput.extend({
+  answers: QuestionnaireAnswers.optional(),
+});
+export type UpdateCardInput = z.infer<typeof UpdateCardInput>;
+
 export const SaveAnswerInput = z.strictObject({
-  question: z.enum(Object.keys(questionnaire) as [QuestionKey, ...QuestionKey[]]),
-  answer: z.string().min(1),
+  question: z.enum(questionKeys as [QuestionKey, ...QuestionKey[]]),
+  answer: z.array(z.string().min(1)),
 });
 export type SaveAnswerInput = z.infer<typeof SaveAnswerInput>;
 
@@ -88,7 +98,8 @@ export const MyProfile = z.strictObject({
   surname: z.string().min(1).optional(),
   age: z.number().int().min(18),
   gender: GenderKey,
-  city: CityKey,
+  /** The first Населённый пункт of the Анкета; absent when not named. */
+  city: SettlementCode.optional(),
   verified: z.boolean(),
   avatar: AvatarRef,
   /** Own profile Фото, the main one first; the owner sees them whatever their access. */
@@ -96,7 +107,6 @@ export const MyProfile = z.strictObject({
   card: z.strictObject({
     bio: z.string(),
     showSurname: z.boolean(),
-    intent: z.enum(datingIntents),
     interests: z.array(z.enum(interests)),
     communicationStyle: z.enum(communicationStyles),
     questionnaire: QuestionnaireAnswers,

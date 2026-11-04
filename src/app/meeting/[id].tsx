@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { cityLabels, meetingFormatLabels, meetingGoalLabels } from '@/catalogs';
+import { settlementName, meetingFormatLabels, meetingGoalLabels } from '@/catalogs';
 import {
   isRepositoryError,
   LIMITS,
@@ -284,7 +284,7 @@ function Summary({ plan }: { plan: PlanView }) {
       {line(ClockIcon, strings.plan.minutes(plan.durationMinutes))}
       {line(
         MapPin,
-        `${cityLabels[plan.city]}${plan.isPublicPlace ? ` · ${strings.plan.publicPlace}` : ''}`,
+        `${settlementName(plan.city)}${plan.isPublicPlace ? ` · ${strings.plan.publicPlace}` : ''}`,
       )}
       {line(MapPin, plan.placeArea, 'plan-place-area')}
       {plan.place ? (

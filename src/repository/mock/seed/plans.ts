@@ -8,7 +8,7 @@ export const plans: PlanRecord[] = [
   {
     id: 'plan1',
     authorId: 'm06',
-    city: 'almaty',
+    city: '750000000',
     date: '2026-09-27',
     timeStart: '11:00',
     timeEnd: '12:00',
@@ -27,7 +27,7 @@ export const plans: PlanRecord[] = [
   {
     id: 'plan2',
     authorId: 'm03',
-    city: 'astana',
+    city: '710000000',
     date: '2026-09-28',
     timeStart: '16:00',
     durationMinutes: 120,
@@ -45,7 +45,7 @@ export const plans: PlanRecord[] = [
   {
     id: 'plan3',
     authorId: 'm04',
-    city: 'karaganda',
+    city: '351010000',
     date: '2026-09-29',
     timeStart: '18:30',
     durationMinutes: 90,
@@ -63,7 +63,7 @@ export const plans: PlanRecord[] = [
   {
     id: 'plan4',
     authorId: 'm09',
-    city: 'almaty',
+    city: '750000000',
     date: '2026-10-01',
     timeStart: '19:00',
     timeEnd: '21:00',
@@ -82,7 +82,7 @@ export const plans: PlanRecord[] = [
   {
     id: 'plan5',
     authorId: 'm10',
-    city: 'astana',
+    city: '710000000',
     date: '2026-10-02',
     timeStart: '09:30',
     durationMinutes: 30,
@@ -100,7 +100,7 @@ export const plans: PlanRecord[] = [
   {
     id: 'plan6',
     authorId: 'm08',
-    city: 'karaganda',
+    city: '351010000',
     date: '2026-10-03',
     timeStart: '12:00',
     durationMinutes: 90,

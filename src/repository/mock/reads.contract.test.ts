@@ -14,13 +14,13 @@ import { createMemoryStore } from '@/storage';
 import { createMockRepository, type MockRepository } from './createMockRepository';
 
 const answers: QuestionnaireAnswers = {
-  city: 'almaty',
-  intent: 'dating',
-  communication: 'messages_first',
-  pace: 'gradual',
-  firstMeeting: 'coffee_talk',
-  boundaries: 'public_place',
-  dateFormat: 'walk',
+  city: ['750000000'],
+  intent: ['dating'],
+  communication: ['messages_first'],
+  pace: ['gradual'],
+  firstMeeting: ['coffee_talk'],
+  boundaries: ['public_place'],
+  dateFormat: ['walk'],
 };
 
 function repositoryOn(store = createMemoryStore()) {
@@ -181,15 +181,19 @@ describe('own card and settings', () => {
     expect(me.card).toMatchObject({ bio: 'Теперь про книги.', interests: ['books'] });
     expect(me.card.questionnaire).toEqual(answers);
 
-    // The Намерение changes in the card and in the Анкета together.
-    const withIntent = await repo.updateMyCard({
+    // «Редактировать анкету»: the answers change too, and the city follows the first one.
+    const withAnswers = await repo.updateMyCard({
       bio: 'Теперь про книги.',
       interests: ['books'],
       communicationStyle: 'calm_dialogue',
-      intent: 'friendship',
+      answers: { ...answers, intent: ['friendship', 'dating'], city: ['103230100'] },
     });
-    expect(withIntent.card.intent).toBe('friendship');
-    expect(withIntent.card.questionnaire).toEqual({ ...answers, intent: 'friendship' });
+    expect(withAnswers.card.questionnaire).toEqual({
+      ...answers,
+      intent: ['friendship', 'dating'],
+      city: ['103230100'],
+    });
+    expect(withAnswers.city).toBe('103230100');
   });
 
   it('keeps settings per member across restarts', async () => {

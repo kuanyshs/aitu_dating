@@ -2,9 +2,6 @@
 // carry; Russian labels live separately in labels.ts. Source: catalogs.json of the
 // gap-resolution package.
 
-export const cities = ['almaty', 'astana', 'karaganda', 'shymkent', 'other'] as const;
-export type City = (typeof cities)[number];
-
 export const genders = ['woman', 'man', 'non_binary'] as const;
 export type Gender = (typeof genders)[number];
 
@@ -36,8 +33,11 @@ export type CommunicationStyle = (typeof communicationStyles)[number];
 export const datingIntents = ['communication', 'dating', 'friendship', 'new_experiences'] as const;
 export type DatingIntent = (typeof datingIntents)[number];
 
+/**
+ * The Анкета's questions with fixed options. The first question, the Населённый пункт,
+ * takes codes from the settlements directory instead (see settlements.ts).
+ */
 export const questionnaire = {
-  city: cities,
   intent: datingIntents,
   communication: ['messages_first', 'topic_comment_first', 'short_meeting_first', 'slow_pace'],
   pace: ['gradual', 'active_dialogue_first', 'meet_soon'],
@@ -45,8 +45,21 @@ export const questionnaire = {
   boundaries: ['public_place', 'agree_in_advance', 'respect_boundaries'],
   dateFormat: ['short_meeting', 'walk', 'joint_activity'],
 } as const;
-export type QuestionKey = keyof typeof questionnaire;
-export const questionKeys = Object.keys(questionnaire) as QuestionKey[];
+export type ChoiceQuestionKey = keyof typeof questionnaire;
+export const choiceQuestionKeys = Object.keys(questionnaire) as ChoiceQuestionKey[];
+export type QuestionKey = 'city' | ChoiceQuestionKey;
+export const questionKeys: QuestionKey[] = ['city', ...choiceQuestionKeys];
+
+/** How many options each Анкета question takes; the Населённый пункт may also be left out. */
+export const QUESTION_MAX: Record<QuestionKey, number> = {
+  city: 2,
+  intent: 3,
+  communication: 2,
+  pace: 1,
+  firstMeeting: 2,
+  boundaries: 3,
+  dateFormat: 3,
+};
 
 export const meetingFormats = [
   'coffee',

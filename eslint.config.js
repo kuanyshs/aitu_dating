@@ -23,6 +23,8 @@ module.exports = defineConfig([
       'src/ui/theme/palette.ts',
       'src/ui/strings.ts',
       'src/catalogs/labels.ts',
+      // Matching settlement names letter by letter needs the letters themselves.
+      'src/catalogs/settlements.ts',
       'src/repository/mock/seed/**',
       'src/**/*.test.ts',
     ],

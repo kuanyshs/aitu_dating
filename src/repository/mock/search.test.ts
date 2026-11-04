@@ -43,17 +43,17 @@ describe('matchPeople', () => {
   });
 
   it('filters by city and intent; with nothing asked, shows the viewer’s city', () => {
-    const inAlmaty = matchPeople(people, { kind: 'people', city: 'almaty' }, undefined);
+    const inAlmaty = matchPeople(people, { kind: 'people', city: '750000000' }, undefined);
     expect(inAlmaty.length).toBeGreaterThan(0);
-    expect(inAlmaty.every((p) => p.city === 'almaty')).toBe(true);
+    expect(inAlmaty.every((p) => p.city === '750000000')).toBe(true);
 
-    const dating = matchPeople(people, { kind: 'people', intent: 'dating' }, 'astana');
-    expect(dating.every((p) => p.card.intent === 'dating')).toBe(true);
-    expect(dating.some((p) => p.city !== 'astana')).toBe(true);
+    const dating = matchPeople(people, { kind: 'people', intent: 'dating' }, '710000000');
+    expect(dating.every((p) => p.card.questionnaire.intent.includes('dating'))).toBe(true);
+    expect(dating.some((p) => p.city !== '710000000')).toBe(true);
 
-    const nearby = matchPeople(people, { kind: 'people' }, 'astana');
+    const nearby = matchPeople(people, { kind: 'people' }, '710000000');
     expect(nearby.length).toBeGreaterThan(0);
-    expect(nearby.every((p) => p.city === 'astana')).toBe(true);
+    expect(nearby.every((p) => p.city === '710000000')).toBe(true);
   });
 });
 

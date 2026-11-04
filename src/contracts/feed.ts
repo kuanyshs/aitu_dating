@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { questionnaire } from '@/catalogs';
 
+import { SettlementCode } from './people';
+
 import { Page } from './common';
 import { PostView } from './post';
 
@@ -18,10 +20,10 @@ const options = <T extends readonly [string, ...string[]]>(values: T) =>
 
 /**
  * Фильтры ленты: the chosen options of each Анкета question. A person matches a question
- * when their answer is one of its options; a question with none chosen is left out.
+ * when any of their answers is one of its options; a question with none chosen is left out.
  */
 export const FeedFilters = z.strictObject({
-  city: options(questionnaire.city),
+  city: z.array(SettlementCode).max(20),
   intent: options(questionnaire.intent),
   communication: options(questionnaire.communication),
   pace: options(questionnaire.pace),

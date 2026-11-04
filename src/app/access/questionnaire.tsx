@@ -2,20 +2,14 @@ import { useRouter, type Href } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
-import {
-  answerLabel,
-  questionKeys,
-  questionLabels,
-  questionnaire,
-  type QuestionKey,
-} from '@/catalogs';
+import { questionKeys, questionLabels, type QuestionKey } from '@/catalogs';
 import { isRepositoryError, type PartialAnswers } from '@/contracts';
 import { useCompleteOnboarding, useSaveAnswer } from '@/data/hooks';
 import { StepScreen } from '@/features/access/StepScreen';
 import { accessErrorText, newIdempotencyKey } from '@/features/access/steps';
 import { useStepGuard } from '@/features/access/useStepGuard';
+import { AnswerInput } from '@/features/questionnaire/AnswerInput';
 import { PrimaryButton, SecondaryButton } from '@/ui/components/buttons';
-import { RadioGroup } from '@/ui/components/RadioGroup';
 import { AppText } from '@/ui/components/Text';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -31,42 +25,55 @@ export default function QuestionnaireStep() {
   const toast = useToast((s) => s.show);
   const t = strings.access.questionnaire;
 
-  // The last answer is not saved on its own: it travels with the publish request so
-  // the card and its final answer are stored together or not at all.
-  const [lastAnswer, setLastAnswer] = useState<string | undefined>(undefined);
+  // The answer being chosen. It is saved on «Далее»; the last one travels with the publish
+  // request so the card and its final answer are stored together or not at all.
+  const [draft, setDraft] = useState<{ question: QuestionKey; value: string[] }>();
   const [index, setIndex] = useState<number | undefined>(undefined);
   const [missing, setMissing] = useState<QuestionKey | undefined>(undefined);
   const [idempotencyKey] = useState(newIdempotencyKey);
 
   const saved = flow.data?.answers;
   const answers: PartialAnswers = useMemo(
-    () => ({ ...saved, ...(lastAnswer ? { [questionKeys[LAST]!]: lastAnswer } : {}) }),
-    [saved, lastAnswer],
+    () => ({ ...saved, ...(draft ? { [draft.question]: draft.value } : {}) }),
+    [saved, draft],
   );
 
   // Until the person navigates, resume at the first unanswered question.
   const firstOpen = questionKeys.findIndex((k) => !(k in (saved ?? {})));
   const current = index ?? (firstOpen === -1 ? LAST : firstOpen);
   const question = questionKeys[current]!;
-  const value = answers[question] as string | undefined;
-  const answeredCount = questionKeys.filter((k) => k in answers).length;
+  // The Населённый пункт starts from the Passport city; it may be left out.
+  const passportCity = flow.data?.candidate?.city;
+  const value: string[] =
+    (answers[question] as string[] | undefined) ??
+    (question === 'city' && passportCity ? [passportCity] : []);
+  // The questions before the last one that are already saved.
+  const answeredCount = questionKeys.slice(0, LAST).filter((k) => k in (saved ?? {})).length;
   const isLast = current === LAST;
+  // Every question but the Населённый пункт needs at least one option.
+  const ready = question === 'city' || value.length > 0;
 
-  const choose = (answer: string) => {
+  const choose = (next: string[]) => {
     setMissing(undefined);
-    if (isLast) {
-      setLastAnswer(answer);
-      return;
-    }
+    setDraft({ question, value: next });
+  };
+
+  const next = () => {
+    if (!ready) return;
     saveAnswer.mutate(
-      { question, answer },
-      { onSuccess: () => setIndex(Math.min(current + 1, LAST)) },
+      { question, answer: value },
+      {
+        onSuccess: () => {
+          setDraft(undefined);
+          setIndex(Math.min(current + 1, LAST));
+        },
+      },
     );
   };
 
   const publish = () =>
     complete.mutate(
-      { answers: { [questionKeys[LAST]!]: answers[questionKeys[LAST]!] }, idempotencyKey },
+      { answers: { [questionKeys[LAST]!]: value }, idempotencyKey },
       {
         onSuccess: () => {
           toast(t.created);
@@ -111,15 +118,15 @@ export default function QuestionnaireStep() {
           ) : null}
           {isLast ? (
             <>
-              {answeredCount < questionKeys.length ? (
+              {answeredCount < LAST ? (
                 <AppText variant="caption" tone="textMuted" testID="questionnaire-remaining">
-                  {t.remaining(questionKeys.length - answeredCount)}
+                  {t.remaining(LAST - answeredCount)}
                 </AppText>
               ) : null}
               <PrimaryButton
                 label={t.create}
                 onPress={publish}
-                disabled={answeredCount < questionKeys.length}
+                disabled={answeredCount < LAST || !ready}
                 loading={complete.isPending}
                 testID="questionnaire-create"
               />
@@ -127,8 +134,8 @@ export default function QuestionnaireStep() {
           ) : (
             <PrimaryButton
               label={t.next}
-              onPress={() => setIndex(current + 1)}
-              disabled={!value || saveAnswer.isPending}
+              onPress={next}
+              disabled={!ready || saveAnswer.isPending}
               loading={saveAnswer.isPending}
               testID="questionnaire-next"
             />
@@ -136,7 +143,10 @@ export default function QuestionnaireStep() {
           {current > 0 ? (
             <SecondaryButton
               label={t.previous}
-              onPress={() => setIndex(current - 1)}
+              onPress={() => {
+                setDraft(undefined);
+                setIndex(current - 1);
+              }}
               testID="questionnaire-previous"
             />
           ) : null}
@@ -150,14 +160,10 @@ export default function QuestionnaireStep() {
         <AppText variant="title" role="heading" testID="questionnaire-question">
           {questionLabels[question]}
         </AppText>
-        <RadioGroup<string>
+        <AnswerInput
           key={question}
-          label={questionLabels[question]}
-          options={questionnaire[question].map((option) => ({
-            value: option,
-            label: answerLabel(question, option),
-          }))}
-          value={value ?? ''}
+          question={question}
+          value={value}
           onChange={choose}
           testID={`question-${question}`}
         />

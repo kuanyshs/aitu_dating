@@ -271,7 +271,7 @@ describe('Блокировка', () => {
 
 describe('«Мои планы» and «Мои отклики»', () => {
   const plan = (date: string, timeStart = '18:00'): CreatePlanInput => ({
-    city: 'almaty',
+    city: '750000000',
     date,
     timeStart,
     format: 'coffee',

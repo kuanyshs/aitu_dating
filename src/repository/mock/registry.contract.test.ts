@@ -15,13 +15,13 @@ import {
 import { createMockRepository, type MockRepository } from './createMockRepository';
 
 const answers: QuestionnaireAnswers = {
-  city: 'almaty',
-  intent: 'dating',
-  communication: 'messages_first',
-  pace: 'gradual',
-  firstMeeting: 'coffee_talk',
-  boundaries: 'public_place',
-  dateFormat: 'walk',
+  city: ['750000000'],
+  intent: ['dating'],
+  communication: ['messages_first'],
+  pace: ['gradual'],
+  firstMeeting: ['coffee_talk'],
+  boundaries: ['public_place'],
+  dateFormat: ['walk'],
 };
 
 const key = 'sample-key-0001';
@@ -39,7 +39,7 @@ const samples: { [K in RepositoryMethod]: Parameters<AituRepository[K]>[0] } = {
   selectMembership: { tier: 'paid', periodMonths: 3 },
   confirmPayment: { idempotencyKey: key },
   saveProfileStep: { bio: 'Коротко.', interests: ['coffee'], communicationStyle: 'short_messages' },
-  saveAnswer: { question: 'city', answer: 'almaty' },
+  saveAnswer: { question: 'city', answer: ['750000000'] },
   completeOnboarding: { answers, idempotencyKey: key },
   getMyProfile: undefined,
   updateMyCard: { bio: 'Новое о себе.', interests: ['books'], communicationStyle: 'calm_dialogue' },
@@ -62,7 +62,7 @@ const samples: { [K in RepositoryMethod]: Parameters<AituRepository[K]>[0] } = {
   search: { kind: 'people', text: 'кофе' },
   getPlan: { planId: 'plan1' },
   createPlan: {
-    city: 'almaty',
+    city: '750000000',
     date: '2026-10-05',
     timeStart: '18:00',
     format: 'coffee',
@@ -107,7 +107,7 @@ const samples: { [K in RepositoryMethod]: Parameters<AituRepository[K]>[0] } = {
     idempotencyKey: key,
   },
   updateFeedFilters: {
-    city: ['almaty'],
+    city: ['750000000'],
     intent: [],
     communication: [],
     pace: [],

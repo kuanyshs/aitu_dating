@@ -10,7 +10,7 @@ export const passportCandidates: PassportCandidate[] = [
     surname: 'Кенжебаева',
     gender: 'woman',
     age: 27,
-    city: 'almaty',
+    city: '750000000',
   },
   {
     id: 'passport-2',
@@ -19,7 +19,7 @@ export const passportCandidates: PassportCandidate[] = [
     surname: 'Есенов',
     gender: 'man',
     age: 31,
-    city: 'astana',
+    city: '710000000',
   },
   {
     id: 'passport-3',
@@ -28,6 +28,6 @@ export const passportCandidates: PassportCandidate[] = [
     surname: 'Тулегенова',
     gender: 'woman',
     age: 29,
-    city: 'karaganda',
+    city: '351010000',
   },
 ];

@@ -11,7 +11,7 @@ import {
 } from './index';
 
 const plan = {
-  city: 'almaty',
+  city: '750000000',
   date: '2026-10-10',
   timeStart: '18:00',
   format: 'coffee',

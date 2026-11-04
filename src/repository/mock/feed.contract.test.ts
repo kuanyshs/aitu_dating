@@ -230,12 +230,12 @@ describe('Фильтры ленты', () => {
       session: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
     });
     const own = await repo.getFeedFilters();
-    expect(own.intent).toEqual([m01.card.questionnaire.intent]);
-    expect(own.city).toEqual([m01.card.questionnaire.city]);
+    expect(own.intent).toEqual(m01.card.questionnaire.intent);
+    expect(own.city).toEqual(m01.card.questionnaire.city);
 
-    const wider = { ...own, city: ['almaty', 'astana'] as const, intent: [] };
+    const wider = { ...own, city: ['750000000', '710000000'] as const, intent: [] };
     expect(await repo.updateFeedFilters({ ...wider, city: [...wider.city] })).toMatchObject({
-      city: ['almaty', 'astana'],
+      city: ['750000000', '710000000'],
       intent: [],
     });
     const restarted = createMockRepository({
@@ -244,7 +244,7 @@ describe('Фильтры ленты', () => {
       store,
       session: { accessState: 'ACTIVE_MEMBER', roles: ['member'], userId: 'm01' },
     });
-    expect((await restarted.getFeedFilters()).city).toEqual(['almaty', 'astana']);
+    expect((await restarted.getFeedFilters()).city).toEqual(['750000000', '710000000']);
   });
 
   it('are for members; a guest sends theirs with the request', async () => {
@@ -252,7 +252,7 @@ describe('Фильтры ленты', () => {
       code: 'UNAUTHENTICATED',
     });
     const filters = {
-      city: ['astana' as const],
+      city: ['710000000'],
       intent: [],
       communication: [],
       pace: [],
@@ -262,7 +262,7 @@ describe('Фильтры ленты', () => {
     };
     const posts = await allPages(guestRepository(), { tab: 'for_you', filters });
     const astana = new Set(
-      seed.members.filter((m) => m.card.questionnaire.city === 'astana').map((m) => m.id),
+      seed.members.filter((m) => m.card.questionnaire.city.includes('710000000')).map((m) => m.id),
     );
     expect(posts.length).toBeGreaterThan(0);
     // Authors stay in the safe view; their Анкета city decides, never shown as such.

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina, signInAs } from './helpers';
+import { joinAsMadina, signInAs, pickSettlement } from './helpers';
 
 async function openEditor(page: Page) {
   await page.getByTestId('tab-profile').click();
@@ -31,7 +31,7 @@ test.describe('Редактирование Карточки', () => {
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await toggle.click();
     await page.getByTestId('card-edit-save').click();
-    await expect(page.getByTestId('toast')).toContainText('Карточка сохранена');
+    await expect(page.getByTestId('toast')).toContainText('Анкета сохранена');
 
     await signInAs(page, 'm03');
     await page.goto('/member/me-passport-3');
@@ -46,10 +46,13 @@ test.describe('Редактирование Карточки', () => {
 
     await page.getByTestId('card-edit-bio').fill('Теперь больше про кино и долгие прогулки.');
     await page.getByTestId('card-edit-interest-cinema').click();
-    await page.getByTestId('card-edit-intent-dating').click();
+    await page.getByTestId('card-edit-answer-intent-dating').click();
+    // A second Населённый пункт from the full directory, found by name.
+    await pickSettlement(page, 'card-edit-answer-city', '103230100', 'Карааул');
+    await expect(page.getByTestId('card-edit-answer-city-picker')).toHaveCount(0);
     await testInfo.attach('card-edit', { body: await page.screenshot(), contentType: 'image/png' });
     await page.getByTestId('card-edit-save').click();
-    await expect(page.getByTestId('toast')).toContainText('Карточка сохранена');
+    await expect(page.getByTestId('toast')).toContainText('Анкета сохранена');
     await expect(page.getByTestId('screen-card-edit')).toHaveCount(0);
 
     const card = page.getByTestId('profile-card');
@@ -58,6 +61,8 @@ test.describe('Редактирование Карточки', () => {
     );
     await expect(card).toContainText('кино');
     await expect(card).toContainText('Свидания');
+    await expect(card.getByTestId('profile-intents')).toHaveText('Дружба, Свидания');
+    await expect(card.getByTestId('profile-answer-city')).toHaveText('Караганда, Карааул');
 
     // Also after a restart.
     await page.reload();
@@ -76,7 +81,9 @@ test.describe('Редактирование Карточки', () => {
     await page.getByTestId('profile-edit-card').click();
     await page.getByTestId('card-edit-bio').fill('Черновик, который не сохранится.');
     await page.getByTestId('card-edit-cancel').click();
-    await expect(page.getByTestId('card-edit-sheet')).toContainText('Отменить изменения?');
+    await expect(page.getByTestId('card-edit-sheet')).toContainText(
+      'У вас есть несохранённые изменения. Выйти без сохранения?',
+    );
     await page.getByTestId('card-edit-keep').click();
     await expect(page.getByTestId('card-edit-bio')).toHaveValue('Черновик, который не сохранится.');
 
@@ -102,7 +109,7 @@ test.describe('Редактирование Карточки', () => {
     await page.goto('/card-edit');
     await page.getByTestId('card-edit-bio').fill('Пишу и после окончания membership.');
     await page.getByTestId('card-edit-save').click();
-    await expect(page.getByTestId('toast')).toContainText('Карточка сохранена');
+    await expect(page.getByTestId('toast')).toContainText('Анкета сохранена');
   });
 
   test('a guest is invited to join', async ({ page }) => {

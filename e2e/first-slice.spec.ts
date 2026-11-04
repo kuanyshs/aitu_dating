@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { expectMemberNames, expectNoMemberNames, openDemoPanel } from './helpers';
+import { expectMemberNames, expectNoMemberNames, openDemoPanel, answerQuestion } from './helpers';
 
 const answers = [
   ['city', 'almaty'],
@@ -47,7 +47,7 @@ test('guest → paid member → «Выйти» → «Войти» → expiry →
   await page.getByTestId('profile-style-calm_dialogue').click();
   await page.getByTestId('access-next').click();
   for (const [question, answer] of answers) {
-    await page.getByTestId(`question-${question}-${answer}`).click();
+    await answerQuestion(page, question, answer);
   }
   await expect(page.getByTestId('questionnaire-progress')).toHaveText('Вопрос 7 из 7');
   await page.getByTestId('questionnaire-create').click();

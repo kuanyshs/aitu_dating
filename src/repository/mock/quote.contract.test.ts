@@ -7,13 +7,13 @@ import { createMemoryStore } from '@/storage';
 import { createMockRepository, type MockRepository } from './createMockRepository';
 
 const answers: QuestionnaireAnswers = {
-  city: 'almaty',
-  intent: 'dating',
-  communication: 'messages_first',
-  pace: 'gradual',
-  firstMeeting: 'coffee_talk',
-  boundaries: 'public_place',
-  dateFormat: 'walk',
+  city: ['750000000'],
+  intent: ['dating'],
+  communication: ['messages_first'],
+  pace: ['gradual'],
+  firstMeeting: ['coffee_talk'],
+  boundaries: ['public_place'],
+  dateFormat: ['walk'],
 };
 
 /** m01 wrote p01, which the seed quote p11 (by m08) points to. */

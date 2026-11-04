@@ -6,6 +6,7 @@ import {
   joinAsMadina,
   showFeed,
   signInAs,
+  answerQuestion,
 } from './helpers';
 
 /**
@@ -66,7 +67,7 @@ test.describe('visual baselines @visual', () => {
     await page.getByTestId('profile-style-calm_dialogue').click();
     await page.getByTestId('access-next').click();
     for (const [question, answer] of answers) {
-      await page.getByTestId(`question-${question}-${answer}`).click();
+      await answerQuestion(page, question, answer);
     }
     await expect(page.getByTestId('questionnaire-create')).not.toHaveAttribute(
       'aria-disabled',

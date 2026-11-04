@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 
 import {
   answerLabel,
-  cityLabels,
+  settlementName,
   interestLabels,
   meetingFormatLabels,
   meetingGoalLabels,
@@ -274,7 +274,7 @@ function PlanCard({ plan, clock }: { plan: PlanSummary; clock: Clock }) {
       {detail(ClockIcon, strings.plan.minutes(plan.durationMinutes))}
       {detail(
         MapPin,
-        `${cityLabels[plan.city]}${plan.isPublicPlace ? ` · ${strings.plan.publicPlace}` : ''}`,
+        `${settlementName(plan.city)}${plan.isPublicPlace ? ` · ${strings.plan.publicPlace}` : ''}`,
       )}
       {detail(MapPin, plan.placeArea)}
       {detail(Wallet, budgetLine(plan))}

@@ -69,7 +69,8 @@ const TYPES = { г: 0, п: 1, с: 2 };
 const settlements = [];
 for (const r of rows) {
   if (REPUBLICAN.has(r.ab)) {
-    if (r.cd === '00') settlements.push([r.te, regionName(r.rus_name), 0, -1, regionIndex.get(r.ab)]);
+    if (r.cd === '00')
+      settlements.push([r.te, regionName(r.rus_name), 0, -1, regionIndex.get(r.ab)]);
     continue;
   }
   if (r.cd === '00') continue;

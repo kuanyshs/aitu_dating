@@ -101,7 +101,7 @@ test.describe('Создание: a post or a question', () => {
     await joinAsMadina(page);
     await openEditor(page);
     await page.getByTestId('compose-type-plan').click();
-    await expect(page.getByTestId('new-plan-city-karaganda')).toBeVisible();
+    await expect(page.getByTestId('new-plan-city-chosen-351010000')).toBeVisible();
   });
 
   test('a guest and an expired member are shown the way in instead', async ({ page }) => {

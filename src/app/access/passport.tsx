@@ -2,7 +2,7 @@ import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { cityLabels, genderLabels } from '@/catalogs';
+import { settlementName, genderLabels } from '@/catalogs';
 import { usePassportCandidates, useSelectPassport } from '@/data/hooks';
 import { StepScreen } from '@/features/access/StepScreen';
 import { accessErrorText, stepRoute } from '@/features/access/steps';
@@ -71,7 +71,7 @@ export default function PassportStep() {
             candidate.name,
             candidate.age,
             genderLabels[candidate.gender],
-            cityLabels[candidate.city],
+            settlementName(candidate.city),
           );
           return (
             <Pressable

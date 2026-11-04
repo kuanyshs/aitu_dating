@@ -76,22 +76,33 @@ export const emptyFeedFilters = (): FeedFilters => ({
 /** A member's starting filters: their own answer to each question. */
 export function filtersFromAnswers(answers: QuestionnaireRecord): FeedFilters {
   return {
-    city: [answers.city],
-    intent: [answers.intent],
-    communication: [answers.communication],
-    pace: [answers.pace],
-    firstMeeting: [answers.firstMeeting],
-    boundaries: [answers.boundaries],
-    dateFormat: [answers.dateFormat],
+    city: [...answers.city],
+    intent: [...answers.intent],
+    communication: [...answers.communication],
+    pace: [...answers.pace],
+    firstMeeting: [...answers.firstMeeting],
+    boundaries: [...answers.boundaries],
+    dateFormat: [...answers.dateFormat],
   };
 }
 
 const chosen = (filters: FeedFilters) =>
   (Object.keys(filters) as QuestionKey[]).filter((q) => filters[q].length > 0);
 
+/** The first of a person's answers to a question that the filters ask for. */
+function matchedOption(
+  filters: FeedFilters,
+  answers: QuestionnaireRecord,
+  q: QuestionKey,
+): string | undefined {
+  const wanted = filters[q] as readonly string[];
+  return (answers[q] as readonly string[]).find((a) => wanted.includes(a));
+}
+
+/** Questions where at least one of the person's answers is among the chosen options. */
 function matchedQuestions(filters: FeedFilters, answers?: QuestionnaireRecord): QuestionKey[] {
   if (!answers) return [];
-  return chosen(filters).filter((q) => (filters[q] as readonly string[]).includes(answers[q]));
+  return chosen(filters).filter((q) => matchedOption(filters, answers, q) !== undefined);
 }
 
 /** A cancelled or past План leaves every Лента. */
@@ -139,7 +150,8 @@ function forYou(post: PostRecord, ctx: FeedContext): { score: number; reasons: F
   for (const question of reasonOrder) {
     if (reasons.length === 2) break;
     if (matched.includes(question) && author.answers) {
-      reasons.push({ kind: 'answer', question, option: author.answers[question] });
+      const option = matchedOption(ctx.filters, author.answers, question);
+      if (option) reasons.push({ kind: 'answer', question, option });
     }
   }
   return { score, reasons };

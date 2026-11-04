@@ -4,8 +4,6 @@ import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  cities,
-  cityLabels,
   meetingDurations,
   meetingFormatLabels,
   meetingFormats,
@@ -18,7 +16,6 @@ import {
   type PlanBudget,
   topicLabels,
   topics as topicKeys,
-  type City,
   type MeetingDuration,
   type MeetingFormat,
   type MeetingGoal,
@@ -41,6 +38,7 @@ import { ErrorState } from '@/ui/components/StateViews';
 import { TextArea } from '@/ui/components/TextArea';
 import { AppText } from '@/ui/components/Text';
 import { formatPlanDate } from '@/ui/format';
+import { SettlementField } from '@/features/settlement/SettlementPicker';
 import { useReportFooter } from '@/ui/navigation/statusInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -83,7 +81,8 @@ export default function NewPlanScreen() {
 }
 
 type Draft = {
-  city: City;
+  /** A Населённый пункт; the member's own one to start with. */
+  city?: string;
   date?: string;
   timeStart?: string;
   format: MeetingFormat;
@@ -106,7 +105,7 @@ function PlanForm({ me }: { me: MyProfile }) {
   const create = useCreatePlan();
   const reportFooter = useReportFooter();
   const [draft, setDraft] = useState<Draft>({
-    city: me.city,
+    ...(me.city ? { city: me.city } : {}),
     format: 'coffee',
     durationMinutes: 60,
     goal: 'get_acquainted',
@@ -137,6 +136,7 @@ function PlanForm({ me }: { me: MyProfile }) {
   const cancel = () => (dirty ? setConfirming(true) : leave());
 
   const ready =
+    !!draft.city &&
     !!draft.date &&
     !!draft.timeStart &&
     times.includes(draft.timeStart) &&
@@ -146,10 +146,11 @@ function PlanForm({ me }: { me: MyProfile }) {
     draft.isPublicPlace;
 
   const submit = () => {
-    if (!ready || !draft.date || !draft.timeStart) return;
+    if (!ready || !draft.city || !draft.date || !draft.timeStart) return;
     create.mutate(
       {
         ...draft,
+        city: draft.city,
         date: draft.date,
         timeStart: draft.timeStart,
         isPublicPlace: true,
@@ -199,17 +200,13 @@ function PlanForm({ me }: { me: MyProfile }) {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <AppText tone="textMuted">{t.intro}</AppText>
 
-          <Group label={t.city}>
-            {cities.map((city) => (
-              <Chip
-                key={city}
-                label={cityLabels[city]}
-                selected={draft.city === city}
-                onPress={() => set({ city })}
-                testID={`new-plan-city-${city}`}
-              />
-            ))}
-          </Group>
+          <SettlementField
+            label={t.city}
+            value={draft.city ? [draft.city] : []}
+            onChange={(codes) => set({ city: codes[0] })}
+            max={1}
+            testID="new-plan-city"
+          />
 
           <Group label={t.date}>
             {dates.map((date) => (

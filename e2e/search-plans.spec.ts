@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { joinAsMadina } from './helpers';
+import { joinAsMadina, pickSettlement } from './helpers';
 
 // Open seed plans: plan1 (coffee, Алматы), plan2, plan3 (walk, Караганда), plan5 (coffee,
 // Астана, talk), plan6 (walk, Караганда); plan4 is already a Встреча.
@@ -34,7 +34,7 @@ test.describe('Поиск: планы', () => {
     await page.getByTestId('home-search').click();
     await page.getByTestId('search-kind-plans').click();
     await page.getByTestId('search-filters').click();
-    await page.getByTestId('search-plan-city-karaganda').click();
+    await pickSettlement(page, 'search-plan-city', '351010000', 'Караганда');
     await page.getByTestId('search-format-walk').click();
     const results = page.getByTestId('search-results');
     await expect(results.getByRole('link')).toHaveCount(2);

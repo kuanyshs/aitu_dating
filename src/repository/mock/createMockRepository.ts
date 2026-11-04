@@ -1639,12 +1639,11 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           surname: candidate.surname,
           gender: candidate.gender,
           age: candidate.age,
-          city: candidate.city,
+          ...(outcome.value.answers.city[0] ? { city: outcome.value.answers.city[0] } : {}),
           photoKey: `avatar-${candidate.id}`,
           verified: true,
           card: {
             ...outcome.value.profile,
-            intent: outcome.value.answers.intent,
             questionnaire: outcome.value.answers,
             publishedAt: now,
           },
@@ -1693,15 +1692,14 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             fieldErrors: access.fieldErrorsOf(parsed.error, 'profile'),
           });
         }
-        const { intent, ...fields } = parsed.data;
-        // The Намерение is also the Анкета's answer to the same question.
+        const { answers, ...fields } = parsed.data;
+        // The profile's city follows the Анкета's first Населённый пункт.
+        const questionnaire = answers ?? record.card.questionnaire;
+        const { city: _city, ...rest } = record;
         const updated: MemberRecord = {
-          ...record,
-          card: {
-            ...record.card,
-            ...fields,
-            ...(intent ? { intent, questionnaire: { ...record.card.questionnaire, intent } } : {}),
-          },
+          ...rest,
+          ...(questionnaire.city[0] ? { city: questionnaire.city[0] } : {}),
+          card: { ...record.card, ...fields, questionnaire },
         };
         await saveMember(updated);
         return toMyProfile(updated);
@@ -1798,7 +1796,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             ? {
                 card: {
                   bio: record.card.bio,
-                  intent: record.card.intent,
+                  intents: record.card.questionnaire.intent,
                   interests: record.card.interests,
                   communicationStyle: record.card.communicationStyle,
                 },
@@ -2048,7 +2046,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
                 person: authorView(person, viewer),
                 card: {
                   bio: person.card.bio,
-                  intent: person.card.intent,
+                  intents: person.card.questionnaire.intent,
                   interests: person.card.interests,
                   communicationStyle: person.card.communicationStyle,
                 },

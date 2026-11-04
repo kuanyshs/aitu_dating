@@ -17,7 +17,7 @@ test.describe('Фильтры ленты', () => {
 
     await page.getByTestId('home-filters').click();
     await expect(page.getByTestId('feed-filters-guest-note')).toHaveCount(0);
-    const chosen = page.locator('[data-testid^="feed-filter-city-"][aria-checked="true"]');
+    const chosen = page.locator('[data-testid^="feed-filter-city-chosen-"]');
     await expect(chosen).toHaveCount(1);
     await chosen.click();
     await page.getByTestId('feed-filters-apply').click();

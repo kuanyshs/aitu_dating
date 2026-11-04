@@ -25,13 +25,13 @@ function on(store = createMemoryStore(), session?: Session) {
 }
 
 const answers: QuestionnaireAnswers = {
-  city: 'almaty',
-  intent: 'dating',
-  communication: 'messages_first',
-  pace: 'gradual',
-  firstMeeting: 'coffee_talk',
-  boundaries: 'public_place',
-  dateFormat: 'walk',
+  city: ['750000000'],
+  intent: ['dating'],
+  communication: ['messages_first'],
+  pace: ['gradual'],
+  firstMeeting: ['coffee_talk'],
+  boundaries: ['public_place'],
+  dateFormat: ['walk'],
 };
 
 async function join(repo: MockRepository) {
@@ -112,13 +112,13 @@ describe('Поиск людей', () => {
 
   it('pages the results', async () => {
     const repo = on(createMemoryStore(), as('m02'));
-    const all = await repo.search({ kind: 'people', city: 'almaty', limit: 50 });
-    const first = await repo.search({ kind: 'people', city: 'almaty', limit: 2 });
+    const all = await repo.search({ kind: 'people', city: '750000000', limit: 50 });
+    const first = await repo.search({ kind: 'people', city: '750000000', limit: 2 });
     expect(first.items).toHaveLength(Math.min(2, all.items.length));
     if (all.items.length > 2) {
       const second = await repo.search({
         kind: 'people',
-        city: 'almaty',
+        city: '750000000',
         limit: 2,
         cursor: first.nextCursor,
       });
@@ -201,13 +201,13 @@ describe('searching plans', () => {
 
   it('narrows by city, goal and format', async () => {
     const repo = on(createMemoryStore(), as('m02'));
-    expect(planIds(await repo.search({ kind: 'plans', city: 'astana' }))).toEqual([
+    expect(planIds(await repo.search({ kind: 'plans', city: '710000000' }))).toEqual([
       'plan2',
       'plan5',
     ]);
     expect(planIds(await repo.search({ kind: 'plans', goal: 'talk' }))).toEqual(['plan3', 'plan5']);
     expect(
-      planIds(await repo.search({ kind: 'plans', city: 'karaganda', format: 'walk' })),
+      planIds(await repo.search({ kind: 'plans', city: '351010000', format: 'walk' })),
     ).toEqual(['plan3', 'plan6']);
   });
 

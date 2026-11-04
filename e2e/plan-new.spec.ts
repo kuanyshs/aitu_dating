@@ -16,7 +16,7 @@ async function fill(page: Page, { date, place, description }: Record<string, str
 
 async function openForm(page: Page) {
   await page.goto('/meeting/new');
-  await expect(page.getByTestId('new-plan-city-karaganda')).toBeVisible();
+  await expect(page.getByTestId('new-plan-city-chosen-351010000')).toBeVisible();
 }
 
 test.describe('Новый план', () => {
@@ -31,7 +31,7 @@ test.describe('Новый план', () => {
     await expect(page.getByTestId('home-member')).toBeVisible();
     await page.getByTestId('tab-create').click();
     await page.getByTestId('compose-type-plan').click();
-    await expect(page.getByTestId('new-plan-city-karaganda')).toHaveAttribute(
+    await expect(page.getByTestId('new-plan-city-chosen-351010000')).toHaveAttribute(
       'aria-checked',
       'true',
     );
@@ -110,6 +110,6 @@ test.describe('Новый план', () => {
     await joinAsMadina(page);
     await page.goto('/create');
     await page.getByTestId('create-plan').click();
-    await expect(page.getByTestId('new-plan-city-karaganda')).toBeVisible();
+    await expect(page.getByTestId('new-plan-city-chosen-351010000')).toBeVisible();
   });
 });

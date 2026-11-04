@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
-import { cities, genders } from '@/catalogs';
+import { genders, isSettlementCode } from '@/catalogs';
 
 import { Id } from './common';
 
-export const CityKey = z.enum(cities);
+/** A Населённый пункт: its KATO code in the settlements directory. */
+export const SettlementCode = z.string().refine(isSettlementCode, 'unknown');
+export type SettlementCode = z.infer<typeof SettlementCode>;
 export const GenderKey = z.enum(genders);
 
 /**
@@ -29,7 +31,8 @@ export const SafeAuthorView = z.strictObject({
   view: z.literal('safe'),
   gender: GenderKey,
   age: z.number().int().min(18),
-  city: CityKey,
+  /** Absent when the person chose not to name it. */
+  city: SettlementCode.optional(),
   avatar: z.strictObject({ kind: z.literal('neutral') }),
 });
 export type SafeAuthorView = z.infer<typeof SafeAuthorView>;
@@ -44,7 +47,7 @@ export const MemberAuthorView = z.strictObject({
   verified: z.boolean(),
   gender: GenderKey,
   age: z.number().int().min(18),
-  city: CityKey,
+  city: SettlementCode.optional(),
   avatar: AvatarRef,
 });
 export type MemberAuthorView = z.infer<typeof MemberAuthorView>;

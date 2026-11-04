@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 
-import { cityLabels, genderLabels } from '@/catalogs';
+import { settlementName, genderLabels } from '@/catalogs';
 import type { AuthorView } from '@/contracts';
 import { BadgeCheck } from '@/ui/icons';
 import { fullName } from '@/ui/format';
@@ -18,7 +18,7 @@ type Props = { author: AuthorView; time?: string };
  */
 export function AuthorRow({ author, time }: Props) {
   const { colors } = useTheme();
-  const city = cityLabels[author.city];
+  const city = settlementName(author.city);
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>
@@ -35,11 +35,11 @@ export function AuthorRow({ author, time }: Props) {
               aria-label={strings.post.verified}
             />
           ) : null}
-          <AppText tone="textMuted">{`· ${city}`}</AppText>
+          {city ? <AppText tone="textMuted">{`· ${city}`}</AppText> : null}
         </>
       ) : (
         <AppText variant="bodyStrong" testID="author-safe">
-          {`${strings.post.authorSafe(genderLabels[author.gender], author.age)} · ${city}`}
+          {`${strings.post.authorSafe(genderLabels[author.gender], author.age)}${city ? ` · ${city}` : ''}`}
         </AppText>
       )}
       {time ? <AppText tone="textMuted">{`· ${time}`}</AppText> : null}

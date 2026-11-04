@@ -4,7 +4,6 @@ import * as keys from './keys';
 import * as labels from './labels';
 
 const pairs: [string, readonly (string | number)[], Record<string, string>][] = [
-  ['cities', keys.cities, labels.cityLabels],
   ['genders', keys.genders, labels.genderLabels],
   ['interests', keys.interests, labels.interestLabels],
   ['topics', keys.topics, labels.topicLabels],
