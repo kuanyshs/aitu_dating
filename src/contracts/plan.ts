@@ -9,6 +9,7 @@ import {
 } from '@/catalogs';
 
 import { Id, IsoDate, IsoDateTime, Page } from './common';
+import { PhotoRef } from './photo';
 import { LIMITS } from './limits';
 import { AuthorView, SettlementCode } from './people';
 import { PlanSummary, TopicKey } from './post';
@@ -23,6 +24,8 @@ export const PlanView = PlanSummary.extend({
   author: AuthorView,
   description: z.string().max(LIMITS.planDescription),
   place: z.string().min(1).optional(),
+  /** The Встреча's one Фото; like every Фото, for active members only. */
+  photo: PhotoRef.optional(),
   createdAt: IsoDateTime,
   /** The viewer's standing Отклик (not withdrawn), if any. */
   myResponse: z
@@ -61,6 +64,8 @@ export const CreatePlanInput = z
       .array(TopicKey)
       .transform((list) => [...new Set(list)])
       .pipe(z.array(TopicKey).max(LIMITS.topics)),
+    /** One of the author's uploaded Фото, at most. */
+    photoId: Id.optional(),
     idempotencyKey: z.string().min(8),
   })
   .refine((p) => !p.timeEnd || p.timeEnd > p.timeStart, {

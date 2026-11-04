@@ -76,7 +76,7 @@ test.describe('deleting own content', () => {
     await page.getByTestId('post-menu').click();
     await expect(page.getByTestId('sheet-report')).toHaveCount(0);
     await page.getByTestId('sheet-delete').click();
-    await expect(page.getByTestId('post-sheet')).toContainText('Удалить публикацию?');
+    await expect(page.getByTestId('post-sheet')).toContainText('Удалить этот пост?');
     await page.getByTestId('sheet-confirm-delete').click();
     await expect(page.getByTestId('toast')).toBeVisible();
     await page.goto('/');

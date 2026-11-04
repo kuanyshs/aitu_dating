@@ -231,7 +231,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   /** A Фото as a DTO, or nothing when it is gone. */
   function photoRef(id: string): PhotoRef | undefined {
     const url = photoData.get(id);
-    return url ? { kind: 'photo', id, url } : undefined;
+    if (!url) return undefined;
+    return state.photos[id]?.ai ? { kind: 'photo', id, url, ai: true } : { kind: 'photo', id, url };
   }
 
   /** The access flow as its visitor sees it, with the draft's Фото resolved. */
@@ -870,7 +871,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const plan = planById(planId);
     const author = plan ? member(plan.authorId) : undefined;
     const post = allPosts().find((p) => p.planId === planId);
-    if (!plan || !isShown(author) || !post) {
+    // A deleted Встреча is gone for everyone: an old link reads «Публикация недоступна».
+    if (!plan || plan.status === 'deleted' || !isShown(author) || !post) {
       fail(requestId, { code: 'NOT_FOUND', message: 'Plan not found.' });
     }
     return plan;
@@ -897,12 +899,14 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const mine = standing.find((r) => r.authorId === viewer.userId);
     // The exact place is for the author and the person whose Отклик was accepted.
     const seesPlace = full && (plan.authorId === viewer.userId || mine?.status === 'accepted');
+    const photo = full && post.photoIds?.[0] ? photoRef(post.photoIds[0]) : undefined;
     return PlanView.parse({
       ...toPlanSummary(plan, pendingFor(plan, viewer)),
       postId: post.id,
       author: authorView(author, viewer),
       description: plan.description,
       ...(seesPlace ? { place: plan.place } : {}),
+      ...(photo ? { photo } : {}),
       createdAt: plan.createdAt,
       ...(mine && mine.status !== 'withdrawn'
         ? { myResponse: { id: mine.id, status: mine.status } }
@@ -953,9 +957,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     await saveState({
       ...state,
       planUpdates: { ...state.planUpdates, [plan.id]: { status } },
-      // Cancelling answers everyone still waiting.
+      // Cancelling or deleting answers everyone still waiting.
       planResponses:
-        status === 'cancelled'
+        status === 'cancelled' || status === 'deleted'
           ? state.planResponses.map((r) =>
               r.planId === plan.id && r.status === 'pending'
                 ? { ...r, status: 'declined' as const, decidedAt: clock.now().toISOString() }
@@ -1048,7 +1052,11 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     }
     const plan = planById(context.planId);
     const response = state.planResponses.find((r) => r.id === context.responseId);
-    const cancelled = !plan || plan.status === 'cancelled' || response?.status !== 'accepted';
+    const cancelled =
+      !plan ||
+      plan.status === 'cancelled' ||
+      plan.status === 'deleted' ||
+      response?.status !== 'accepted';
     return { ...context, cancelled };
   }
 
@@ -1320,7 +1328,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             fieldErrors: access.fieldErrorsOf(parsed.error, ''),
           });
         }
-        const { mimeType, dataUrl, idempotencyKey } = parsed.data;
+        const { mimeType, dataUrl, origin, idempotencyKey } = parsed.data;
         // A retried upload returns the Фото it already stored.
         const existing = state.photoKeys[idempotencyKey];
         const known = existing ? photoRef(existing) : undefined;
@@ -1333,11 +1341,16 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           ...state,
           photos: {
             ...state.photos,
-            [id]: { ownerId, mimeType, createdAt: clock.now().toISOString() },
+            [id]: {
+              ownerId,
+              mimeType,
+              createdAt: clock.now().toISOString(),
+              ...(origin === 'ai' ? { ai: true as const } : {}),
+            },
           },
           photoKeys: { ...state.photoKeys, [idempotencyKey]: id },
         });
-        return { kind: 'photo', id, url: dataUrl };
+        return photoRef(id)!;
       }),
 
     updateMyPhotos: (input) =>
@@ -1831,13 +1844,24 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         if (viewer.accessState === 'GUEST_PREVIEW') {
           fail(requestId, { code: 'UNAUTHENTICATED', message: 'Profiles are for members.' });
         }
-        const { memberId, cursor, limit } = parseOrFail(ProfilePostsQuery, query, requestId);
+        const { memberId, content, cursor, limit } = parseOrFail(
+          ProfilePostsQuery,
+          query,
+          requestId,
+        );
         const record = member(memberId);
         if (!isShown(record)) {
           fail(requestId, { code: 'NOT_FOUND', message: 'Member not found.' });
         }
         const posts = allPosts()
           .filter((p) => p.authorId === memberId && isVisible(p))
+          .filter((p) =>
+            content === 'posts'
+              ? p.type !== 'plan'
+              : content === 'plans'
+                ? p.type === 'plan'
+                : true,
+          )
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         const ctx = shapingContext(viewer);
         return FeedPage.parse(
@@ -2094,7 +2118,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             fieldErrors: access.fieldErrorsOf(parsed.error, ''),
           });
         }
-        const { topics, idempotencyKey, isPublicPlace, timeEnd, ...fields } = parsed.data;
+        const { topics, idempotencyKey, isPublicPlace, timeEnd, photoId, ...fields } = parsed.data;
 
         // A retry of a request that already went through returns the same plan.
         const existing = planById(state.planKeys[idempotencyKey] ?? '');
@@ -2110,6 +2134,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         if (fields.date < almatyDate(now)) invalid('date', 'past');
         if (fields.date > almatyDate(now, PLAN_HORIZON_DAYS - 1)) invalid('date', 'too_far');
         if (planStartsAt(fields) <= now) invalid('timeStart', 'past');
+        // Only the author's own uploaded Фото may go with the Встреча.
+        if (photoId && state.photos[photoId]?.ownerId !== me.id) invalid('photoId', 'unknown');
 
         const open = allPlans().filter((p) => p.authorId === me.id && p.status === 'published');
         if (open.length >= OPEN_PLANS_MAX) {
@@ -2138,6 +2164,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           topics: [...new Set(topics)],
           createdAt,
           planId: plan.id,
+          ...(photoId ? { photoIds: [photoId] } : {}),
         });
         await saveState({
           ...state,
@@ -2324,7 +2351,10 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const now = clock.now();
         const starts = (p: CurrentPlan) => planStartsAt(p).getTime();
         const upcoming = (p: CurrentPlan) =>
-          p.status !== 'cancelled' && p.status !== 'past' && planStartsAt(p) > now;
+          p.status !== 'cancelled' &&
+          p.status !== 'deleted' &&
+          p.status !== 'past' &&
+          planStartsAt(p) > now;
         const mine = allPlans().filter((p) => p.authorId === me.id);
         const ordered = [
           ...mine.filter(upcoming).sort((a, b) => starts(a) - starts(b)),
@@ -3023,10 +3053,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         if (post.authorId !== me.id) {
           fail(requestId, { code: 'FORBIDDEN', message: 'Only the author can delete a post.' });
         }
-        // A plan's post goes with the plan (cancelled in the plans spec), never on its own.
-        if (post.planId) {
-          fail(requestId, { code: 'CONFLICT', message: 'Cancel the plan instead.' });
-        }
+        // A Встреча's post takes the Встреча with it: «Удалена», and nobody waits any more.
+        const plan = post.planId ? planById(post.planId) : undefined;
+        if (plan && plan.status !== 'deleted') await setPlanStatus(plan, 'deleted');
         await saveState({ ...state, deletedPostIds: [...state.deletedPostIds, postId] });
       }),
 

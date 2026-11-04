@@ -327,7 +327,9 @@ export default function PostScreen() {
       ? strings.block.title
       : sheet?.target === 'comment'
         ? strings.deletion.commentTitle
-        : strings.deletion.postTitle;
+        : post.data.type === 'plan'
+          ? strings.deletion.planTitle
+          : strings.deletion.postTitle;
   const confirmText =
     sheet?.step === 'block'
       ? strings.block.hint(sheetAuthor.view === 'member' ? sheetAuthor.name : undefined)
@@ -335,7 +337,9 @@ export default function PostScreen() {
         ? sheet.comment.parentId
           ? strings.deletion.replyText
           : strings.deletion.commentText
-        : strings.deletion.postText;
+        : post.data.type === 'plan'
+          ? strings.deletion.planText
+          : strings.deletion.postText;
 
   let body: React.ReactNode = null;
   if (comments.isPending) body = <FeedSkeleton rows={3} />;

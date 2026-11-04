@@ -1,6 +1,8 @@
 /** Text limits shared by the client, the mock and the future backend. */
 export const LIMITS = {
-  postText: 2000,
+  postText: 1000,
+  /** Posts published before the 1 000-character limit are read as they are. */
+  storedPostText: 2000,
   planDescription: 500,
   /** «Где примерно» of a План. */
   placeArea: 120,

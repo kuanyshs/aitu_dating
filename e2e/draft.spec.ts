@@ -6,11 +6,11 @@ async function openEditor(page: Page) {
   // The member header shows the session has loaded before the tab is tapped.
   await expect(page.getByTestId('home-member')).toBeVisible();
   await page.getByTestId('tab-create').click();
+  await page.getByTestId('create-post').click();
   await expect(page.getByTestId('compose-input')).toBeVisible();
 }
 
 async function writeAndKeep(page: Page, text: string) {
-  await page.getByTestId('compose-type-question').click();
   await page.getByTestId('compose-topic-city').click();
   await page.getByTestId('compose-input').fill(text);
   await page.getByTestId('compose-cancel').click();
@@ -36,7 +36,6 @@ test.describe('Создание: a draft', () => {
     await page.reload();
     await openEditor(page);
     await expect(page.getByTestId('compose-input')).toHaveValue('Черновой вопрос про город');
-    await expect(page.getByTestId('compose-type-question')).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByTestId('compose-topic-city')).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByTestId('compose-sheet')).toHaveCount(0);
     await testInfo.attach('draft-restored', {
@@ -93,7 +92,7 @@ test.describe('Создание: a draft', () => {
     await page.getByTestId('draft-continue').click();
     await expect(page.getByTestId('compose-input')).toHaveValue('Черновик нового поста');
     await expect(page.getByTestId('compose-quoted-p02')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Новый вопрос' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Новый пост' })).toBeVisible();
     await page.getByTestId('compose-cancel').click();
     await page.getByTestId('draft-save').click();
 

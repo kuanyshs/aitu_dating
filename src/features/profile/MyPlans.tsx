@@ -104,7 +104,12 @@ function OwnResponses() {
         <PlanRow
           key={response.id}
           plan={plan}
-          note={t.responseStatus[response.status]}
+          // A deleted Встреча says so; its Запрос was answered along the way.
+          note={
+            plan.status === 'deleted'
+              ? strings.planScreen.status.deleted
+              : t.responseStatus[response.status]
+          }
           testID={`my-plan-${plan.id}`}
         />
       ))}

@@ -15,13 +15,12 @@ const t = strings.create;
 
 const options = [
   { key: 'post', href: '/compose' },
-  { key: 'question', href: '/compose?type=question' },
   { key: 'plan', href: '/meeting/new' },
 ] as const satisfies readonly { key: keyof typeof t.options; href: Href }[];
 
 /**
- * «Создать» opened by a link: a choice of Пост, Вопрос or План. The tab bar itself takes
- * members straight to the editor; everyone else sees why they cannot create yet.
+ * «Создать» opened by a link: «Создать пост» or «Создать встречу». The tab bar itself
+ * offers the same two in a sheet; everyone else sees why they cannot create yet.
  */
 export default function CreateScreen() {
   const styles = useStyles();

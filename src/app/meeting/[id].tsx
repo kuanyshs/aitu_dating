@@ -13,6 +13,7 @@ import {
 import {
   useAcceptResponse,
   useCancelPlan,
+  useDeletePost,
   useClosePlan,
   useDeclineResponse,
   usePlan,
@@ -48,6 +49,7 @@ import {
   type Icon,
 } from '@/ui/icons';
 import { budgetLine } from '@/ui/components/PostRow';
+import { PhotoGallery } from '@/features/photo/PhotoGallery';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
@@ -128,7 +130,7 @@ function Header({ onMenu }: { onMenu?: () => void }) {
   );
 }
 
-type Sheet = 'menu' | 'block' | 'cancel';
+type Sheet = 'menu' | 'block' | 'cancel' | 'delete';
 
 function PlanDetail({ plan, onLeave }: { plan: PlanView; onLeave: () => void }) {
   const styles = useStyles();
@@ -138,6 +140,7 @@ function PlanDetail({ plan, onLeave }: { plan: PlanView; onLeave: () => void }) 
   const setBlock = useSetBlock();
   const closePlan = useClosePlan();
   const cancelPlan = useCancelPlan();
+  const deletePost = useDeletePost();
   const [sheet, setSheet] = useState<Sheet>();
 
   const accessState = session.data?.accessState;
@@ -171,6 +174,24 @@ function PlanDetail({ plan, onLeave }: { plan: PlanView; onLeave: () => void }) 
   if (sheet === 'block') {
     actions = [
       { label: strings.block.confirm, danger: true, onPress: block, testID: 'sheet-confirm-block' },
+    ];
+  } else if (sheet === 'delete') {
+    actions = [
+      {
+        label: strings.deletion.delete,
+        danger: true,
+        onPress: () => {
+          closeSheet();
+          deletePost.mutate(plan.postId, {
+            onSuccess: () => {
+              toast(strings.deletion.planDone);
+              onLeave();
+            },
+            onError: () => toast(strings.deletion.failed),
+          });
+        },
+        testID: 'sheet-confirm-delete',
+      },
     ];
   } else if (sheet === 'cancel') {
     actions = [
@@ -212,6 +233,12 @@ function PlanDetail({ plan, onLeave }: { plan: PlanView; onLeave: () => void }) 
             },
           ]
         : []),
+      {
+        label: strings.deletion.planDelete,
+        danger: true,
+        onPress: () => setSheet('delete'),
+        testID: 'sheet-delete-plan',
+      },
     ];
   } else {
     actions = [
@@ -239,14 +266,22 @@ function PlanDetail({ plan, onLeave }: { plan: PlanView; onLeave: () => void }) 
       <ActionSheet
         visible={!!sheet}
         title={
-          sheet === 'block' ? strings.block.title : sheet === 'cancel' ? t.cancelTitle : undefined
+          sheet === 'block'
+            ? strings.block.title
+            : sheet === 'cancel'
+              ? t.cancelTitle
+              : sheet === 'delete'
+                ? strings.deletion.planTitle
+                : undefined
         }
         message={
           sheet === 'block'
             ? strings.block.hint(authorName)
             : sheet === 'cancel'
               ? t.cancelHint
-              : undefined
+              : sheet === 'delete'
+                ? strings.deletion.planText
+                : undefined
         }
         actions={actions}
         onClose={closeSheet}
@@ -295,6 +330,7 @@ function Summary({ plan }: { plan: PlanView }) {
         </AppText>
       )}
       {line(Wallet, budgetLine(plan), 'plan-budget')}
+      {plan.photo ? <PhotoGallery photos={[plan.photo]} testID="plan-photo" /> : null}
     </View>
   );
 }

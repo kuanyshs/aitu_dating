@@ -22,7 +22,7 @@ import {
   type PaymentPolicy,
   type Topic,
 } from '@/catalogs';
-import { isRepositoryError, LIMITS, type MyProfile } from '@/contracts';
+import { isRepositoryError, LIMITS, PHOTO_LIMITS, type MyProfile } from '@/contracts';
 import { useCreatePlan, useMyProfile, useSession } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { newIdempotencyKey } from '@/features/access/steps';
@@ -40,6 +40,8 @@ import { AppText } from '@/ui/components/Text';
 import { formatPlanDate } from '@/ui/format';
 import { SettlementField } from '@/features/settlement/SettlementPicker';
 import { useReportFooter } from '@/ui/navigation/statusInset';
+import { PhotoSlotsEditor } from '@/features/photo/PhotoSlotsEditor';
+import { usePhotoSlots } from '@/features/photo/usePhotoSlots';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { spacing } from '@/ui/theme/tokens';
@@ -124,6 +126,8 @@ function PlanForm({ me }: { me: MyProfile }) {
   const [problem, setProblem] = useState<string>();
   // A request that never got an answer: «Повторить» sends it again with the same key.
   const [failed, setFailed] = useState(false);
+  // One Фото per Встреча; it must be uploaded before publishing.
+  const photos = usePhotoSlots(PHOTO_LIMITS.plan);
 
   const dates = planDates(clock);
   const times = draft.date ? planTimes(draft.date, clock) : [];
@@ -143,7 +147,9 @@ function PlanForm({ me }: { me: MyProfile }) {
     draft.placeArea.trim().length > 0 &&
     draft.place.trim().length > 0 &&
     draft.description.trim().length > 0 &&
-    draft.isPublicPlace;
+    draft.isPublicPlace &&
+    !photos.busy &&
+    !photos.failed;
 
   const submit = () => {
     if (!ready || !draft.city || !draft.date || !draft.timeStart) return;
@@ -157,6 +163,7 @@ function PlanForm({ me }: { me: MyProfile }) {
         placeArea: draft.placeArea.trim(),
         place: draft.place.trim(),
         description: draft.description.trim(),
+        ...(photos.photoIds[0] ? { photoId: photos.photoIds[0] } : {}),
         idempotencyKey,
       },
       {
@@ -345,6 +352,21 @@ function PlanForm({ me }: { me: MyProfile }) {
             maxLength={LIMITS.planDescription}
             testID="new-plan-description"
           />
+
+          <Group label={t.photo}>
+            <PhotoSlotsEditor
+              slots={photos.slots}
+              max={PHOTO_LIMITS.plan}
+              onAdd={() => {
+                setDirty(true);
+                void photos.add();
+              }}
+              onRemove={(key) => photos.remove(key)}
+              onMove={(key, by) => photos.move(key, by)}
+              onRetry={(key) => photos.retry(key)}
+              testID="new-plan-photos"
+            />
+          </Group>
 
           <Group label={t.topics} many>
             {topicKeys.map((topic) => {

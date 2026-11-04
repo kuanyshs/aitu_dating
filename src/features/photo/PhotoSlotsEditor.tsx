@@ -3,6 +3,8 @@ import { ActivityIndicator, Image, Pressable, View } from 'react-native';
 import { AppText } from '@/ui/components/Text';
 import { ChevronLeft, ChevronRight, Plus, X } from '@/ui/icons';
 import { strings } from '@/ui/strings';
+
+import { AiLabel } from './AiLabel';
 import { useTheme } from '@/ui/theme/ThemeProvider';
 import { minTouch, radius, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
@@ -127,6 +129,7 @@ export function PhotoSlotsEditor({
               </View>
             ) : null}
           </View>
+          <AiLabel ai={slot.photo?.ai} testID={`${testID}-ai-${index}`} />
           {onMakeMain && index > 0 && slot.status === 'done' ? (
             <Pressable
               role="button"

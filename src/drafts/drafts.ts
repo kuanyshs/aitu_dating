@@ -6,8 +6,8 @@ import { createSlot, storageKeys, type KeyValueStore } from '@/storage';
 
 /** Черновик: what the editor held when its author chose to keep it. */
 export const Draft = z.strictObject({
-  type: z.enum(['post', 'question', 'quote']),
-  text: z.string().max(LIMITS.postText),
+  type: z.enum(['post', 'quote']),
+  text: z.string().max(LIMITS.storedPostText),
   topics: z.array(z.enum(topicKeys)).max(4),
   quotedPostId: z.string().min(1).optional(),
   /** Фото already uploaded for this post. */
@@ -42,7 +42,21 @@ export function createDraftStore(store: KeyValueStore) {
     store,
     key: storageKeys.drafts,
     schema: Drafts,
-    version: 1,
+    version: 2,
+    // v2: a Вопрос is an ordinary post, and a post keeps one Фото.
+    migrations: [
+      (v1: unknown) =>
+        Object.fromEntries(
+          Object.entries((v1 ?? {}) as Record<string, Record<string, unknown>>).map(([id, d]) => [
+            id,
+            {
+              ...d,
+              type: d.type === 'question' ? 'post' : d.type,
+              ...(Array.isArray(d.photos) ? { photos: d.photos.slice(0, PHOTO_LIMITS.post) } : {}),
+            },
+          ]),
+        ),
+    ],
     defaults: (): Drafts => ({}),
   });
 

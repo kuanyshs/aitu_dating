@@ -112,6 +112,6 @@ describe('saved state from before the settlements directory (v21)', () => {
       interests: [],
       days: [],
     });
-    expect(MOCK_STATE_VERSION).toBe(23);
+    expect(MOCK_STATE_VERSION).toBeGreaterThanOrEqual(23);
   });
 });

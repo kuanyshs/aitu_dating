@@ -18,7 +18,8 @@ import { LIMITS } from './limits';
 import { AuthorView, SettlementCode } from './people';
 import { PHOTO_LIMITS, PhotoRef } from './photo';
 
-export const PostType = z.enum(['post', 'question', 'quote', 'plan']);
+/** A Вопрос is no longer a type of its own: older ones read as ordinary posts. */
+export const PostType = z.enum(['post', 'quote', 'plan']);
 export type PostType = z.infer<typeof PostType>;
 
 export const TopicKey = z.enum(topics);
@@ -28,7 +29,15 @@ export const TopicKey = z.enum(topics);
  * (Отменён) are stored; past (Прошёл) is computed: an open or closed plan whose start
  * time has come.
  */
-export const PlanStatus = z.enum(['published', 'matched', 'closed', 'cancelled', 'past']);
+/** `deleted`: the author removed the Встреча; it lives on only in their lists and old chats. */
+export const PlanStatus = z.enum([
+  'published',
+  'matched',
+  'closed',
+  'cancelled',
+  'past',
+  'deleted',
+]);
 export type PlanStatus = z.infer<typeof PlanStatus>;
 
 /** The statuses a plan is stored with; «Прошёл» is never stored. */
@@ -86,7 +95,7 @@ export type FeedReason = z.infer<typeof FeedReason>;
 export const PostView = z.strictObject({
   id: Id,
   type: PostType,
-  text: z.string().max(LIMITS.postText),
+  text: z.string().max(LIMITS.storedPostText),
   topics: z.array(TopicKey),
   author: AuthorView,
   createdAt: IsoDateTime,
@@ -114,11 +123,11 @@ export type PostView = z.infer<typeof PostView>;
 /** A new Пост. Plans are created with `createPlan`, which also publishes their post. */
 export const CreatePostInput = z
   .strictObject({
-    type: z.enum(['post', 'question', 'quote']),
+    type: z.enum(['post', 'quote']),
     text: z.string().trim().min(1, 'required').max(LIMITS.postText, 'too_long'),
     topics: z.array(TopicKey).max(LIMITS.topics, 'too_many'),
     quotedPostId: Id.optional(),
-    /** Up to two of the author's uploaded Фото, in order. */
+    /** One of the author's uploaded Фото. */
     photoIds: z
       .array(Id)
       .max(PHOTO_LIMITS.post, 'too_many')

@@ -196,7 +196,7 @@ test.describe('guide @guide', () => {
     await joinAsMadina(page);
     await expect(page.getByTestId('home-member')).toBeVisible();
     await page.getByTestId('tab-create').click();
-    await page.getByTestId('compose-type-question').click();
+    await page.getByTestId('create-post').click();
     await page.getByTestId('compose-topic-city').click();
     await page.getByTestId('compose-topic-meetings').click();
     await page.getByTestId('compose-input').fill('Где в Алматы можно тихо поговорить за кофе?');
@@ -224,6 +224,7 @@ test.describe('guide @guide', () => {
     await joinAsMadina(page);
     await expect(page.getByTestId('home-member')).toBeVisible();
     await page.getByTestId('tab-create').click();
+    await page.getByTestId('create-post').click();
     await page.getByTestId('compose-input').fill('Черновик: о чём поговорить на первой встрече');
     await page.getByTestId('compose-cancel').click();
     await expect(page.getByTestId('compose-sheet')).toBeVisible();

@@ -30,7 +30,7 @@ test.describe('Новый план', () => {
     await joinAsMadina(page);
     await expect(page.getByTestId('home-member')).toBeVisible();
     await page.getByTestId('tab-create').click();
-    await page.getByTestId('compose-type-plan').click();
+    await page.getByTestId('create-plan').click();
     await expect(page.getByTestId('new-plan-city-chosen-351010000')).toHaveAttribute(
       'aria-checked',
       'true',

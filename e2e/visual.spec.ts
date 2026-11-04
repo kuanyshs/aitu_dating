@@ -176,6 +176,7 @@ test.describe('visual baselines @visual', () => {
     await joinAsMadina(page);
     await expect(page.getByTestId('home-member')).toBeVisible();
     await page.getByTestId('tab-create').click();
+    await page.getByTestId('create-post').click();
     await expect(page.getByTestId('compose-avatar')).toBeVisible();
     await expect(page.getByTestId('compose-submit')).toHaveAttribute('aria-disabled', 'true');
     await snap(page, 'compose-empty');
@@ -207,13 +208,10 @@ test.describe('visual baselines @visual', () => {
   test('Создание: «Мои публикации» in the profile', async ({ page }) => {
     test.setTimeout(90_000);
     await joinAsMadina(page);
-    for (const [kind, text] of [
-      ['post', 'Первый пост Мадины'],
-      ['question', 'Где в Алматы тихо поговорить?'],
-    ] as const) {
+    for (const text of ['Первый пост Мадины', 'Где в Алматы тихо поговорить?']) {
       await expect(page.getByTestId('home-member')).toBeVisible();
       await page.getByTestId('tab-create').click();
-      await page.getByTestId(`compose-type-${kind}`).click();
+      await page.getByTestId('create-post').click();
       await page.getByTestId('compose-input').fill(text);
       await page.getByTestId('compose-submit').click();
       await expect(page.getByTestId('screen-compose')).toHaveCount(0);

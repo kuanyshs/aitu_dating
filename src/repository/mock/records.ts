@@ -119,7 +119,7 @@ export const PostRecord = z.strictObject({
   createdAt: IsoDateTime,
   mediaKey: z.string().optional(),
   /** Uploaded Фото of a post, in order. */
-  photoIds: z.array(z.string()).max(2).optional(),
+  photoIds: z.array(z.string()).max(1).optional(),
   planId: Id.optional(),
   quotedPostId: Id.optional(),
 });

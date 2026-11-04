@@ -181,13 +181,19 @@ export const MockState = z.strictObject({
   /** Uploaded Фото: who owns each one. The pictures themselves live under their own keys. */
   photos: z.record(
     z.string(),
-    z.strictObject({ ownerId: z.string(), mimeType: z.enum(PHOTO_TYPES), createdAt: z.string() }),
+    z.strictObject({
+      ownerId: z.string(),
+      mimeType: z.enum(PHOTO_TYPES),
+      createdAt: z.string(),
+      /** Made by a generative model, by the original file's metadata. */
+      ai: z.literal(true).optional(),
+    }),
   ),
   photoKeys: z.record(z.string(), z.string()),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 23;
+export const MOCK_STATE_VERSION = 24;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -281,6 +287,18 @@ export const mockStateMigrations = [
       feedFilters: Object.fromEntries(
         Object.entries(old.feedFilters ?? {}).map(([id, f]) => [id, fromLegacyFeedFilters(f)]),
       ),
+    };
+  },
+  // v24: a Вопрос is an ordinary post, and a post keeps its first Фото only.
+  (v23: unknown) => {
+    const old = v23 as { posts?: Record<string, unknown>[] };
+    return {
+      ...old,
+      posts: (old.posts ?? []).map((post) => ({
+        ...post,
+        type: post.type === 'question' ? 'post' : post.type,
+        ...(Array.isArray(post.photoIds) ? { photoIds: post.photoIds.slice(0, 1) } : {}),
+      })),
     };
   },
 ];

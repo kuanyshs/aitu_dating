@@ -28,12 +28,10 @@ import { useTheme } from '@/ui/theme/ThemeProvider';
 import { radius, spacing, typography } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
 
-type Kind = 'post' | 'question';
-const kinds: Kind[] = ['post', 'question'];
 const MAX_TOPICS = LIMITS.topics;
 
 /**
- * Создание: one full-screen editor for a Пост, a Вопрос or a Цитата. The text stays
+ * Создание: one full-screen editor for a Пост or a Цитата. The text stays
  * until the server confirms, and a retry after a failure reuses the same key, so the
  * post is never published twice.
  */
@@ -67,7 +65,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   const { colors } = useTheme();
   const toast = useToast((s) => s.show);
   const t = strings.compose;
-  const params = useLocalSearchParams<{ quote?: string; type?: string }>();
+  const params = useLocalSearchParams<{ quote?: string }>();
   const quotedPostId = params.quote ? String(params.quote) : undefined;
   // The card comes from what the feed or the post screen already loaded; a direct link
   // fetches it. A quoted post that is gone cannot be quoted.
@@ -85,10 +83,6 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   const reportFooter = useReportFooter();
   const opening = draftOnOpen(stored, { quotedPostId });
   const initial = opening === 'restore' ? stored : undefined;
-  // A restored draft keeps its own type; otherwise «Создать» may ask for a question.
-  const [kind, setKind] = useState<Kind>(
-    (initial ? initial.type : params.type) === 'question' ? 'question' : 'post',
-  );
   // A draft saved under the old limit keeps its first Темы only.
   const [topics, setTopics] = useState<Topic[]>((initial?.topics ?? []).slice(0, MAX_TOPICS));
   const [text, setText] = useState(initial?.text ?? '');
@@ -97,7 +91,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
   const [sheet, setSheet] = useState<'conflict' | 'leave' | null>(
     opening === 'ask' ? 'conflict' : null,
   );
-  const type = quotedPostId ? 'quote' : kind;
+  const type = quotedPostId ? 'quote' : 'post';
 
   const leave = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -118,7 +112,6 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
 
   const continueDraft = () => {
     if (!stored) return;
-    setKind(stored.type === 'question' ? 'question' : 'post');
     setTopics(stored.topics.slice(0, MAX_TOPICS));
     setText(stored.text);
     photos.reset(stored.photos ?? []);
@@ -201,29 +194,6 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
         </View>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {quotedPostId ? null : (
-            <View role="radiogroup" aria-label={t.typeLabel} style={styles.chips}>
-              {kinds.map((k) => (
-                <Chip
-                  key={k}
-                  label={t.type[k]}
-                  selected={k === kind}
-                  onPress={() => {
-                    edit();
-                    setKind(k);
-                  }}
-                  testID={`compose-type-${k}`}
-                />
-              ))}
-              <Chip
-                label={t.type.plan}
-                selected={false}
-                onPress={() => router.push('/meeting/new')}
-                testID="compose-type-plan"
-              />
-            </View>
-          )}
-
           <View style={styles.compose}>
             {/* The slot is kept while the card loads, so the text never jumps sideways. */}
             <View style={styles.avatar} testID={me.data ? 'compose-avatar' : undefined}>

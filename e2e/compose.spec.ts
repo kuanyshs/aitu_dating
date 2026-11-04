@@ -11,26 +11,25 @@ async function openEditor(page: Page) {
   // The member footer of Home shows the session has loaded before the tab is tapped.
   await expect(page.getByTestId('home-member')).toBeVisible();
   await page.getByTestId('tab-create').click();
+  await page.getByTestId('create-post').click();
   await expect(page.getByTestId('screen-compose')).toBeVisible();
 }
 
-test.describe('Создание: a post or a question', () => {
+test.describe('Создание поста', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'light', 'layout-independent rule');
   });
 
-  test('a question with a topic leads «Для вас» after publishing', async ({ page }, testInfo) => {
+  test('a post with a topic leads «Поиск» after publishing', async ({ page }, testInfo) => {
     await joinAsMadina(page);
     await page.getByTestId('feed-tab-popular').click();
     await openEditor(page);
     await expect(page.getByRole('heading', { name: 'Новый пост' })).toBeVisible();
     await expect(page.getByTestId('compose-submit')).toHaveAttribute('aria-disabled', 'true');
 
-    await page.getByTestId('compose-type-question').click();
-    await expect(page.getByRole('heading', { name: 'Новый вопрос' })).toBeVisible();
     await page.getByTestId('compose-topic-meetings').click();
     await page.getByTestId('compose-input').fill('Где в Алматы тихо поговорить после работы?');
-    await expect(page.getByTestId('compose-counter')).toHaveText('42 / 2000');
+    await expect(page.getByTestId('compose-counter')).toHaveText('42 / 1000');
     await testInfo.attach('compose-question', {
       body: await page.screenshot(),
       contentType: 'image/png',
@@ -43,7 +42,7 @@ test.describe('Создание: a post or a question', () => {
     const question = 'Где в Алматы тихо поговорить после работы?';
     await expect.poll(() => topText(page)).toContain(question);
     await expect(byText(page, question)).toBeInViewport({ ratio: 0.9 });
-    await expect(byText(page, question).getByTestId('post-type')).toHaveText('Вопрос');
+    await expect(byText(page, question).getByTestId('post-type')).toHaveCount(0);
     await expect(byText(page, question)).toContainText('#встречи');
     await expect(byText(page, question)).toContainText('Мадина');
 
@@ -67,7 +66,7 @@ test.describe('Создание: a post or a question', () => {
       'false',
     );
     await expect(third).not.toHaveAttribute('aria-disabled', 'true');
-    await expect(page.getByTestId('compose-counter')).toHaveText('0 / 2000');
+    await expect(page.getByTestId('compose-counter')).toHaveText('0 / 1000');
     await page.getByTestId('compose-input').fill('   ');
     await expect(page.getByTestId('compose-submit')).toHaveAttribute('aria-disabled', 'true');
     await page.getByTestId('compose-cancel').click();
@@ -95,13 +94,6 @@ test.describe('Создание: a post or a question', () => {
         .getByRole('article')
         .filter({ hasText: 'Пост после сбоя сети' }),
     ).toHaveCount(1);
-  });
-
-  test('«План» opens the plan form', async ({ page }) => {
-    await joinAsMadina(page);
-    await openEditor(page);
-    await page.getByTestId('compose-type-plan').click();
-    await expect(page.getByTestId('new-plan-city-chosen-351010000')).toBeVisible();
   });
 
   test('a guest and an expired member are shown the way in instead', async ({ page }) => {

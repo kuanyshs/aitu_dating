@@ -149,7 +149,7 @@ describe('deleting an own post', () => {
     }
   });
 
-  it('is refused for someone else’s post and for a plan’s post', async () => {
+  it('is refused for someone else’s post', async () => {
     const author = repositoryOn(createMemoryStore(), seedAuthor);
     await expect(author.deletePost({ postId: 'p02' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -161,10 +161,6 @@ describe('deleting an own post', () => {
     await expect(repositoryOn().deletePost({ postId: 'p01' })).rejects.toMatchObject({
       code: 'UNAUTHENTICATED',
     });
-    const planAuthor = repositoryOn(createMemoryStore(), { ...seedAuthor, userId: 'm06' });
-    await expect(planAuthor.deletePost({ postId: 'p-plan1' })).rejects.toMatchObject({
-      code: 'CONFLICT',
-    });
   });
 
   it('marks what is mine for members only', async () => {
@@ -172,5 +168,38 @@ describe('deleting an own post', () => {
     expect((await guest.getPost({ postId: 'p01' })).mine).toBeUndefined();
     const member = await join(repositoryOn());
     expect((await member.getPost({ postId: 'p01' })).mine).toBe(false);
+  });
+});
+
+describe('deleting a Встреча', () => {
+  it('reads «Удалена», answers everyone waiting and leaves the feeds, search and profile', async () => {
+    const store = createMemoryStore();
+    const as = (userId: string) => repositoryOn(store, { ...seedAuthor, userId });
+    const sender = as('m02');
+    await sender.respondToPlan({ planId: 'plan1', idempotencyKey: 'delete-plan-response' });
+
+    const author = as('m06');
+    await author.deletePost({ postId: 'p-plan1' });
+    await expect(author.getPlan({ planId: 'plan1' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    const mine = await author.listMyPlans({});
+    expect(mine.items.find((p) => p.id === 'plan1')?.status).toBe('deleted');
+    const profile = await author.listProfilePosts({ memberId: 'm06', limit: 50 });
+    expect(profile.items.map((p) => p.id)).not.toContain('p-plan1');
+
+    const reader = as('m02');
+    const responses = await reader.listMyResponses({});
+    expect(responses.items.find((r) => r.plan.id === 'plan1')).toMatchObject({
+      response: { status: 'declined' },
+      plan: { status: 'deleted' },
+    });
+    await expect(
+      reader.respondToPlan({ planId: 'plan1', idempotencyKey: 'delete-plan-again' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    for (const tab of ['for_you', 'popular', 'following'] as const) {
+      const feed = await reader.getHomeFeed({ tab, limit: 50 });
+      expect(feed.items.map((p) => p.id)).not.toContain('p-plan1');
+    }
+    const found = await reader.search({ kind: 'plans' });
+    expect(JSON.stringify(found.items)).not.toContain('"plan1"');
   });
 });

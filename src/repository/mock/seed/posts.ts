@@ -83,7 +83,7 @@ const regularPosts: PostSpec[] = [
   {
     id: 'p02',
     authorId: 'm07',
-    type: 'question',
+    type: 'post',
     text: 'Вы скорее планируете первую встречу заранее или оставляете место для импровизации?',
     topics: ['meetings', 'conversation'],
     createdAt: hoursAgo(6),
@@ -103,7 +103,7 @@ const regularPosts: PostSpec[] = [
   {
     id: 'p04',
     authorId: 'm03',
-    type: 'question',
+    type: 'post',
     text: 'Какое место в городе вы бы показали человеку, который приехал впервые?',
     topics: ['city', 'conversation'],
     createdAt: hoursAgo(14),
@@ -134,7 +134,7 @@ const regularPosts: PostSpec[] = [
   {
     id: 'p07',
     authorId: 'm10',
-    type: 'question',
+    type: 'post',
     text: 'Какой навык вы бы с удовольствием освоили вместе с кем-то?',
     topics: ['conversation'],
     createdAt: hoursAgo(33),
@@ -164,7 +164,7 @@ const regularPosts: PostSpec[] = [
   {
     id: 'p10',
     authorId: 'm12',
-    type: 'question',
+    type: 'post',
     text: 'Посоветуйте тихое место в центре, где можно поговорить после работы.',
     topics: ['city'],
     createdAt: hoursAgo(58),
@@ -185,7 +185,7 @@ const regularPosts: PostSpec[] = [
   {
     id: 'p12',
     authorId: 'm02',
-    type: 'question',
+    type: 'post',
     text: 'Что выбираете для первого вечера: камерный концерт, прогулку или разговор за кофе?',
     topics: ['meetings'],
     createdAt: hoursAgo(70),

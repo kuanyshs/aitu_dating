@@ -141,9 +141,15 @@ export async function showFeed(page: Page, tab: 'for_you' | 'popular' | 'followi
 export async function choosePhotos(
   page: Page,
   trigger: () => Promise<void>,
-  names: ('red' | 'blue' | 'green')[],
+  names: ('red' | 'blue' | 'green' | 'ai')[],
 ) {
   const chooser = page.waitForEvent('filechooser');
   await trigger();
   await (await chooser).setFiles(names.map((name) => `e2e/fixtures/${name}.png`));
+}
+
+/** «＋» in the tab bar, then one of its two choices. */
+export async function openCreate(page: Page, what: 'post' | 'plan' = 'post') {
+  await page.getByTestId('tab-create').click();
+  await page.getByTestId(`create-${what}`).click();
 }

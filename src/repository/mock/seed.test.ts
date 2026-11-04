@@ -21,7 +21,8 @@ describe('seed data', () => {
     expect(seed.members.some((m) => m.membership.endsAt < SEED_NOW)).toBe(true);
     expect(seed.posts.some((p) => p.mediaKey)).toBe(true);
     expect(seed.posts.some((p) => p.type === 'quote')).toBe(true);
-    expect(seed.posts.some((p) => p.type === 'question')).toBe(true);
+    // Older questions are ordinary posts that ask something.
+    expect(seed.posts.some((p) => p.type === 'post' && p.text.trim().endsWith('?'))).toBe(true);
     expect(seed.posts.some((p) => p.text.length > 500)).toBe(true);
     expect(seed.posts.some((p) => p.text.length < 10)).toBe(true);
     expect(new Set(seed.plans.map((p) => p.paymentPolicy)).size).toBe(3);

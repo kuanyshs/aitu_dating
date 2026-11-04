@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePhotoViewer } from '@/features/photo/viewer';
 import { AppText } from '@/ui/components/Text';
 import { ChevronLeft, ChevronRight, X } from '@/ui/icons';
+import { AiLabel } from '@/features/photo/AiLabel';
 import { strings } from '@/ui/strings';
 import { minTouch, radius, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
@@ -61,6 +62,7 @@ export default function PhotoViewer() {
             testID="photo-image"
           />
         ) : null}
+        <AiLabel ai={photo?.ai} color={colors.onViewer} testID="photo-ai" />
       </View>
       {photos.length > 1 ? (
         <View style={styles.bottom}>

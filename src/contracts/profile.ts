@@ -4,6 +4,7 @@ import { communicationStyles, datingIntents, interests } from '@/catalogs';
 
 import { Id, Page } from './common';
 import { LIMITS } from './limits';
+import { FeedContent } from './feed';
 import { AuthorView } from './people';
 import { PhotoRef } from './photo';
 
@@ -45,6 +46,8 @@ export type MemberRef = z.infer<typeof MemberRef>;
 
 export const ProfilePostsQuery = z.strictObject({
   memberId: Id,
+  /** «Все», «Посты» or «Встречи»; `all` when omitted. */
+  content: FeedContent.optional(),
   cursor: z.string().optional(),
   limit: z.number().int().min(1).max(50).optional(),
 });

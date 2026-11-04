@@ -6,6 +6,7 @@ import { strings } from '@/ui/strings';
 import { radius, spacing } from '@/ui/theme/tokens';
 import { createStyles } from '@/ui/theme/useStyles';
 
+import { AiLabel } from './AiLabel';
 import { usePhotoViewer } from './viewer';
 
 type Props = {
@@ -24,24 +25,26 @@ export function PhotoGallery({ photos, testID, height = 220 }: Props) {
   return (
     <View style={styles.row} testID={testID}>
       {photos.map((photo, index) => (
-        <Pressable
-          key={photo.id}
-          role="button"
-          aria-label={strings.photo.open(index + 1, photos.length)}
-          onPress={() => {
-            show(photos, index);
-            router.push('/photo');
-          }}
-          style={[styles.cell, { height }]}
-          testID={`${testID}-${index}`}
-        >
-          <Image
-            source={{ uri: photo.url }}
-            style={styles.image}
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-          />
-        </Pressable>
+        <View key={photo.id} style={styles.column}>
+          <Pressable
+            role="button"
+            aria-label={strings.photo.open(index + 1, photos.length)}
+            onPress={() => {
+              show(photos, index);
+              router.push('/photo');
+            }}
+            style={[styles.cell, { height }]}
+            testID={`${testID}-${index}`}
+          >
+            <Image
+              source={{ uri: photo.url }}
+              style={styles.image}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+          </Pressable>
+          <AiLabel ai={photo.ai} testID={`${testID}-${index}-ai`} />
+        </View>
       ))}
     </View>
   );
@@ -49,6 +52,7 @@ export function PhotoGallery({ photos, testID, height = 220 }: Props) {
 
 const useStyles = createStyles((colors) => ({
   row: { flexDirection: 'row', gap: spacing.xs },
-  cell: { flex: 1, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surface },
+  column: { flex: 1, gap: spacing.xs },
+  cell: { borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surface },
   image: { width: '100%', height: '100%' },
 }));

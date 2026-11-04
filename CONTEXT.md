@@ -100,7 +100,7 @@ One of the three streams on Главная: «Поиск», «Популярно
 _Avoid_: tab (unqualified), timeline
 
 **Пост** (`Post`):
-A feed entry: a post, a question, a quote of another **Пост**, or the feed face of a **Встреча**. A post, question or quote holds up to 2 000 characters, up to two **Темы** and up to two **Фото**.
+A feed entry: a post, a quote of another **Пост**, or the feed face of a **Встреча**. A post or quote holds up to 1 000 characters (older ones are read as they are), up to two **Темы** and one **Фото**. «＋» offers exactly «Создать пост» and «Создать встречу»; quoting is an action under someone else's **Пост**. Its author deletes it after «Удалить этот пост? Он исчезнет из ленты и профиля.»; an old link then reads «Публикация недоступна».
 
 **Комментарий** (`RootComment`):
 A first-level response to a **Пост**. Only its author can delete it; a deleted **Комментарий** that has **Ответы** stays in the thread as «Комментарий удалён».
@@ -119,11 +119,11 @@ A new **Пост** with its author's own text that points to another **Пост*
 _Avoid_: repost with comment
 
 **Вопрос** (`Question`):
-A **Пост** in which its author asks the community something. It differs from a plain post only by its label and prompt; it need not end with «?».
+No longer a kind of **Пост** (задание v4): older questions read as ordinary posts that ask something.
 _Avoid_: poll
 
 **Фото** (`Photo`):
-A JPG, PNG or WEBP picture of up to 10 MB that a **Верифицированный пользователь** uploads: up to four in their **Карточка** (one of them main, which is their avatar), up to two in a **Пост**, one in a chat message. **Комментарии** and **Запросы** carry none. A **Неверифицированный пользователь** and an expired **Верифицированный пользователь** never receive anyone's **Фото**. An upload can be cancelled, fails visibly and is retried without a duplicate.
+A JPG, PNG or WEBP picture of up to 10 MB that a **Верифицированный пользователь** uploads: up to four in their **Карточка** (one of them main, which is their avatar), one in a **Пост**, one in a **Встреча**, one in a chat message. A picture a generative model made carries «Сгенерировано с ИИ» under it everywhere; the app tells so from the original file's metadata (IPTC digital source type, generator text chunks, Software/CreatorTool), never from the author's words, and nobody can set or clear it by hand. **Комментарии** and **Запросы** carry none. A **Неверифицированный пользователь** and an expired **Верифицированный пользователь** never receive anyone's **Фото**. An upload can be cancelled, fails visibly and is retried without a duplicate.
 _Avoid_: image, picture, media
 
 **Тема** (`Topic`):
@@ -171,7 +171,7 @@ _Avoid_: activity (former name), feed (reserved for Home)
 ### Meetings
 
 **Встреча** (`Plan`):
-A one-to-one meeting invitation published by its author: **Населённый пункт**, date and time (Asia/Almaty), format, duration, **Цель встречи**, who pays, an approximate budget per person, where roughly (a general description of the place, shown to everyone), the exact place, a description and up to two **Темы**. Never has capacity or group participants. Only an active **Верифицированный пользователь** creates one, in a public place they confirm («Это публичное место»), and holds at most 3 open future **Встречи** at a time. The exact place is shown only to the author and, once an **Запрос** is accepted, to its sender; the count of waiting **Запросы** to the author only. Under a **Блокировка** the **Встреча** is not found. A cancelled or past **Встреча** stays in «Мои встречи», «Мои запросы», **Уведомления** and the chat it started.
+A one-to-one meeting invitation published by its author: **Населённый пункт**, date and time (Asia/Almaty), format, duration, **Цель встречи**, who pays, an approximate budget per person, where roughly (a general description of the place, shown to everyone), the exact place, a description, up to two **Темы** and one optional **Фото**. Never has capacity or group participants. Only an active **Верифицированный пользователь** creates one, in a public place they confirm («Это публичное место»), and holds at most 3 open future **Встречи** at a time. The exact place is shown only to the author and, once an **Запрос** is accepted, to its sender; the count of waiting **Запросы** to the author only. Under a **Блокировка** the **Встреча** is not found. A cancelled or past **Встреча** stays in «Мои встречи», «Мои запросы», **Уведомления** and the chat it started. Its author may delete it («Удалить эту встречу? Она исчезнет из поиска, а все ожидающие запросы будут отменены.»): it reads «Удалена», leaves every **Лента**, search and the profile, answers every waiting **Запрос**, and an old link reads «Публикация недоступна». Profiles list publications by «Все», «Посты» or «Встречи».
 _Avoid_: план (former name), event, meetup
 
 **Статус встречи** (`PlanStatus`):

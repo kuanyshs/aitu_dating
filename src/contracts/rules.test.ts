@@ -29,15 +29,22 @@ const plan = {
 
 describe('statuses', () => {
   it('match the spec', () => {
-    expect(PlanStatus.options).toEqual(['published', 'matched', 'closed', 'cancelled', 'past']);
+    expect(PlanStatus.options).toEqual([
+      'published',
+      'matched',
+      'closed',
+      'cancelled',
+      'past',
+      'deleted',
+    ]);
     expect(PlanResponseStatus.options).toEqual(['pending', 'accepted', 'declined', 'withdrawn']);
   });
 });
 
-describe('limits 2000 / 500 / 360 / 160, two Темы', () => {
+describe('limits 1000 / 500 / 360 / 160, two Темы', () => {
   it('are the shared constants', () => {
     expect(LIMITS).toMatchObject({
-      postText: 2000,
+      postText: 1000,
       messageText: 2000,
       topics: 2,
       planDescription: 500,
@@ -48,8 +55,8 @@ describe('limits 2000 / 500 / 360 / 160, two Темы', () => {
 
   it('bound a post', () => {
     const post = { type: 'post', topics: [], idempotencyKey: 'post-key-0001' } as const;
-    expect(CreatePostInput.safeParse({ ...post, text: 'а'.repeat(2000) }).success).toBe(true);
-    expect(CreatePostInput.safeParse({ ...post, text: 'а'.repeat(2001) }).success).toBe(false);
+    expect(CreatePostInput.safeParse({ ...post, text: 'а'.repeat(1000) }).success).toBe(true);
+    expect(CreatePostInput.safeParse({ ...post, text: 'а'.repeat(1001) }).success).toBe(false);
     const topics = ['meetings', 'city', 'thoughts'] as const;
     expect(CreatePostInput.safeParse({ ...post, text: 'т', topics }).success).toBe(false);
   });

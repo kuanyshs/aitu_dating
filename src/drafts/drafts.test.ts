@@ -4,7 +4,7 @@ import { createMemoryStore, storageKeys } from '@/storage';
 
 import { createDraftStore, draftOnOpen, type Draft } from './drafts';
 
-const post: Draft = { type: 'question', text: 'Где поговорить?', topics: ['city'] };
+const post: Draft = { type: 'post', text: 'Где поговорить?', topics: ['city'] };
 const quote: Draft = { type: 'quote', text: 'Согласна', topics: [], quotedPostId: 'p02' };
 
 describe('draft slot', () => {
@@ -52,5 +52,34 @@ describe('opening the editor with a draft', () => {
     expect(draftOnOpen(post, { quotedPostId: 'p02' })).toBe('ask');
     expect(draftOnOpen(quote, {})).toBe('ask');
     expect(draftOnOpen(quote, { quotedPostId: 'p05' })).toBe('ask');
+  });
+});
+
+describe('drafts saved before v4', () => {
+  it('turn a Вопрос into a post and keep one Фото', async () => {
+    const photo = (id: string) => ({
+      kind: 'photo' as const,
+      id,
+      url: `data:image/jpeg;base64,${id}`,
+    });
+    const store = createMemoryStore({
+      [storageKeys.drafts]: JSON.stringify({
+        version: 1,
+        data: {
+          'me-1': {
+            type: 'question',
+            text: 'Где поговорить?',
+            topics: [],
+            photos: [photo('a'), photo('b')],
+          },
+        },
+      }),
+    });
+    expect(await createDraftStore(store).load('me-1')).toEqual({
+      type: 'post',
+      text: 'Где поговорить?',
+      topics: [],
+      photos: [photo('a')],
+    });
   });
 });

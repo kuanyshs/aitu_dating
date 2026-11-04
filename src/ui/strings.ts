@@ -95,8 +95,13 @@ export const strings = {
     commentTitle: 'Удалить комментарий?',
     commentText: 'Ответы на него останутся, а на его месте будет «Комментарий удалён».',
     replyText: 'Ответ исчезнет из ветки.',
-    postTitle: 'Удалить публикацию?',
-    postText: 'Её больше никто не увидит — ни в ленте, ни по ссылке.',
+    // v4 §15, word for word: the question and its consequence.
+    postTitle: 'Удалить этот пост?',
+    postText: 'Он исчезнет из ленты и профиля.',
+    planTitle: 'Удалить эту встречу?',
+    planText: 'Она исчезнет из поиска, а все ожидающие запросы будут отменены.',
+    planDelete: 'Удалить встречу',
+    planDone: 'Встреча удалена',
     commentDone: 'Комментарий удалён',
     postDone: 'Публикация удалена',
     failed: 'Не удалось удалить. Попробуйте ещё раз.',
@@ -367,14 +372,11 @@ export const strings = {
   },
   compose: {
     cancel: 'Отмена',
-    title: { post: 'Новый пост', question: 'Новый вопрос', quote: 'Цитата' },
+    title: { post: 'Новый пост', quote: 'Цитата' },
     placeholder: {
       post: 'О чём хотите рассказать?',
-      question: 'Спросите сообщество…',
       quote: 'Ваша мысль к публикации…',
     },
-    typeLabel: 'Что публикуем',
-    type: { post: 'Пост', question: 'Вопрос', plan: 'Встреча' },
     topicsLabel: 'Темы, до двух',
     label: 'Текст публикации',
     quoted: 'Цитируемая публикация',
@@ -549,6 +551,8 @@ export const strings = {
     more: 'Показать ещё',
   },
   photo: {
+    /** Exactly this, under every picture a generative model made (v4 §6). */
+    ai: 'Сгенерировано с ИИ',
     label: 'Фото',
     add: 'Добавить фото',
     addMore: (left: number) => `Добавить фото, можно ещё ${left}`,
@@ -672,7 +676,6 @@ export const strings = {
   post: {
     type: {
       post: 'Пост',
-      question: 'Вопрос',
       quote: 'Цитата',
       plan: 'Встреча',
     },
@@ -801,6 +804,7 @@ export const strings = {
     publicPlace: 'Это публичное место',
     publicHint: 'Первая встреча — только в людном месте: кафе, парк, выставка.',
     description: 'О встрече',
+    photo: 'Фото, одно',
     descriptionPlaceholder: 'Что хотите делать и о чём поговорить',
     topics: 'Темы, до двух',
     submit: 'Опубликовать встречу',
@@ -829,6 +833,7 @@ export const strings = {
       closed: 'Набор закрыт',
       cancelled: 'Отменена',
       past: 'Прошла',
+      deleted: 'Удалена',
     },
     place: 'Место',
     placeArea: 'Где примерно',
@@ -890,7 +895,7 @@ export const strings = {
     report: 'Пожаловаться',
     block: 'Заблокировать автора',
     failed: 'Не получилось. Попробуйте ещё раз.',
-    unavailableTitle: 'Встреча недоступна',
+    unavailableTitle: 'Публикация недоступна',
     unavailableText: 'Её скрыли или удалили, или автор больше не виден вам.',
     errorTitle: 'Не удалось загрузить встречу',
     errorText: 'Проверьте соединение и попробуйте ещё раз.',
@@ -1075,10 +1080,11 @@ export const strings = {
   create: {
     title: 'Создать',
     intro: 'С чего начнём разговор?',
+    post: 'Создать пост',
+    plan: 'Создать встречу',
     options: {
-      post: { title: 'Пост', text: 'Мысль, история или наблюдение.' },
-      question: { title: 'Вопрос', text: 'Ответы придут в комментариях.' },
-      plan: { title: 'Встреча', text: 'Один на один в публичном месте.' },
+      post: { title: 'Создать пост', text: 'Мысль, история или наблюдение.' },
+      plan: { title: 'Создать встречу', text: 'Один на один в публичном месте.' },
     },
   },
   about: {

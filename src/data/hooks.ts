@@ -726,17 +726,21 @@ export function useDeletePost() {
       void client.invalidateQueries({ queryKey: queryKeys.post(postId), refetchType: 'none' });
       void client.invalidateQueries({ queryKey: ['comments', postId], refetchType: 'none' });
       void client.invalidateQueries({ queryKey: ['profile-posts'] });
+      // A Встреча's post takes the Встреча with it.
+      void client.invalidateQueries({ queryKey: queryKeys.myPlans });
+      void client.invalidateQueries({ queryKey: ['plan'], refetchType: 'none' });
+      void client.invalidateQueries({ queryKey: ['search'] });
     },
   });
 }
 
 /** A member's own posts, newest first, a page at a time («Мои публикации»). */
-export function useMyPosts(memberId: string | undefined) {
+export function useMyPosts(memberId: string | undefined, content: FeedContent = 'all') {
   const repository = useRepository();
   return useInfiniteQuery({
-    queryKey: queryKeys.profilePosts(memberId ?? ''),
+    queryKey: [...queryKeys.profilePosts(memberId ?? ''), content],
     queryFn: ({ pageParam }) =>
-      repository.listProfilePosts({ memberId: memberId ?? '', cursor: pageParam }),
+      repository.listProfilePosts({ memberId: memberId ?? '', content, cursor: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled: !!memberId,
