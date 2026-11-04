@@ -44,7 +44,7 @@ test.describe('Активность', () => {
 
   test('the author of a plan hears about an Отклик and opens the plan', async ({ page }) => {
     await signInAs(page, 'm02');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-send').click();
     await expect(page.getByTestId('plan-pending')).toBeVisible();

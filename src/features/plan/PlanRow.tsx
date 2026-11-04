@@ -35,7 +35,7 @@ export function PlanRow({
     <Pressable
       role="link"
       aria-label={strings.plan.open}
-      onPress={() => router.push(`/plan/${plan.id}`)}
+      onPress={() => router.push(`/meeting/${plan.id}`)}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       testID={testID}
     >

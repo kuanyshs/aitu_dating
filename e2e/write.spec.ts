@@ -61,13 +61,13 @@ test.describe('Написать', () => {
 
   test('from a Встреча, for both of its people', async ({ page }) => {
     await signInAs(page, 'm04');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-send').click();
     await expect(page.getByTestId('plan-pending')).toBeVisible();
 
     await signInAs(page, 'm06');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-accept-response-1').click();
     await page.getByTestId('sheet-confirm-accept').click();
     await page.getByTestId('plan-write').click();
@@ -79,7 +79,7 @@ test.describe('Написать', () => {
 
     // The accepted side opens the same chat.
     await signInAs(page, 'm04');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-write').click();
     await expectChat(page);
     await expect(page.getByText('До встречи в воскресенье!')).toBeVisible();

@@ -218,7 +218,7 @@ function Editor({ userId, stored }: { userId: string; stored: Draft | undefined 
               <Chip
                 label={t.type.plan}
                 selected={false}
-                onPress={() => router.push('/plan/new')}
+                onPress={() => router.push('/meeting/new')}
                 testID="compose-type-plan"
               />
             </View>

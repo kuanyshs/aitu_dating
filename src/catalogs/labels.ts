@@ -117,7 +117,7 @@ export const planBudgetLabels: Record<PlanBudget, string> = {
 
 export const paymentPolicyLabels: Record<PaymentPolicy, string> = {
   each_pays: 'Каждый за себя',
-  creator_pays: 'Создатель плана',
+  creator_pays: 'Автор встречи',
   agree_in_advance: 'Договориться заранее',
 };
 
@@ -131,7 +131,7 @@ export const activityCategoryLabels: Record<ActivityCategory, string> = {
   conversations: 'Разговоры',
   mentions: 'Упоминания',
   reactions: 'Реакции',
-  plans: 'Планы',
+  plans: 'Встречи',
   system: 'Системные',
 };
 

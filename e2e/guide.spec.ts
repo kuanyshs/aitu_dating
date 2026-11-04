@@ -68,7 +68,7 @@ test.describe('guide @guide', () => {
   });
 
   test('guest-plan', async ({ page }) => {
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await expect(page.getByTestId('plan-place-hidden')).toBeVisible();
     await shot(page, 'guest-plan');
   });
@@ -305,7 +305,7 @@ test.describe('guide @guide', () => {
   // 7. Plans
   test('plan-new', async ({ page }) => {
     await joinAsMadina(page);
-    await page.goto('/plan/new');
+    await page.goto('/meeting/new');
     await page.getByTestId('new-plan-date-2026-09-28').click();
     await page.getByTestId('new-plan-time-18:00').click();
     await shot(page, 'plan-new');
@@ -313,7 +313,7 @@ test.describe('guide @guide', () => {
 
   test('plan-member', async ({ page }) => {
     await joinAsMadina(page);
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await expect(page.getByTestId('plan-place-area')).toBeVisible();
     await shot(page, 'plan-member');
     await page.getByTestId('plan-respond').click();
@@ -330,14 +330,14 @@ test.describe('guide @guide', () => {
       ['m03', 'С удовольствием составлю компанию.'],
     ] as const) {
       await signInAs(page, userId);
-      await page.goto('/plan/plan1');
+      await page.goto('/meeting/plan1');
       await page.getByTestId('plan-respond').click();
       await page.getByTestId('plan-message').fill(text);
       await page.getByTestId('plan-send').click();
       await expect(page.getByTestId('plan-pending')).toBeVisible();
     }
     await signInAs(page, 'm06');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await expect(page.getByTestId('plan-waiting')).toHaveText('Ждут ответа: 2');
     await page.getByTestId('plan-responses').scrollIntoViewIfNeeded();
     await shot(page, 'plan-author');
@@ -388,22 +388,22 @@ test.describe('guide @guide', () => {
   test('chat-meeting-cancelled', async ({ page }) => {
     // m02 and m06 talk already (a mutual Подписка); a Встреча joins, then is cancelled.
     await signInAs(page, 'm02');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-send').click();
     await expect(page.getByTestId('plan-pending')).toBeVisible();
     await signInAs(page, 'm06');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-accept-response-1').click();
     await page.getByTestId('sheet-confirm-accept').click();
     await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
     await page.getByTestId('plan-write').click();
     await expect(page.getByTestId('screen-chat')).toBeVisible();
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-menu').click();
     await page.getByTestId('sheet-cancel-plan').click();
     await page.getByTestId('sheet-confirm-cancel').click();
-    await expect(page.getByTestId('plan-status')).toHaveText('Отменён');
+    await expect(page.getByTestId('plan-status')).toHaveText('Отменена');
     await page.goto('/chats/chat3');
     await expect(page.getByTestId('chat-context')).toContainText('Встреча отменена');
     await shot(page, 'chat-meeting-cancelled');
@@ -450,7 +450,7 @@ test.describe('guide @guide', () => {
 
   test('activity-plans', async ({ page }) => {
     await signInAs(page, 'm02');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-send').click();
     await expect(page.getByTestId('plan-pending')).toBeVisible();
@@ -656,7 +656,7 @@ test.describe('guide dark @guide', () => {
 
   test('dark-plan', async ({ page }) => {
     await joinAsMadina(page);
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await expect(page.getByTestId('plan-place-area')).toBeVisible();
     await shot(page, 'dark-plan');
   });

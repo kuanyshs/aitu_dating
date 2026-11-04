@@ -7,41 +7,41 @@ Closed, Russian-speaking verified dating community: people meet through conversa
 ### People and access
 
 **Вступление** (`AccessFlow`):
-The way a **Гость** becomes a **Участник**: Aitu Passport, club rules, a paid **Membership** period, payment, the **Карточка**, the **Анкета** and the confirmation «Вы участник». It can be closed at any step and continued later from the last finished one («Продолжить вступление»).
+The way a **Неверифицированный пользователь** becomes a **Верифицированный пользователь**: Aitu Passport, club rules, a paid **Подписка на клуб** period, payment, the **Карточка**, the **Анкета** and the confirmation «Вы верифицированный пользователь». It can be closed at any step and continued later from the last finished one («Продолжить вступление»).
 _Avoid_: onboarding, registration
 
 **Кандидат Passport** (`PassportCandidate`):
-A mock Aitu Passport identity the demo user can sign in as. Has no **Карточка** until the **Анкета** is finished and is never one of the seeded community **Участники**.
+A mock Aitu Passport identity the demo user can sign in as. Has no **Карточка** until the **Анкета** is finished and is never one of the seeded community **Верифицированные пользователи**.
 _Avoid_: test user, demo user
 
-**Участник** (`Member`):
+**Верифицированный пользователь** (`Member`):
 A person with a published **Карточка** inside the community.
-_Avoid_: user (in UI copy), profile
+_Avoid_: участник (former name), profile
 
-**Гость** (`Guest`):
+**Неверифицированный пользователь** (`Guest`):
 Someone looking at the app without member access; sees only the **Безопасный вид**.
-_Avoid_: anonymous, visitor
+_Avoid_: гость (former name), anonymous, visitor
 
 **Безопасный вид** (`SafeAuthorView`):
-The only shape of another person a **Гость** or an expired **Участник** receives: gender label, age, city at allowed precision and the shared neutral avatar.
+The only shape of another person a **Неверифицированный пользователь** or an expired **Верифицированный пользователь** receives: gender label, age, city at allowed precision and the shared neutral avatar.
 _Avoid_: masked profile, blurred profile
 
 **Полный вид** (`MemberAuthorView`):
-The permitted shape of another person an active **Участник** receives: name, verified mark, photo and the **Безопасный вид** fields.
+The permitted shape of another person an active **Верифицированный пользователь** receives: name, verified mark, photo and the **Безопасный вид** fields.
 
-**Membership**:
-A **Участник**'s paid access for exactly one **Период**; active or expired. It starts once the payment succeeds. There is no free tier.
-_Avoid_: subscription (reserved for **Подписка**), plan (reserved for **План**)
+**Подписка на клуб** (`Membership`):
+A **Верифицированный пользователь**'s paid access for exactly one **Период**; active or expired. It starts once the payment succeeds. There is no free tier.
+_Avoid_: membership (former name); «подписка» alone where it could be read as a **Подписка** on a person
 
 **Период** (`periodMonths`):
-The length of a **Membership**: 1, 3, 6 or 12 months; exactly one is chosen at a time.
+The length of a **Подписка на клуб**: 1, 3, 6 or 12 months; exactly one is chosen at a time.
 
 **Продление** (`Renewal`):
-Choosing and paying for a new **Период**. An expired **Membership** starts again from the payment; an early one adds the **Период** to the current end date. Months are calendar months in Asia/Almaty (31 January plus one month is the last day of February). Never repeats the **Анкета** and never lifts an **Ограничение**.
+Choosing and paying for a new **Период**. An expired **Подписка на клуб** starts again from the payment; an early one adds the **Период** to the current end date. Months are calendar months in Asia/Almaty (31 January plus one month is the last day of February). Never repeats the **Анкета** and never lifts an **Ограничение**.
 _Avoid_: resubscribe, re-onboarding
 
 **Блокировка** (`Block`):
-One **Участник** hiding another: their content and chats disappear for both sides and no new chat or **Отклик** between them is possible. Hidden **Посты** read «Публикация недоступна», a hidden **Комментарий** that still holds others' **Ответы** reads «Комментарий скрыт», the other's **Карточка** is not found; counters stay as they were. Nobody blocks themselves; a **Блокировка** is lifted in «Безопасность» → «Заблокированные».
+One **Верифицированный пользователь** hiding another: their content and chats disappear for both sides and no new chat or **Запрос** between them is possible. Hidden **Посты** read «Публикация недоступна», a hidden **Комментарий** that still holds others' **Ответы** reads «Комментарий скрыт», the other's **Карточка** is not found; counters stay as they were. Nobody blocks themselves; a **Блокировка** is lifted in «Безопасность» → «Заблокированные».
 _Avoid_: ban, restriction
 
 **Ограничение** (`Restriction`):
@@ -57,7 +57,7 @@ A message to the club's support with a topic (ограничение, безоп
 _Avoid_: ticket, feedback
 
 **Жалоба** (`Report`):
-A signal to moderation about a person or a piece of content (**Пост**, **Комментарий**, **План**, message) with a reason and optional details. It goes from created to reviewing to resolved and ends with an **Итог жалобы**. A second **Жалоба** on the same target while the first is unresolved returns the first; nobody reports their own content. A **Гость** may report anonymously but never sees the status.
+A signal to moderation about a person or a piece of content (**Пост**, **Комментарий**, **Встреча**, message) with a reason and optional details. It goes from created to reviewing to resolved and ends with an **Итог жалобы**. A second **Жалоба** on the same target while the first is unresolved returns the first; nobody reports their own content. A **Неверифицированный пользователь** may report anonymously but never sees the status.
 _Avoid_: complaint, flag
 
 **Итог жалобы** (`ReportOutcome`):
@@ -71,10 +71,10 @@ _Avoid_: inbox, tickets
 ### Profile
 
 **Профиль** (own):
-The **Участник**'s own page: their **Карточка** and **Фото**, then «Редактировать карточку», «Мои публикации», «Мои планы», «Мои отклики», «Подписчики», «Подписки», «Мои действия», «Уведомления», «Сообщения» and «Настройки».
+The **Верифицированный пользователь**'s own page: their **Карточка** and **Фото**, then «Редактировать карточку», «Мои публикации», «Мои встречи», «Мои запросы», «Подписчики», «Подписки», «Мои действия», «Уведомления», «Сообщения» and «Настройки».
 
 **Карточка** (`ProfileCard`):
-A **Участник**'s community profile: bio, **Намерение**, interests, communication style and the **Анкета** answers. Name, surname, age, gender and **Населённый пункт** come from Passport and are read-only. The surname is hidden from others until the owner turns on «Показывать фамилию в профиле»; the owner always sees it.
+A **Верифицированный пользователь**'s community profile: bio, **Намерение**, interests, communication style and the **Анкета** answers. Name, surname, age, gender and **Населённый пункт** come from Passport and are read-only. The surname is hidden from others until the owner turns on «Показывать фамилию в профиле»; the owner always sees it.
 _Avoid_: profile card, анкета (the questionnaire is a different thing)
 
 **Анкета** (`Questionnaire`):
@@ -82,11 +82,11 @@ The seven mandatory single-choice questions answered during onboarding; finishin
 _Avoid_: survey, onboarding form
 
 **Фильтры ленты** (`FeedFilters`):
-The **Анкета** questions that rank the «Для тебя» **Лента**: any number of options per question, and a person matches a question when their answer is one of the chosen options. A **Участник** starts from their own answers and may change them, keeping them with their account; a **Гость** starts with none and keeps them on the device. Ranking puts first the people matching the most chosen questions and sharing interests, then the same **Населённый пункт**, **Намерение** and meeting format, then **Подписки** and newness; for **Планы** a nearer date and a matching format and goal count too. An active **Участник** sees up to two reasons on a card («Общие интересы: кино»); nobody sees a percentage or the other person's answers.
+The **Анкета** questions that rank the «Для тебя» **Лента**: any number of options per question, and a person matches a question when their answer is one of the chosen options. A **Верифицированный пользователь** starts from their own answers and may change them, keeping them with their account; a **Неверифицированный пользователь** starts with none and keeps them on the device. Ranking puts first the people matching the most chosen questions and sharing interests, then the same **Населённый пункт**, **Намерение** and meeting format, then **Подписки** and newness; for **Встречи** a nearer date and a matching format and goal count too. An active **Верифицированный пользователь** sees up to two reasons on a card («Общие интересы: кино»); nobody sees a percentage or the other person's answers.
 _Avoid_: preferences, matching settings, compatibility score
 
 **Населённый пункт** (`Settlement`):
-A place in Kazakhstan from the single directory built from the official КАТО classifier: oblast, district, city, town or village. Every place field picks from it; there is no «Другой город» and no free text. A Passport place is matched to it by code, and an unmatched one must be chosen by hand before the **Вступление** ends. It filters search and sets a **План**'s place; it never makes a feed of its own.
+A place in Kazakhstan from the single directory built from the official КАТО classifier: oblast, district, city, town or village. Every place field picks from it; there is no «Другой город» and no free text. A Passport place is matched to it by code, and an unmatched one must be chosen by hand before the **Вступление** ends. It filters search and sets a **Встреча**'s place; it never makes a feed of its own.
 _Avoid_: city (unqualified), location
 
 **Намерение** (`DatingIntent`):
@@ -96,11 +96,11 @@ _Avoid_: intent (unqualified), goal
 ### Content
 
 **Лента** (`Feed`):
-One of the three streams on Главная: «Для тебя» (ranked by the **Фильтры ленты**), «Популярное» and «Подписки» (people the viewer follows, newest first). Each mixes ordinary **Посты** and **Планы** and has its own content type, «Все», «Посты» or «Планы встреч», remembered per **Лента**. A cancelled or past **План** leaves every **Лента**. There is no separate feed of **Планы** and no feed by city. A **Гость** sees «Подписки» as an invitation to join; an expired **Участник** reads it in the **Безопасный вид**.
+One of the three streams on Главная: «Для тебя» (ranked by the **Фильтры ленты**), «Популярное» and «Подписки» (people the viewer follows, newest first). Each mixes ordinary **Посты** and **Встречи** and has its own content type, «Все», «Посты» or «Планы встреч», remembered per **Лента**. A cancelled or past **Встреча** leaves every **Лента**. There is no separate feed of **Встречи** and no feed by city. A **Неверифицированный пользователь** sees «Подписки» as an invitation to join; an expired **Верифицированный пользователь** reads it in the **Безопасный вид**.
 _Avoid_: tab (unqualified), timeline
 
 **Пост** (`Post`):
-A feed entry: a post, a question, a quote of another **Пост**, or the feed face of a **План**. A post, question or quote holds up to 2 000 characters, up to two **Темы** and up to two **Фото**.
+A feed entry: a post, a question, a quote of another **Пост**, or the feed face of a **Встреча**. A post, question or quote holds up to 2 000 characters, up to two **Темы** and up to two **Фото**.
 
 **Комментарий** (`RootComment`):
 A first-level response to a **Пост**. Only its author can delete it; a deleted **Комментарий** that has **Ответы** stays in the thread as «Комментарий удалён».
@@ -111,7 +111,7 @@ A response to a **Комментарий**; the second and last level of a threa
 _Avoid_: nested comment, sub-reply
 
 **Репост** (`Repost`):
-An **Участник** sharing someone else's **Пост** as it is, without their own text; it can be undone. Nobody reposts their own **Пост**.
+An **Верифицированный пользователь** sharing someone else's **Пост** as it is, without their own text; it can be undone. Nobody reposts their own **Пост**.
 _Avoid_: share, retweet
 
 **Цитата** (`Quote`):
@@ -123,7 +123,7 @@ A **Пост** in which its author asks the community something. It differs from
 _Avoid_: poll
 
 **Фото** (`Photo`):
-A JPG, PNG or WEBP picture of up to 10 MB that a **Участник** uploads: up to four in their **Карточка** (one of them main, which is their avatar), up to two in a **Пост**, one in a chat message. **Комментарии** and **Отклики** carry none. A **Гость** and an expired **Участник** never receive anyone's **Фото**. An upload can be cancelled, fails visibly and is retried without a duplicate.
+A JPG, PNG or WEBP picture of up to 10 MB that a **Верифицированный пользователь** uploads: up to four in their **Карточка** (one of them main, which is their avatar), up to two in a **Пост**, one in a chat message. **Комментарии** and **Запросы** carry none. A **Неверифицированный пользователь** and an expired **Верифицированный пользователь** never receive anyone's **Фото**. An upload can be cancelled, fails visibly and is retried without a duplicate.
 _Avoid_: image, picture, media
 
 **Тема** (`Topic`):
@@ -131,86 +131,89 @@ One of the catalog subjects a **Пост** can carry, up to two; the feed shows 
 _Avoid_: tag, hashtag
 
 **Черновик** (`Draft`):
-An unpublished text from the post editor: its type, text, **Темы** and quoted **Пост**. One per **Участник**, kept only on the device; saved by choice when the editor closes and cleared once published.
+An unpublished text from the post editor: its type, text, **Темы** and quoted **Пост**. One per **Верифицированный пользователь**, kept only on the device; saved by choice when the editor closes and cleared once published.
 _Avoid_: saved post
 
 **Упоминание** (`Mention`):
-An `@` reference to a **Участник** inside a **Пост** or **Комментарий**; shown to a **Гость** as «@участник». There are no usernames.
+An `@` reference to a **Верифицированный пользователь** inside a **Пост** or **Комментарий**; shown to a **Неверифицированный пользователь** as «@участник». There are no usernames.
 _Avoid_: tag, @username
 
 ### Relations and chats
 
 **Подписка** (`Follow`):
-One **Участник** following another; two opposite **Подписки** make a mutual follow. Only an active **Участник** follows; nobody follows themselves. A **Блокировка** removes the **Подписки** both ways, and lifting it does not bring them back. A member's «Подписчики» are those following them, their «Подписки» those they follow. «Подписчики» are open to active **Участники**; «Подписки» — the list and its count — to the owner only.
-_Avoid_: subscription (as in **Membership**), friend
+One **Верифицированный пользователь** following another; two opposite **Подписки** make a mutual follow. Only an active **Верифицированный пользователь** follows; nobody follows themselves. A **Блокировка** removes the **Подписки** both ways, and lifting it does not bring them back. A member's «Подписчики» are those following them, their «Подписки» those they follow. «Подписчики» are open to active **Верифицированные пользователи**; «Подписки» — the list and its count — to the owner only.
+_Avoid_: subscription (as in **Подписка на клуб**), friend
 
 **Поиск** (`Search`):
-Finding people and **Посты** by text and filters (city, interests, **Намерение**, **Темы**). Opened from «Для тебя»; it is not a tab. A **Гость** and an expired **Участник** search **Посты** only; people are for active **Участники**. Nobody in a **Блокировка** with the viewer, nobody under **Ограничение** and never oneself shows up.
+Finding people and **Посты** by text and filters (city, interests, **Намерение**, **Темы**). Opened from «Для тебя»; it is not a tab. A **Неверифицированный пользователь** and an expired **Верифицированный пользователь** search **Посты** only; people are for active **Верифицированные пользователи**. Nobody in a **Блокировка** with the viewer, nobody under **Ограничение** and never oneself shows up.
 _Avoid_: discovery, explore
 
 **Профиль недоступен** (`profile unavailable`):
-What another **Участник**'s profile reads when they are in a **Блокировка** with the viewer or under **Ограничение**; nothing else about them is shown.
+What another **Верифицированный пользователь**'s profile reads when they are in a **Блокировка** with the viewer or under **Ограничение**; nothing else about them is shown.
 _Avoid_: deleted account
 
 **Контекстный чат** (`Chat`):
-The single conversation between two **Участники**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Отклик** (by its two people only); opening it again from anywhere returns the same one, and a new reason to talk is added to it as another **Контекст чата** rather than starting a second chat. Only an active **Участник** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. A message holds up to 2 000 characters and at most one **Фото**; it is «Отправлено», «Прочитано» or «Не отправлено» with «Повторить», keeping its text and **Фото** — nothing is resent behind the user's back. Messages count as read only once the last unread one has been on screen; opening «Сообщения» reads nothing. Chats with unread messages come first, then the rest by their latest message.
+The single conversation between two **Верифицированные пользователи**, opened from someone else's **Комментарий**, a mutual **Подписка** or an accepted **Запрос** (by its two people only); opening it again from anywhere returns the same one, and a new reason to talk is added to it as another **Контекст чата** rather than starting a second chat. Only an active **Верифицированный пользователь** opens one and writes; an expired one reads their chats and is offered «Продлить». A **Блокировка** or an **Ограничение** hides it from both. A message holds up to 2 000 characters and at most one **Фото**; it is «Отправлено», «Прочитано» or «Не отправлено» with «Повторить», keeping its text and **Фото** — nothing is resent behind the user's back. Messages count as read only once the last unread one has been on screen; opening «Сообщения» reads nothing. Chats with unread messages come first, then the rest by their latest message.
 _Avoid_: DM, direct message
 
 **Контекст чата** (`ChatContext`):
-Why two people talk, shown under their name in the chat and in «Сообщения»: «Из комментария», «Взаимная подписка», «Встреча: …» for an accepted **Отклик**, «Встреча отменена: …» once that **План** is cancelled or the chosen **Участник** stepped out, and «Переписка» when the source is gone (the **Комментарий** deleted or hidden, the **Подписка** no longer mutual). A chat lists all its contexts, the latest first in one line.
+Why two people talk, shown under their name in the chat and in «Сообщения»: «Из комментария», «Взаимная подписка», «Встреча: …» for an accepted **Запрос**, «Встреча отменена: …» once that **Встреча** is cancelled or the chosen **Верифицированный пользователь** stepped out, and «Переписка» when the source is gone (the **Комментарий** deleted or hidden, the **Подписка** no longer mutual). A chat lists all its contexts, the latest first in one line.
 _Avoid_: topic, thread
 
 **Мои действия** (`MyActions`):
-What the **Участник** did themselves, newest first: reactions to **Посты**, **Комментарии**, **Ответы**, **Репосты** and **Подписки**. Seen by the owner only, in their profile; nothing hidden from them (blocked, restricted, deleted) is listed. It never replaces **Уведомления**, which are what others did around them.
+What the **Верифицированный пользователь** did themselves, newest first: reactions to **Посты**, **Комментарии**, **Ответы**, **Репосты** and **Подписки**. Seen by the owner only, in their profile; nothing hidden from them (blocked, restricted, deleted) is listed. It never replaces **Уведомления**, which are what others did around them.
 _Avoid_: history, my activity
 
 **Уведомления** (`Activity`):
-What happened around the **Участник**, built from the data rather than stored: new **Подписки** on them, **Комментарии** on their **Посты** and **Ответы** to their **Комментарии**, reactions and **Репосты** of their **Посты**, **Отклики** on their **Планы** and decisions on their own **Отклики**, **Membership** and moderation events. Messages stay in «Сообщения» (a tab, and an entry in one's own profile) and never appear here. Opening the tab marks everything so far as seen; for the rest of that visit, whatever came after the previous look still reads as new, in any category. People hidden from the viewer leave no events.
+What happened around the **Верифицированный пользователь**, built from the data rather than stored: new **Подписки** on them, **Комментарии** on their **Посты** and **Ответы** to their **Комментарии**, reactions and **Репосты** of their **Посты**, **Запросы** on their **Встречи** and decisions on their own **Запросы**, **Подписка на клуб** and moderation events. Messages stay in «Сообщения» (a tab, and an entry in one's own profile) and never appear here. Opening the tab marks everything so far as seen; for the rest of that visit, whatever came after the previous look still reads as new, in any category. People hidden from the viewer leave no events.
 _Avoid_: activity (former name), feed (reserved for Home)
 
 ### Meetings
 
-**План** (`Plan`):
-A one-to-one meeting invitation published by its author: **Населённый пункт**, date and time (Asia/Almaty), format, duration, **Цель встречи**, who pays, an approximate budget per person, where roughly (a general description of the place, shown to everyone), the exact place, a description and up to two **Темы**. Never has capacity or group participants. Only an active **Участник** creates one, in a public place they confirm («Это публичное место»), and holds at most 3 open future **Планы** at a time. The exact place is shown only to the author and, once an **Отклик** is accepted, to its sender; the count of waiting **Отклики** to the author only. Under a **Блокировка** the **План** is not found. A cancelled or past **План** stays in «Мои планы», «Мои отклики», **Уведомления** and the chat it started.
-_Avoid_: event, meetup, встреча (for the unpublished or unmatched thing)
+**Встреча** (`Plan`):
+A one-to-one meeting invitation published by its author: **Населённый пункт**, date and time (Asia/Almaty), format, duration, **Цель встречи**, who pays, an approximate budget per person, where roughly (a general description of the place, shown to everyone), the exact place, a description and up to two **Темы**. Never has capacity or group participants. Only an active **Верифицированный пользователь** creates one, in a public place they confirm («Это публичное место»), and holds at most 3 open future **Встречи** at a time. The exact place is shown only to the author and, once an **Запрос** is accepted, to its sender; the count of waiting **Запросы** to the author only. Under a **Блокировка** the **Встреча** is not found. A cancelled or past **Встреча** stays in «Мои встречи», «Мои запросы», **Уведомления** and the chat it started.
+_Avoid_: план (former name), event, meetup
 
-**Статус плана** (`PlanStatus`):
-Открыт (takes **Отклики**), «Набор закрыт» (the author stopped new **Отклики**; waiting ones are still decided), **Встреча** («Встреча договорена»), Отменён (by the author, from any status; waiting **Отклики** are declined) and Прошёл (the start time has come for an open or closed **План**; computed, never stored). A past **План** takes no **Отклики** and leaves every **Лента**.
+**Статус встречи** (`PlanStatus`):
+Открыт (takes **Запросы**), «Набор закрыт» (the author stopped new **Запросы**; waiting ones are still decided), **Договорённая встреча** («Встреча договорена»), Отменена (by the author, from any status; waiting **Запросы** are declined) and Прошла (the start time has come for an open or closed **Встреча**; computed, never stored). A past **Встреча** takes no **Запросы** and leaves every **Лента**.
 
 **Бюджет** (`PlanBudget`):
-The approximate spend per person a **План** names: «До 3 000 ₸», «3 000–7 000 ₸», «7 000–15 000 ₸», «Больше 15 000 ₸» or «Не указывать».
+The approximate spend per person a **Встреча** names: «До 3 000 ₸», «3 000–7 000 ₸», «7 000–15 000 ₸», «Больше 15 000 ₸» or «Не указывать».
 _Avoid_: price, cost
 
 **Цель встречи** (`MeetingGoal`):
-Why a specific **План** exists: познакомиться, поговорить or совместное занятие.
+Why a specific **Встреча** exists: познакомиться, поговорить or совместное занятие.
 _Avoid_: intent (unqualified)
 
-**Отклик** (`MeetingRequest`):
-Another **Участник**'s request to join a **План**, with an optional message up to 360 characters. A **Гость** who starts one is sent to **Вступление**, and the message is kept on the device and offered again on that **План** once they are a **Участник**. Only an active **Участник**, never on their own **План**, and only on an open future one. One standing **Отклик** per person and **План**: sending again returns the same one; after «Отозвать» a new one may be sent. It is waiting, accepted, declined (the sender reads «Автор выбрал другой вариант») or withdrawn.
-_Avoid_: join, application, заявка
+**Запрос** (`MeetingRequest`):
+Another **Верифицированный пользователь**'s request to join a **Встреча**, with an optional message up to 360 characters. A **Неверифицированный пользователь** who starts one is sent to **Вступление**, and the message is kept on the device and offered again on that **Встреча** once they are a **Верифицированный пользователь**. Only an active **Верифицированный пользователь**, never on their own **Встреча**, and only on an open future one. One standing **Запрос** per person and **Встреча**: sending again returns the same one; after «Отозвать» a new one may be sent. It is waiting, accepted, declined (the sender reads «Автор выбрал другой вариант») or withdrawn.
+_Avoid_: отклик (former name), join, application, заявка
 
-**Встреча** (matched **План**):
-A **План** whose author accepted an **Отклик**, after a confirmation; all other waiting **Отклики** are declined at once. The author does not undo the acceptance — only the whole **План** can be cancelled. The chosen **Участник** may «Отказаться от встречи»: their **Отклик** becomes withdrawn and a future **План** is open again for new **Отклики**. Both people see «Встреча договорена» and «Написать», which opens their contextual chat; the chat stays after a cancellation.
+**Договорённая встреча** (matched **Встреча**):
+A **Встреча** whose author accepted an **Запрос**, after a confirmation; all other waiting **Запросы** are declined at once. The author does not undo the acceptance — only the whole **Встреча** can be cancelled. The chosen **Верифицированный пользователь** may «Отказаться от встречи»: their **Запрос** becomes withdrawn and a future **Встреча** is open again for new **Запросы**. Both people see «Встреча договорена» and «Написать», which opens their contextual chat; the chat stays after a cancellation.
 
 ## Relationships
 
-- A **Кандидат Passport** becomes a **Участник** by passing rules, **Membership** and the **Анкета**.
-- A **Пост** of plan type is the feed face of exactly one **План**.
+- A **Кандидат Passport** becomes a **Верифицированный пользователь** by passing rules, **Подписка на клуб** and the **Анкета**.
+- A **Пост** of plan type is the feed face of exactly one **Встреча**.
 - A **Комментарий** belongs to one **Пост**; an **Ответ** belongs to one **Комментарий**; nothing answers an **Ответ**.
 - A **Репост** adds nothing to the original **Пост** but its count; a **Цитата** is a separate **Пост** of its own.
 - A **Цитата** points to exactly one **Пост**; when that one is deleted or hidden, the **Цитата** stays and shows «Публикация недоступна» in its place.
-- A **План** has many **Отклики** and at most one accepted, which turns it into a **Встреча**; a **Участник** has at most one standing **Отклик** per **План**.
-- Two **Участники** share at most one **Контекстный чат**; a **Комментарий**, a mutual **Подписка** or an accepted **Отклик** opens it if it does not exist and adds its **Контекст чата** to it if it does.
-- A **Блокировка** is between two **Участники**; an **Ограничение** is between moderation and one person.
+- A **Встреча** has many **Запросы** and at most one accepted, which turns it into a **Договорённая встреча**; a **Верифицированный пользователь** has at most one standing **Запрос** per **Встреча**.
+- Two **Верифицированные пользователи** share at most one **Контекстный чат**; a **Комментарий**, a mutual **Подписка** or an accepted **Запрос** opens it if it does not exist and adds its **Контекст чата** to it if it does.
+- A **Блокировка** is between two **Верифицированные пользователи**; an **Ограничение** is between moderation and one person.
 - A **Жалоба** targets exactly one person or piece of content; many **Жалобы** on one target share one **Итог жалобы**.
 
 ## Example dialogue
 
-> **Dev:** "When Тимур sends an **Отклик** on Айдана's **План**, does Тимур already see her **Полный вид**?"
-> **Domain expert:** "Only if Тимур is an active **Участник**. An expired one still gets her **Безопасный вид**, and the **Отклик** button leads to renewal."
+> **Dev:** "When Тимур sends an **Запрос** on Айдана's **Встреча**, does Тимур already see her **Полный вид**?"
+> **Domain expert:** "Only if Тимур is an active **Верифицированный пользователь**. An expired one still gets her **Безопасный вид**, and the **Запрос** button leads to renewal."
 
 ## Flagged ambiguities
 
+- Задание v4 renamed the UI: «Гость» → **Неверифицированный пользователь**, «Участник» → **Верифицированный пользователь** (short forms «Неверифицированный», «Верифицированный», «Верификация истекла»), «План» → **Встреча**, «Отклик» → **Запрос**, Membership → **Подписка на клуб** (in the UI simply «подписка»: «Продлить подписку», «Срок подписки скоро истечёт»), «Для тебя» → «Поиск», «Подписки» (feed) → «Мои подписки». The word «план» no longer appears in the UI.
+- «Подписка» is both a person followed and the club access; the glossary keeps **Подписка** for the person and **Подписка на клуб** for access, and the UI says «Мои подписки» / «Подписчики» for people and «Подписка», «Срок подписки», «Продлить подписку» for access.
+
 - The documents used "intent" for both **Намерение** and **Цель встречи**; they are separate concepts with separate value sets.
-- "Blocked" meant both a member hiding someone and a moderation decision; resolved as **Блокировка** and **Ограничение**. A **Гость** can report but cannot block.
-- Seed data made Айдана, Тимур and Мадина both **Кандидаты Passport** and existing **Участники**; resolved: **Кандидаты Passport** are separate people without a **Карточка**.
+- "Blocked" meant both a member hiding someone and a moderation decision; resolved as **Блокировка** and **Ограничение**. A **Неверифицированный пользователь** can report but cannot block.
+- Seed data made Айдана, Тимур and Мадина both **Кандидаты Passport** and existing **Верифицированные пользователи**; resolved: **Кандидаты Passport** are separate people without a **Карточка**.

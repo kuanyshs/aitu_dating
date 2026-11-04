@@ -18,7 +18,7 @@ test.describe('expired membership', () => {
 
     // Profile: own card stays in full, with the call to renew.
     await expect(page.getByTestId('profile-name')).toHaveText('Мадина Тулегенова');
-    await expect(page.getByTestId('profile-membership')).toContainText('истёк');
+    await expect(page.getByTestId('profile-membership')).toContainText('истекла');
     await expect(page.getByTestId('profile-renew-banner')).toBeVisible();
     await expect(page.getByTestId('profile-edit-card')).toBeVisible();
 
@@ -44,11 +44,11 @@ test.describe('expired membership', () => {
     await page.getByTestId('renew-pay').click();
 
     await expect(page.getByTestId('home-member')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('toast')).toContainText('Membership продлён');
+    await expect(page.getByTestId('toast')).toContainText('Подписка продлена');
     await expect(page.getByTestId('access-questionnaire')).toHaveCount(0);
     await expectMemberNames(page);
     await page.getByTestId('tab-profile').click();
-    await expect(page.getByTestId('profile-membership')).toContainText('активен до');
+    await expect(page.getByTestId('profile-membership')).toContainText('активна до');
   });
 
   test('member-only tabs offer Продление, not the access flow', async ({ page }) => {
@@ -72,7 +72,7 @@ test.describe('expired membership', () => {
     await page.getByTestId('renew-paid-1').click();
     await page.getByTestId('renew-next').click();
     await page.getByTestId('renew-pay').click();
-    await expect(page.getByTestId('toast')).toContainText('Membership продлён до');
+    await expect(page.getByTestId('toast')).toContainText('Подписка продлена до');
     await page.goto('/membership');
     await expect(page.getByTestId('membership-ends')).not.toHaveText(ends);
     await expect(page.getByTestId('membership-period')).toHaveText('1 месяц');

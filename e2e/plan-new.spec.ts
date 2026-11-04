@@ -15,7 +15,7 @@ async function fill(page: Page, { date, place, description }: Record<string, str
 }
 
 async function openForm(page: Page) {
-  await page.goto('/plan/new');
+  await page.goto('/meeting/new');
   await expect(page.getByTestId('new-plan-city-karaganda')).toBeVisible();
 }
 
@@ -104,7 +104,7 @@ test.describe('Новый план', () => {
   });
 
   test('the «Создать» tab leads to the form; a guest is shown the way in', async ({ page }) => {
-    await page.goto('/plan/new');
+    await page.goto('/meeting/new');
     await expect(page.getByTestId('new-plan-access-prompt')).toBeVisible();
 
     await joinAsMadina(page);

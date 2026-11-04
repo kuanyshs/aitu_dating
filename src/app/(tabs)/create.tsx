@@ -16,7 +16,7 @@ const t = strings.create;
 const options = [
   { key: 'post', href: '/compose' },
   { key: 'question', href: '/compose?type=question' },
-  { key: 'plan', href: '/plan/new' },
+  { key: 'plan', href: '/meeting/new' },
 ] as const satisfies readonly { key: keyof typeof t.options; href: Href }[];
 
 /**

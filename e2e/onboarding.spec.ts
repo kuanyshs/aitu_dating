@@ -59,7 +59,7 @@ test.describe('onboarding', () => {
     // The last step: «Вы участник» with the end of the Membership.
     await expect(page.getByTestId('access-welcome')).toBeVisible();
     await expect(page.getByTestId('access-progress')).toHaveText('Шаг 7 из 7');
-    await expect(page.getByTestId('welcome-until')).toContainText('Membership активен до');
+    await expect(page.getByTestId('welcome-until')).toContainText('Подписка активна до');
     await page.getByTestId('welcome-feed').click();
     await expect(page.getByTestId('screen-home')).toBeVisible();
     await expect(page.getByTestId('toast')).toBeVisible();
@@ -79,7 +79,7 @@ test.describe('onboarding', () => {
     await page.getByTestId('tab-profile').click();
     await expect(page.getByTestId('profile-name')).toHaveText('Мадина Тулегенова');
     await expect(page.getByTestId('profile-bio-text')).toContainText('Люблю книги');
-    await expect(page.getByTestId('profile-membership')).toContainText('Membership активен до');
+    await expect(page.getByTestId('profile-membership')).toContainText('Подписка активна до');
     await expect(page.getByTestId('profile-card')).toContainText('Дружба');
     await testInfo.attach(`profile-member-${testInfo.project.name}`, {
       body: await page.screenshot({ fullPage: true }),

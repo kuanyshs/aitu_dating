@@ -15,7 +15,7 @@ test.describe('Membership', () => {
     await expect(page.getByTestId('membership-period')).toHaveText('12 месяцев');
     await expect(page.getByTestId('membership-starts')).toHaveText('26 сентября 2026');
     await expect(page.getByTestId('membership-ends')).toContainText('2027');
-    await expect(page.getByTestId('membership-status')).toHaveText('Активен');
+    await expect(page.getByTestId('membership-status')).toHaveText('Активна');
     await expect(page.getByTestId('membership-left')).toHaveText(/^\d+ (день|дня|дней)$/);
 
     await page.getByTestId('membership-renew').click();
@@ -35,7 +35,7 @@ test.describe('Membership', () => {
     await page.getByTestId('demo-expire').click();
     await expect(page.getByTestId('demo-restore')).toBeVisible();
     await page.goto('/membership');
-    await expect(page.getByTestId('membership-status')).toHaveText('Истёк');
+    await expect(page.getByTestId('membership-status')).toHaveText('Истекла');
     await expect(page.getByTestId('membership-left')).toHaveCount(0);
     await page.getByTestId('membership-renew').click();
     await expect(page.getByTestId('renew-choose')).toBeVisible();

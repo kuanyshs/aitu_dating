@@ -7,7 +7,7 @@ const place = 'Кофейня на Панфилова';
 
 async function openPlan(page: Page, userId?: string) {
   if (userId) await signInAs(page, userId);
-  await page.goto('/plan/plan1');
+  await page.goto('/meeting/plan1');
   await expect(page.getByTestId('plan-summary')).toBeVisible();
 }
 
@@ -37,7 +37,7 @@ test.describe('План встречи', () => {
   });
 
   test('a guest’s Отклик waits through Вступление and is sent as a member', async ({ page }) => {
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-message').fill('Люблю утренний кофе, буду рада компании.');
     await page.getByTestId('plan-join').click();
@@ -75,7 +75,7 @@ test.describe('План встречи', () => {
     // The exact place waits for an accepted Отклик.
     await expect(page.getByTestId('plan-place-area')).toHaveText('Кофейня в центре');
     await expect(page.getByTestId('plan-place-hidden')).toHaveText(
-      'Точное место откроется после принятия отклика.',
+      'Точное место откроется после принятия запроса.',
     );
     await expect(page.getByTestId('screen-plan')).not.toContainText(place);
     await page.getByTestId('plan-respond').click();
@@ -105,7 +105,7 @@ test.describe('План встречи', () => {
     await expect(page.getByTestId('plan-response-status-response-2')).toHaveText('Отклонён');
 
     await page.getByTestId('plan-accept-response-1').click();
-    await expect(page.getByTestId('plan-accept-sheet')).toContainText('Принять отклик?');
+    await expect(page.getByTestId('plan-accept-sheet')).toContainText('Принять запрос?');
     await page.getByTestId('sheet-confirm-accept').click();
     await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
     await expect(page.getByTestId('plan-write')).toBeVisible();
@@ -118,7 +118,9 @@ test.describe('План встречи', () => {
     await expect(page.getByTestId('screen-chat')).toBeVisible();
 
     await openPlan(page, 'm03');
-    await expect(page.getByTestId('plan-declined')).toHaveText('Автор выбрал другой вариант.');
+    await expect(page.getByTestId('plan-declined')).toHaveText(
+      'Запрос отклонён: автор выбрал другой вариант.',
+    );
     await expect(page.getByTestId('plan-place')).toHaveCount(0);
   });
 
@@ -169,7 +171,7 @@ test.describe('План встречи', () => {
     await page.getByTestId('plan-menu').click();
     await page.getByTestId('sheet-cancel-plan').click();
     await page.getByTestId('sheet-confirm-cancel').click();
-    await expect(page.getByTestId('plan-status')).toHaveText('Отменён');
+    await expect(page.getByTestId('plan-status')).toHaveText('Отменена');
 
     await signInAs(page, 'm02');
     await page.goto('/chats/chat3');
@@ -196,7 +198,7 @@ test.describe('План встречи', () => {
     await page.getByTestId('plan-menu').click();
     await page.getByTestId('sheet-cancel-plan').click();
     await page.getByTestId('sheet-confirm-cancel').click();
-    await expect(page.getByTestId('plan-status')).toHaveText('Отменён');
+    await expect(page.getByTestId('plan-status')).toHaveText('Отменена');
     await expect(page.getByTestId('plan-response-status-response-1')).toHaveText('Отклонён');
 
     await openPlan(page, 'm02');
@@ -207,7 +209,7 @@ test.describe('План встречи', () => {
     await openPlan(page, 'm02');
     await page.getByTestId('plan-menu').click();
     await page.getByTestId('sheet-report').click();
-    await expect(page.getByTestId('screen-report')).toContainText('Жалоба на план');
+    await expect(page.getByTestId('screen-report')).toContainText('Жалоба на встречу');
     await page.goBack();
 
     await openPlan(page);
@@ -216,7 +218,7 @@ test.describe('План встречи', () => {
     await page.getByTestId('sheet-confirm-block').click();
     await expect(page.getByTestId('screen-plan')).toHaveCount(0);
 
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await expect(page.getByTestId('plan-unavailable')).toBeVisible();
   });
 });

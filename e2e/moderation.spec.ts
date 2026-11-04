@@ -45,7 +45,7 @@ test.describe('Модерация', () => {
     );
     await expect(page.getByTestId('moderation-report5')).toBeVisible();
     await expect(page.getByTestId('moderation-report4')).toContainText(
-      'План · Угроза безопасности',
+      'Встреча · Угроза безопасности',
     );
     await testInfo.attach('moderation-queue', {
       body: await page.screenshot(),
@@ -65,7 +65,9 @@ test.describe('Модерация', () => {
     await expect(page.getByTestId('moderation-report3')).toBeVisible();
 
     await page.getByTestId('moderation-tab-resolved').click();
-    await expect(page.getByTestId('moderation-report1')).toContainText('Итог: Участник ограничен');
+    await expect(page.getByTestId('moderation-report1')).toContainText(
+      'Итог: Пользователь ограничен',
+    );
     await expect(
       page.getByTestId('moderation-report1').getByTestId('moderation-restricted'),
     ).toBeVisible();
@@ -94,7 +96,7 @@ test.describe('Модерация', () => {
     await decide(page, 'report5', 'member_restricted');
     await page.getByTestId('moderation-tab-resolved').click();
     const card = page.getByTestId('moderation-report5');
-    await expect(card).toContainText('Итог: Участник ограничен');
+    await expect(card).toContainText('Итог: Пользователь ограничен');
     await expect(card.getByTestId('moderation-restricted')).toBeVisible();
     await page.goto('/post/p10');
     await expect(page.getByTestId('post-unavailable')).toBeVisible();

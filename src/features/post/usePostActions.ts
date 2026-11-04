@@ -75,7 +75,7 @@ export function usePostActions() {
         target.kind === 'post'
           ? `/post/${target.id}`
           : target.kind === 'plan'
-            ? `/plan/${target.id}`
+            ? `/meeting/${target.id}`
             : `/member/${target.id}`,
       ),
     [router],

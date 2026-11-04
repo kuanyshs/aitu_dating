@@ -68,7 +68,7 @@ function OwnPlans({ canCreate }: { canCreate: boolean }) {
               canCreate
                 ? {
                     label: t.create,
-                    onPress: () => router.push('/plan/new'),
+                    onPress: () => router.push('/meeting/new'),
                     testID: 'my-plans-create',
                   }
                 : undefined

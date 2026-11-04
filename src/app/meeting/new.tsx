@@ -161,7 +161,7 @@ function PlanForm({ me }: { me: MyProfile }) {
       {
         onSuccess: (plan) => {
           toast(t.done);
-          router.replace(`/plan/${plan.id}`);
+          router.replace(`/meeting/${plan.id}`);
         },
         onError: (error) => {
           const refused =

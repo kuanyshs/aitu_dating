@@ -59,7 +59,7 @@ test('guest → paid member → «Выйти» → «Войти» → expiry →
   await expectMemberNames(page);
   await page.getByTestId('tab-profile').click();
   await expect(page.getByTestId('profile-name')).toHaveText('Айдана Кенжебаева');
-  await expect(page.getByTestId('profile-membership')).toContainText('активен до');
+  await expect(page.getByTestId('profile-membership')).toContainText('активна до');
 
   // Flow D: «Выйти» to the safe view, «Войти» back without the Анкета.
   await page.getByRole('button', { name: 'Выйти в preview' }).click();
@@ -90,5 +90,5 @@ test('guest → paid member → «Выйти» → «Войти» → expiry →
   await page.reload();
   await page.getByTestId('tab-profile').click();
   await expect(page.getByTestId('profile-name')).toHaveText('Айдана Кенжебаева');
-  await expect(page.getByTestId('profile-membership')).toContainText('активен до');
+  await expect(page.getByTestId('profile-membership')).toContainText('активна до');
 });

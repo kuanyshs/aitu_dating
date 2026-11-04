@@ -49,8 +49,8 @@ export default function RootLayout() {
                 <Stack.Screen name="post/[id]" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="member/[id]" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="follows" options={{ presentation: 'fullScreenModal' }} />
-                <Stack.Screen name="plan/[id]" options={{ presentation: 'fullScreenModal' }} />
-                <Stack.Screen name="plan/new" options={{ presentation: 'fullScreenModal' }} />
+                <Stack.Screen name="meeting/[id]" options={{ presentation: 'fullScreenModal' }} />
+                <Stack.Screen name="meeting/new" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="reply" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="compose" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="search" options={{ presentation: 'fullScreenModal' }} />

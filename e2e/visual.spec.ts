@@ -334,7 +334,7 @@ test.describe('visual baselines @visual', () => {
   test('План: a member with where roughly and an Отклик being written', async ({ page }) => {
     test.setTimeout(90_000);
     await joinAsMadina(page);
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await expect(page.getByTestId('plan-place-area')).toBeVisible();
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-message').fill('Люблю утренний кофе, буду рада компании.');
@@ -345,14 +345,14 @@ test.describe('visual baselines @visual', () => {
     // One Отклик: the demo clock restarts on every load, so the order of two sent from
     // separate loads is not fixed.
     await signInAs(page, 'm02');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-message').fill('Давно хотел в эту кофейню.');
     await page.getByTestId('plan-send').click();
     await expect(page.getByTestId('plan-pending')).toBeVisible();
 
     await signInAs(page, 'm06');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await expect(page.getByTestId('plan-waiting')).toHaveText('Ждут ответа: 1');
     await expect(page.getByTestId('plan-accept-response-1')).toBeVisible();
     await snap(page, 'plan-author');
@@ -361,7 +361,7 @@ test.describe('visual baselines @visual', () => {
   test('План: the form to create one', async ({ page }) => {
     test.setTimeout(90_000);
     await joinAsMadina(page);
-    await page.goto('/plan/new');
+    await page.goto('/meeting/new');
     await page.getByTestId('new-plan-date-2026-09-28').click();
     await page.getByTestId('new-plan-time-18:00').click();
     await expect(page.getByTestId('new-plan-time-18:00')).toHaveAttribute('aria-checked', 'true');

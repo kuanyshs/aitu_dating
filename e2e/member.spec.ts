@@ -81,7 +81,7 @@ test.describe('Чужой профиль', () => {
     await openM01FromFeed(page);
     await page.getByTestId('member-menu').click();
     await page.getByTestId('sheet-report').click();
-    await expect(page.getByTestId('report-target')).toContainText('Жалоба на участника');
+    await expect(page.getByTestId('report-target')).toContainText('Жалоба на пользователя');
     await expect(page.getByTestId('report-target')).toContainText(m01.name);
     await page.getByTestId('report-reason-harassment').click();
     await page.getByTestId('report-submit').click();

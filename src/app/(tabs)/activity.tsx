@@ -135,7 +135,7 @@ function ActivityList({ category, since }: { category: ActivityCategory; since: 
 /** Where an event leads: the post, the plan, the person or renewal. */
 function targetOf(item: ActivityItem): string | undefined {
   if (item.kind === 'membership_expiring') return '/renew';
-  if (item.planId) return `/plan/${item.planId}`;
+  if (item.planId) return `/meeting/${item.planId}`;
   if (item.postId) return `/post/${item.postId}`;
   if (item.actor?.view === 'member') return `/member/${item.actor.id}`;
   return undefined;

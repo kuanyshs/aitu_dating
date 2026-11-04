@@ -54,7 +54,7 @@ test.describe('Безопасность', () => {
     await signInAsSeedAuthor(page);
     await page.goto('/safety');
     await expect(page.getByTestId('safety-reports').getByTestId('report-status')).toHaveText(
-      'Решена · Участник ограничен',
+      'Решена · Пользователь ограничен',
     );
   });
 

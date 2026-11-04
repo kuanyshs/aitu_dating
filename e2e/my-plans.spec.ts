@@ -31,14 +31,14 @@ test.describe('Мои планы и отклики', () => {
     page,
   }) => {
     await signInAs(page, 'm02');
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-send').click();
     await expect(page.getByTestId('plan-pending')).toBeVisible();
 
     await openProfile(page, 'm02');
     await page.getByTestId('my-plans-tab-responses').click();
-    await expect(page.getByTestId('my-plan-plan1-status')).toHaveText('Отклик ждёт ответа');
+    await expect(page.getByTestId('my-plan-plan1-status')).toHaveText('Запрос отправлен');
 
     // The author sees the waiting count in the profile and on the feed card.
     await openProfile(page, 'm06');
@@ -50,7 +50,7 @@ test.describe('Мои планы и отклики', () => {
       'Ждут ответа: 1',
     );
 
-    await page.goto('/plan/plan1');
+    await page.goto('/meeting/plan1');
     await page.getByTestId('plan-accept-response-1').click();
     await page.getByTestId('sheet-confirm-accept').click();
     await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
