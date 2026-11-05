@@ -94,6 +94,8 @@ export type ShapingContext = {
   mainPhoto?(member: MemberRecord): string | undefined;
   /** Uploaded Фото by id, those that still exist. */
   photos?(ids: string[]): PhotoRef[];
+  /** The blurred stand-ins of those Фото, for viewers who may not see them. */
+  blurredPhotos?(ids: string[]): PhotoRef[];
 };
 
 export function toPostView(post: PostRecord, ctx: ShapingContext): PostView {
@@ -120,12 +122,15 @@ export function toPostView(post: PostRecord, ctx: ShapingContext): PostView {
       : {}),
     ...(isMemberViewer(ctx.viewer) ? { mine: post.authorId === ctx.viewer.userId } : {}),
     ...(post.mediaKey ? { media: { kind: 'synthetic' as const, key: post.mediaKey } } : {}),
-    // Фото go to those who see people in full, and to the author themself.
-    ...(post.photoIds?.length &&
-    ctx.photos &&
-    (seesFullView(ctx.viewer) ||
-      (isMemberViewer(ctx.viewer) && ctx.viewer.userId === post.authorId))
-      ? { photos: ctx.photos(post.photoIds) }
+    // Фото go in full to those who see people in full and to the author themself; everyone
+    // else gets only the blurred stand-ins, never the originals.
+    ...(post.photoIds?.length && ctx.photos
+      ? seesFullView(ctx.viewer) ||
+        (isMemberViewer(ctx.viewer) && ctx.viewer.userId === post.authorId)
+        ? { photos: ctx.photos(post.photoIds) }
+        : ctx.blurredPhotos?.(post.photoIds).length
+          ? { photos: ctx.blurredPhotos(post.photoIds) }
+          : {}
       : {}),
     ...(plan ? { plan: toPlanSummary(plan, ctx.pendingResponses?.(plan)) } : {}),
     ...(quotedRecord && quotedAuthor && ctx.isVisible(quotedRecord)

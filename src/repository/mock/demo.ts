@@ -192,6 +192,8 @@ export const MockState = z.strictObject({
       createdAt: z.string(),
       /** Made by a generative model, by the original file's metadata. */
       ai: z.literal(true).optional(),
+      /** A blurred stand-in is stored apart, under the picture's key plus «.preview». */
+      preview: z.literal(true).optional(),
     }),
   ),
   photoKeys: z.record(z.string(), z.string()),

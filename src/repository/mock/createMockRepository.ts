@@ -228,6 +228,10 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       ...Object.keys(state.photos).map(async (id) => {
         const url = await store.getItem(`${storageKeys.photoPrefix}${id}`);
         if (url) photoData.set(id, url);
+        if (state.photos[id]?.preview) {
+          const preview = await store.getItem(`${storageKeys.photoPrefix}${id}.preview`);
+          if (preview) previewData.set(id, preview);
+        }
       }),
       ...Object.keys(state.voices).map(async (id) => {
         const url = await store.getItem(`${storageKeys.voicePrefix}${id}`);
@@ -244,6 +248,25 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const url = voiceData.get(id);
     const meta = state.voices[id];
     return url && meta ? { kind: 'voice', id, url, durationMs: meta.durationMs } : undefined;
+  }
+
+  const previewData = new Map<string, string>();
+
+  /**
+   * A Фото for someone who may not see it: its tiny stand-in only, marked blurred; nothing
+   * when there is none (older pictures).
+   */
+  function blurredRef(id: string): PhotoRef | undefined {
+    const url = previewData.get(id);
+    if (!url) return undefined;
+    return state.photos[id]?.ai
+      ? { kind: 'photo', id, url, ai: true, blurred: true }
+      : { kind: 'photo', id, url, blurred: true };
+  }
+
+  /** The picture itself for those who see people in full, else its blurred stand-in. */
+  function photoFor(id: string, full: boolean): PhotoRef | undefined {
+    return full ? photoRef(id) : blurredRef(id);
   }
 
   /** A Фото as a DTO, or nothing when it is gone. */
@@ -881,6 +904,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       isVisible,
       mainPhoto,
       photos: (ids) => ids.flatMap((id) => photoRef(id) ?? []),
+      blurredPhotos: (ids) => ids.flatMap((id) => blurredRef(id) ?? []),
     };
   }
 
@@ -917,7 +941,8 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const mine = standing.find((r) => r.authorId === viewer.userId);
     // The exact place is for the author and the person whose Отклик was accepted.
     const seesPlace = full && (plan.authorId === viewer.userId || mine?.status === 'accepted');
-    const photo = full && post.photoIds?.[0] ? photoRef(post.photoIds[0]) : undefined;
+    const ownPlan = plan.authorId === viewer.userId;
+    const photo = post.photoIds?.[0] ? photoFor(post.photoIds[0], full || ownPlan) : undefined;
     return PlanView.parse({
       ...toPlanSummary(plan, pendingFor(plan, viewer)),
       postId: post.id,
@@ -1036,7 +1061,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const read = !!mark && mark >= message.createdAt;
     // An expired member reads their chats in the safe view: no one else's Фото or voice.
     const full = fromMe || seesFullView(viewerOf(effectiveSession()));
-    const photo = message.photoId && full ? photoRef(message.photoId) : undefined;
+    const photo = message.photoId ? photoFor(message.photoId, full) : undefined;
     const voice = message.voiceId && full ? voiceRef(message.voiceId) : undefined;
     const meeting = message.meeting ? meetingCard(message.meeting) : undefined;
     return MessageView.parse({
@@ -1097,8 +1122,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     }
     const post = allPosts().find((p) => p.planId === plan.id);
     const photoId = post?.photoIds?.[0];
-    const photo =
-      photoId && seesFullView(viewerOf(effectiveSession())) ? photoRef(photoId) : undefined;
+    const photo = photoId
+      ? photoFor(photoId, seesFullView(viewerOf(effectiveSession())))
+      : undefined;
     return {
       kind,
       planId: plan.id,
@@ -1459,7 +1485,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             fieldErrors: access.fieldErrorsOf(parsed.error, ''),
           });
         }
-        const { mimeType, dataUrl, origin, idempotencyKey } = parsed.data;
+        const { mimeType, dataUrl, origin, previewDataUrl, idempotencyKey } = parsed.data;
         // A retried upload returns the Фото it already stored.
         const existing = state.photoKeys[idempotencyKey];
         const known = existing ? photoRef(existing) : undefined;
@@ -1468,6 +1494,10 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         const id = `photo-${Object.keys(state.photos).length + 1}-${idempotencyKey.slice(-6)}`;
         await store.setItem(`${storageKeys.photoPrefix}${id}`, dataUrl);
         photoData.set(id, dataUrl);
+        if (previewDataUrl) {
+          await store.setItem(`${storageKeys.photoPrefix}${id}.preview`, previewDataUrl);
+          previewData.set(id, previewDataUrl);
+        }
         await saveState({
           ...state,
           photos: {
@@ -1477,6 +1507,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
               mimeType,
               createdAt: clock.now().toISOString(),
               ...(origin === 'ai' ? { ai: true as const } : {}),
+              ...(previewDataUrl ? { preview: true as const } : {}),
             },
           },
           photoKeys: { ...state.photoKeys, [idempotencyKey]: id },
@@ -3565,14 +3596,16 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         sessionSlot.clear(),
         stateSlot.clear(),
         clockSlot.clear(),
-        ...Object.keys(state.photos).map((id) =>
+        ...Object.keys(state.photos).flatMap((id) => [
           store.removeItem(`${storageKeys.photoPrefix}${id}`),
-        ),
+          store.removeItem(`${storageKeys.photoPrefix}${id}.preview`),
+        ]),
         ...Object.keys(state.voices).map((id) =>
           store.removeItem(`${storageKeys.voicePrefix}${id}`),
         ),
       ]);
       photoData.clear();
+      previewData.clear();
       voiceData.clear();
       resumable?.restart();
       session = guestSession();

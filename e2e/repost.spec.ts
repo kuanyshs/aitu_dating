@@ -66,13 +66,14 @@ test.describe('repost, quote and the «•••» menu', () => {
   });
 
   test('a guest is sent to access and may only report', async ({ page }) => {
-    await page.goto('/post/p01');
-    await postScreen(page).getByTestId('post-quote').click();
-    await expect(page.getByTestId('access-passport')).toBeVisible();
-
-    await page.goto('/post/p01');
-    await postScreen(page).getByTestId('post-repost').click();
-    await expect(page.getByTestId('access-passport')).toBeVisible();
+    // A tap while the session is still loading is ignored on purpose: tap until it counts.
+    for (const action of ['post-quote', 'post-repost']) {
+      await page.goto('/post/p01');
+      await expect(async () => {
+        await postScreen(page).getByTestId(action).click();
+        await expect(page.getByTestId('access-passport')).toBeVisible({ timeout: 1000 });
+      }).toPass();
+    }
 
     await page.goto('/post/p01');
     await page.getByTestId('post-menu').click();

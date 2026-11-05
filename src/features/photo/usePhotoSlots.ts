@@ -8,6 +8,7 @@ import {
   photoOrigin,
   pickPhotos,
   resizePhoto,
+  tinyPreview,
   type PhotoOrigin,
 } from '@/media';
 import { strings } from '@/ui/strings';
@@ -20,7 +21,7 @@ export type PhotoSlot = {
   /** Shown while uploading and after a failure; the stored url once done. */
   preview: string;
   photo?: PhotoRef;
-  file?: { mimeType: string; sizeBytes: number; origin: PhotoOrigin };
+  file?: { mimeType: string; sizeBytes: number; origin: PhotoOrigin; preview?: string };
 };
 
 const newKey = () => `photo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -52,6 +53,7 @@ export function usePhotoSlots(max: number, initial: PhotoRef[] = []) {
           sizeBytes: slot.file.sizeBytes,
           dataUrl: slot.preview,
           origin: slot.file.origin,
+          ...(slot.file.preview ? { previewDataUrl: slot.file.preview } : {}),
           idempotencyKey: slot.key,
         });
         if (live.current.has(slot.key)) patch(slot.key, { status: 'done', photo });
@@ -75,6 +77,8 @@ export function usePhotoSlots(max: number, initial: PhotoRef[] = []) {
       let preview: string;
       // Where the picture came from is read off the original, before the copy drops it.
       const origin = await photoOrigin(file).catch((): PhotoOrigin => 'upload');
+      // The blurred stand-in for those who may not see it; without one they get nothing.
+      const tiny = await tinyPreview(file).catch(() => undefined);
       try {
         preview = await resizePhoto(file);
       } catch {
@@ -85,7 +89,7 @@ export function usePhotoSlots(max: number, initial: PhotoRef[] = []) {
         key: newKey(),
         status: 'uploading',
         preview,
-        file: { mimeType: file.type, sizeBytes: file.size, origin },
+        file: { mimeType: file.type, sizeBytes: file.size, origin, preview: tiny },
       };
       setSlots((all) => (all.length >= max ? all : [...all, slot]));
       void upload(slot);

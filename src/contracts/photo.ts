@@ -9,6 +9,10 @@ export type PhotoType = (typeof PHOTO_TYPES)[number];
 /** The original file may be up to 10 MB; the client sends a smaller copy. */
 export const PHOTO_MAX_BYTES = 10 * 1024 * 1024;
 
+/** The longest side of the blurred stand-in, and how big its data may be. */
+export const PREVIEW_SIZE = 24;
+export const PREVIEW_MAX_CHARS = 8000;
+
 /** How many Фото fit in each place. */
 export const PHOTO_LIMITS = { profile: 4, post: 1, plan: 1, message: 1 } as const;
 
@@ -23,6 +27,15 @@ export const UploadPhotoInput = z.strictObject({
    * the copy is made; `ai` puts «Сгенерировано с ИИ» under it. Never chosen by the author.
    */
   origin: z.enum(['upload', 'ai']).optional(),
+  /**
+   * A tiny copy (24 px on the long side) for those who may not see the picture: they get
+   * this, blurred, and never the original. The real backend makes it itself.
+   */
+  previewDataUrl: z
+    .string()
+    .regex(/^data:image\/jpeg;base64,/, 'type')
+    .max(PREVIEW_MAX_CHARS, 'too_big')
+    .optional(),
   idempotencyKey: z.string().min(8),
 });
 export type UploadPhotoInput = z.infer<typeof UploadPhotoInput>;
@@ -34,5 +47,10 @@ export const PhotoRef = z.strictObject({
   url: z.string().min(1),
   /** Made by a generative model: shown with «Сгенерировано с ИИ». */
   ai: z.literal(true).optional(),
+  /**
+   * The viewer may not see this picture: `url` is the tiny stand-in, shown blurred. The
+   * original is not in the response at all.
+   */
+  blurred: z.literal(true).optional(),
 });
 export type PhotoRef = z.infer<typeof PhotoRef>;

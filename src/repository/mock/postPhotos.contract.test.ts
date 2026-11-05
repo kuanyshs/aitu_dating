@@ -163,3 +163,41 @@ describe('Фото of a Встреча', () => {
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', fieldErrors: { photoId: 'unknown' } });
   });
 });
+
+describe('blurred stand-ins (v4 §26)', () => {
+  it('reach a guest and an expired member instead of the original, which never leaves', async () => {
+    const store = createMemoryStore();
+    const author = repositoryOn(as('m01'), store);
+    const photo = await author.uploadPhoto({
+      mimeType: 'image/jpeg',
+      sizeBytes: 5000,
+      dataUrl: 'data:image/jpeg;base64,ORIGINAL',
+      previewDataUrl: 'data:image/jpeg;base64,TINY',
+      origin: 'ai',
+      idempotencyKey: 'blur-photo-1',
+    });
+    const post = await author.createPost({
+      type: 'post',
+      text: 'С размытым превью',
+      topics: [],
+      photoIds: [photo.id],
+      idempotencyKey: 'blur-post-1',
+    });
+
+    const guest = await repositoryOn(undefined, store).getPost({ postId: post.id });
+    expect(guest.photos).toEqual([
+      { kind: 'photo', id: photo.id, url: 'data:image/jpeg;base64,TINY', ai: true, blurred: true },
+    ]);
+    expect(JSON.stringify(guest)).not.toContain('ORIGINAL');
+
+    const member = await repositoryOn(as('m02'), store).getPost({ postId: post.id });
+    expect(member.photos?.[0]).toMatchObject({ url: 'data:image/jpeg;base64,ORIGINAL' });
+    expect(member.photos?.[0]?.blurred).toBeUndefined();
+
+    const expired = repositoryOn(as('m03'), store);
+    await expired.expireMembership();
+    const seen = await expired.getPost({ postId: post.id });
+    expect(seen.photos?.[0]?.blurred).toBe(true);
+    expect(JSON.stringify(seen)).not.toContain('ORIGINAL');
+  });
+});
