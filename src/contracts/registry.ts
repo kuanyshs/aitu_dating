@@ -20,6 +20,8 @@ import {
   OpenChatInput,
   MessageView,
   SendMessageInput,
+  ShareMeetingInput,
+  ShareRecipientsQuery,
 } from './chat';
 import {
   CommentPage,
@@ -169,6 +171,8 @@ export const repositoryContract = {
   listMyResponses: { input: ListQuery, output: MyResponsePage },
 
   openChat: { input: OpenChatInput, output: ChatSummary },
+  listShareRecipients: { input: ShareRecipientsQuery, output: MemberPage },
+  shareMeeting: { input: ShareMeetingInput, output: MessageView },
   listChats: { input: ListQuery, output: ChatPage },
   getChat: { input: ChatRef, output: ChatSummary },
   listMessages: { input: MessagesQuery, output: MessagePage },

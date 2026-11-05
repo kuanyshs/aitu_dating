@@ -96,7 +96,9 @@ function ChatRow({ chat }: { chat: ChatSummary }) {
   const lastText = last
     ? last.text ||
       (last.meeting
-        ? strings.chat.meeting.preview
+        ? last.meeting.kind === 'share'
+          ? strings.chat.meeting.sharedPreview
+          : strings.chat.meeting.preview
         : last.voice
           ? strings.chat.voice.label
           : strings.photo.label)

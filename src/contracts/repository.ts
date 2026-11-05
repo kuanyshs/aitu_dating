@@ -18,6 +18,8 @@ import type {
   OpenChatInput,
   MessageView,
   SendMessageInput,
+  ShareMeetingInput,
+  ShareRecipientsQuery,
 } from './chat';
 import type {
   CommentPage,
@@ -196,6 +198,10 @@ export interface AituRepository {
   // Контекстные чаты and Активность.
   /** Opens the one chat with that person, or the existing one; it keeps its first context. */
   openChat(input: OpenChatInput): Promise<ChatSummary>;
+  /** People a Встреча can be sent to: shown, writable, never oneself. */
+  listShareRecipients(query: ShareRecipientsQuery): Promise<MemberPage>;
+  /** Sends a Встреча as a card into the pair's one chat; a retry with the same key is it. */
+  shareMeeting(input: ShareMeetingInput): Promise<MessageView>;
   listChats(query: ListQuery): Promise<ChatPage>;
   getChat(input: ChatRef): Promise<ChatSummary>;
   listMessages(query: MessagesQuery): Promise<MessagePage>;

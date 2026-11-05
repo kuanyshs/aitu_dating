@@ -36,7 +36,13 @@ export function MeetingCardView({
   return (
     <View style={styles.card} testID={testID}>
       <AppText variant="caption" tone="textMuted">
-        {fromMe ? t.sentByMe : t.toMine}
+        {card.kind === 'share'
+          ? fromMe
+            ? t.sharedByMe
+            : t.sharedToMe
+          : fromMe
+            ? t.sentByMe
+            : t.toMine}
       </AppText>
       {plan ? (
         <>
@@ -55,7 +61,7 @@ export function MeetingCardView({
       ) : null}
       <View style={styles.status}>
         <AppText variant="caption" testID={`${testID}-status`}>
-          {t.state[card.state]}
+          {card.kind === 'share' && card.state === 'matched' ? t.matchedOther : t.state[card.state]}
         </AppText>
       </View>
       {open ? (

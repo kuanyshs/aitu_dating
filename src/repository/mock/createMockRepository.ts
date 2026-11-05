@@ -1,4 +1,5 @@
 import { addMonths } from './calendar';
+import { settlementName } from '@/catalogs';
 import { isResumable, type Clock } from '@/clock';
 import {
   AccessFlowState,
@@ -102,6 +103,8 @@ import {
   type MyAction,
   UploadPhotoInput,
   UploadVoiceInput,
+  ShareMeetingInput,
+  ShareRecipientsQuery,
   type VoiceRef,
   type MeetingCard,
   type PhotoRef,
@@ -127,7 +130,7 @@ import {
 } from './demo';
 import { buildThreads } from './comments';
 import { almatyDate, currentStatus, planStartsAt, type CurrentPlan } from './plans';
-import { matchPeople, matchPlans, matchPosts } from './search';
+import { matchPeople, matchPlans, matchPosts, normalize } from './search';
 import { selectFeed, type PlanStats } from './feed';
 import {
   BlockRecord,
@@ -1050,34 +1053,54 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   }
 
   /** A Встреча's card in a chat, as it stands now; never the exact place. */
-  function meetingCard(ref: { planId: string; responseId: string }): MeetingCard {
+  function meetingCard(ref: { planId: string; responseId?: string }): MeetingCard {
     const plan = planById(ref.planId);
-    const response = state.planResponses.find((r) => r.id === ref.responseId);
+    const kind: MeetingCard['kind'] = ref.responseId ? 'request' : 'share';
+    const response = ref.responseId
+      ? state.planResponses.find((r) => r.id === ref.responseId)
+      : undefined;
     const unavailable = !plan || !isShown(member(plan.authorId));
-    const status: MeetingCard['state'] = unavailable
-      ? 'unavailable'
-      : plan.status === 'deleted'
-        ? 'deleted'
-        : plan.status === 'cancelled'
-          ? 'cancelled'
-          : response?.status === 'withdrawn'
-            ? 'withdrawn'
-            : response?.status === 'declined'
-              ? 'declined'
+    // A shared Встреча stands as the Встреча does; a Запрос's card as the Запрос does.
+    const shared: MeetingCard['state'] | undefined =
+      kind === 'share' && plan && !unavailable
+        ? plan.status === 'published'
+          ? 'open'
+          : plan.status === 'closed'
+            ? 'closed'
+            : plan.status === 'matched'
+              ? 'matched'
               : plan.status === 'past'
                 ? 'past'
-                : response?.status === 'accepted'
-                  ? 'matched'
-                  : 'requested';
+                : plan.status === 'cancelled'
+                  ? 'cancelled'
+                  : 'deleted'
+        : undefined;
+    const status: MeetingCard['state'] = shared
+      ? shared
+      : unavailable
+        ? 'unavailable'
+        : plan.status === 'deleted'
+          ? 'deleted'
+          : plan.status === 'cancelled'
+            ? 'cancelled'
+            : response?.status === 'withdrawn'
+              ? 'withdrawn'
+              : response?.status === 'declined'
+                ? 'declined'
+                : plan.status === 'past'
+                  ? 'past'
+                  : response?.status === 'accepted'
+                    ? 'matched'
+                    : 'requested';
     if (unavailable || status === 'deleted') {
-      return { kind: 'request', planId: ref.planId, state: status };
+      return { kind, planId: ref.planId, state: status };
     }
     const post = allPosts().find((p) => p.planId === plan.id);
     const photoId = post?.photoIds?.[0];
     const photo =
       photoId && seesFullView(viewerOf(effectiveSession())) ? photoRef(photoId) : undefined;
     return {
-      kind: 'request',
+      kind,
       planId: plan.id,
       state: status,
       plan: toPlanSummary(plan),
@@ -2621,6 +2644,101 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         });
         await saveState({ ...state, chats: [...state.chats, chat] });
         return chatSummary(chat, viewer);
+      }),
+
+    listShareRecipients: (input) =>
+      respond('data', (requestId) => {
+        const me = requireActiveMember(requestId);
+        const viewer = viewerOf(effectiveSession());
+        const { text, cursor, limit } = parseOrFail(ShareRecipientsQuery, input ?? {}, requestId);
+        const wanted = normalize(text ?? '');
+        // Only people one may write to: shown (no Блокировка, no Ограничение), never oneself.
+        const people = allMembers()
+          .filter((m) => m.id !== me.id && isShown(m))
+          .filter(
+            (m) =>
+              !wanted ||
+              [m.name, m.surname ?? '', m.city ? (settlementName(m.city) ?? '') : '']
+                .map((field: string) => normalize(field))
+                .some((field) => field.includes(wanted)),
+          )
+          .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+        return MemberPage.parse(
+          page(
+            people.map((m) => authorView(m, viewer)),
+            cursor,
+            limit ?? DEFAULT_PAGE_SIZE,
+            requestId,
+          ),
+        );
+      }),
+
+    shareMeeting: (input) =>
+      respond('data', async (requestId) => {
+        const me = requireActiveMember(requestId);
+        const parsed = ShareMeetingInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Choose who to send it to.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const { planId, memberId, chatId, message, idempotencyKey } = parsed.data;
+        const retried = state.messages.find((m) => m.idempotencyKey === idempotencyKey);
+        if (retried) {
+          return messageView(retried, findChat(retried.chatId, me.id, requestId), me.id);
+        }
+        const plan = findPlan(planId, requestId);
+        // Only a Встреча still ahead can be shared.
+        if (plan.status === 'cancelled' || plan.status === 'past') {
+          fail(requestId, { code: 'CONFLICT', message: 'This plan cannot be shared any more.' });
+        }
+        let chat: ChatRecord;
+        let created = false;
+        if (chatId) {
+          chat = findChat(chatId, me.id, requestId);
+        } else {
+          const peerId = memberId!;
+          if (peerId === me.id) {
+            fail(requestId, {
+              code: 'CONFLICT',
+              message: 'Nobody shares a plan with themselves.',
+              fieldErrors: { memberId: 'self' },
+            });
+          }
+          if (!isShown(member(peerId))) {
+            fail(requestId, { code: 'NOT_FOUND', message: 'Recipient not found.' });
+          }
+          const existing = allChats().find(
+            (c) => c.memberIds.includes(me.id) && c.memberIds.includes(peerId),
+          );
+          created = !existing;
+          chat =
+            existing ??
+            ChatRecord.parse({
+              id: `chat-${state.chats.length + 1}`,
+              memberIds: [me.id, peerId],
+              context: { kind: 'direct' },
+              createdAt: clock.now().toISOString(),
+            });
+        }
+        const record = MessageRecord.parse({
+          id: `message-${state.messages.length + 1}`,
+          chatId: chat.id,
+          authorId: me.id,
+          text: message ?? '',
+          meeting: { planId },
+          createdAt: clock.now().toISOString(),
+          status: 'sent',
+          idempotencyKey,
+        });
+        await saveState({
+          ...state,
+          chats: created ? [...state.chats, chat] : state.chats,
+          messages: [...state.messages, record],
+        });
+        return messageView(record, chat, me.id);
       }),
 
     listChats: (input) =>

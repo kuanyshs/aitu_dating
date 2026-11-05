@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { meetingFormatLabels } from '@/catalogs';
 import {
   isRepositoryError,
   LIMITS,
@@ -28,6 +29,8 @@ import {
   useSendMessage,
   useSession,
   useSetBlock,
+  useMyPlans,
+  useShareMeeting,
 } from '@/data/hooks';
 import { useClock } from '@/data/RepositoryProvider';
 import { PhotoGallery } from '@/features/photo/PhotoGallery';
@@ -47,8 +50,8 @@ import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
 import { Screen } from '@/ui/components/Screen';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
-import { formatRelative } from '@/ui/format';
-import { ChevronLeft, Ellipsis, ImagePlus, Mic, Square, Trash } from '@/ui/icons';
+import { formatPlanDate, formatRelative } from '@/ui/format';
+import { ChevronLeft, Ellipsis, ImagePlus, Mic, Share2, Square, Trash } from '@/ui/icons';
 import { useReportFooter } from '@/ui/navigation/statusInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -125,6 +128,7 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
   const scroll = useRef<ScrollView>(null);
   const [sheet, setSheet] = useState<Sheet>();
   const [reporting, setReporting] = useState<string>();
+  const [picking, setPicking] = useState(false);
   const peer = chat.peer;
   const name = peer.view === 'member' ? peer.name : undefined;
 
@@ -235,6 +239,14 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
               <ContextLine chat={chat} testID="chat-context" />
             </View>
           </Pressable>
+          {chat.readOnly ? null : (
+            <IconAction
+              icon={Share2}
+              accessibilityLabel={strings.share.fromChat}
+              onPress={() => setPicking(true)}
+              testID="chat-share"
+            />
+          )}
           <IconAction
             icon={Ellipsis}
             accessibilityLabel={t.menu}
@@ -315,6 +327,7 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
         onClose={() => setSheet(undefined)}
         testID="chat-sheet"
       />
+      <SharePicker chatId={chat.id} visible={picking} onClose={() => setPicking(false)} />
       <ActionSheet
         visible={!!reporting}
         actions={[
@@ -336,6 +349,49 @@ function Conversation({ chat, onLeave }: { chat: ChatSummary; onLeave: () => voi
         testID="message-sheet"
       />
     </SafeAreaView>
+  );
+}
+
+/**
+ * «Поделиться» in a chat: one's own open Встречи, one of which goes to this person as a
+ * card. Each choice is one message.
+ */
+function SharePicker({
+  chatId,
+  visible,
+  onClose,
+}: {
+  chatId: string;
+  visible: boolean;
+  onClose: () => void;
+}) {
+  const clock = useClock();
+  const toast = useToast((s) => s.show);
+  const plans = useMyPlans(visible);
+  const share = useShareMeeting();
+  const open = (plans.data?.pages.flatMap((p) => p.items) ?? []).filter(
+    (p) => p.status === 'published',
+  );
+  const s = strings.share;
+  return (
+    <ActionSheet
+      visible={visible}
+      title={s.pickTitle}
+      message={plans.data && open.length === 0 ? s.pickEmpty : undefined}
+      actions={open.map((plan) => ({
+        label: `${meetingFormatLabels[plan.format]} · ${formatPlanDate(plan.date, clock)} · ${plan.timeStart}`,
+        onPress: () => {
+          onClose();
+          share.mutate(
+            { planId: plan.id, chatId, idempotencyKey: newIdempotencyKey() },
+            { onError: () => toast(s.failed) },
+          );
+        },
+        testID: `share-pick-${plan.id}`,
+      }))}
+      onClose={onClose}
+      testID="share-picker"
+    />
   );
 }
 
@@ -389,7 +445,9 @@ function Bubble({
           testID={`message-${message.id}-voice`}
         />
       ) : null}
-      {message.text ? <AppText tone={mine ? 'onPrimary' : 'text'}>{message.text}</AppText> : null}
+      {message.text || message.meeting?.kind === 'share' ? (
+        <AppText tone={mine ? 'onPrimary' : 'text'}>{message.text || t.meeting.invite}</AppText>
+      ) : null}
     </>
   );
   return (

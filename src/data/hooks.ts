@@ -30,6 +30,7 @@ import type {
   OpenChatInput,
   SetBlockInput,
   SendMessageInput,
+  ShareMeetingInput,
   MembershipSelection,
   PartialAnswers,
   PostView,
@@ -1181,6 +1182,29 @@ export function useMarkChatRead(chatId: string) {
   return useChatMutation(chatId, (upToMessageId: string) =>
     repository.markChatRead({ chatId, upToMessageId }),
   );
+}
+
+/** People a Встреча can be sent to, by name or Населённый пункт. */
+export function useShareRecipients(text: string, enabled: boolean) {
+  const repository = useRepository();
+  return useQuery({
+    queryKey: ['share-recipients', text],
+    queryFn: () => repository.listShareRecipients({ text: text || undefined, limit: 30 }),
+    enabled,
+  });
+}
+
+/** Sends a Встреча into the pair's chat; that chat and the list reload. */
+export function useShareMeeting() {
+  const repository = useRepository();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ShareMeetingInput) => repository.shareMeeting(input),
+    onSuccess: (message) => {
+      void client.invalidateQueries({ queryKey: queryKeys.chats });
+      void client.invalidateQueries({ queryKey: ['messages', message.chatId] });
+    },
+  });
 }
 
 /** Opens the one chat with someone (or the existing one); the chat list reloads. */

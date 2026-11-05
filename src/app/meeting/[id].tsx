@@ -50,6 +50,7 @@ import {
 } from '@/ui/icons';
 import { budgetLine } from '@/ui/components/PostRow';
 import { PhotoGallery } from '@/features/photo/PhotoGallery';
+import { canShare, copyLink, shareElsewhere } from '@/features/plan/share';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
@@ -255,6 +256,7 @@ function PlanDetail({ plan, onLeave }: { plan: PlanView; onLeave: () => void }) 
     <Screen testID="screen-plan" withTabBar={false}>
       <Header onMenu={actions.length > 0 ? () => setSheet('menu') : undefined} />
       <Summary plan={plan} />
+      <ShareButton plan={plan} canSendInApp={accessState === 'ACTIVE_MEMBER'} />
       <AuthorLink author={plan.author} />
       {plan.description ? (
         <View style={styles.section}>
@@ -301,6 +303,71 @@ function PlanDetail({ plan, onLeave }: { plan: PlanView; onLeave: () => void }) 
         testID="plan-sheet"
       />
     </Screen>
+  );
+}
+
+/** «Поделиться» under the card: in Aitu Dating, through another app, or the link. */
+function ShareButton({ plan, canSendInApp }: { plan: PlanView; canSendInApp: boolean }) {
+  const router = useRouter();
+  const clock = useClock();
+  const toast = useToast((s) => s.show);
+  const [open, setOpen] = useState(false);
+  const s = strings.share;
+  if (!canShare(plan)) {
+    return (
+      <AppText variant="caption" tone="textMuted" testID="plan-share-unavailable">
+        {s.unavailable}
+      </AppText>
+    );
+  }
+  const close = () => setOpen(false);
+  const actions: SheetAction[] = [
+    ...(canSendInApp
+      ? [
+          {
+            label: s.inApp,
+            onPress: () => {
+              close();
+              router.push({ pathname: '/share-meeting', params: { planId: plan.id } });
+            },
+            testID: 'share-in-app',
+          },
+        ]
+      : []),
+    {
+      label: s.elsewhere,
+      onPress: () => {
+        close();
+        void shareElsewhere(plan, clock).then(
+          (outcome) => outcome === 'copied' && toast(s.copied),
+          () => toast(s.copyFailed),
+        );
+      },
+      testID: 'share-elsewhere',
+    },
+    {
+      label: s.copy,
+      onPress: () => {
+        close();
+        void copyLink(plan.id).then(
+          () => toast(s.copied),
+          () => toast(s.copyFailed),
+        );
+      },
+      testID: 'share-copy',
+    },
+  ];
+  return (
+    <>
+      <SecondaryButton label={s.action} onPress={() => setOpen(true)} testID="plan-share" />
+      <ActionSheet
+        visible={open}
+        title={s.menuTitle}
+        actions={actions}
+        onClose={close}
+        testID="plan-share-sheet"
+      />
+    </>
   );
 }
 

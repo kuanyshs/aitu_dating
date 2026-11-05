@@ -27,6 +27,7 @@ export { default as SlidersHorizontal } from 'lucide-react-native/icons/sliders-
 export { default as ShieldCheck } from 'lucide-react-native/icons/shield-check';
 export { default as UserRound } from 'lucide-react-native/icons/user-round';
 export { default as Settings } from 'lucide-react-native/icons/settings';
+export { default as Share2 } from 'lucide-react-native/icons/share-2';
 export { default as Wallet } from 'lucide-react-native/icons/wallet';
 export { default as WifiOff } from 'lucide-react-native/icons/wifi-off';
 export { default as X } from 'lucide-react-native/icons/x';

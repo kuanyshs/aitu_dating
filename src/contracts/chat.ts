@@ -47,6 +47,10 @@ export type MessageStatus = z.infer<typeof MessageStatus>;
  * shown: the Запрос, then the Встреча itself.
  */
 export const MeetingCardState = z.enum([
+  /** A shared Встреча still taking Запросы. */
+  'open',
+  /** A shared Встреча whose author closed it. */
+  'closed',
   'requested',
   'matched',
   'declined',
@@ -59,11 +63,11 @@ export const MeetingCardState = z.enum([
 export type MeetingCardState = z.infer<typeof MeetingCardState>;
 
 /**
- * A Встреча as a card in a chat: put there by a Запрос. The exact place is never in it;
- * details are left out once the Встреча is deleted or out of reach.
+ * A Встреча as a card in a chat: put there by a Запрос, or shared («Поделиться»). The
+ * exact place is never in it; details are left out once it is deleted or out of reach.
  */
 export const MeetingCard = z.strictObject({
-  kind: z.literal('request'),
+  kind: z.enum(['request', 'share']),
   planId: Id,
   state: MeetingCardState,
   plan: PlanSummary.optional(),
@@ -167,3 +171,29 @@ export const OpenChatInput = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('plan_response'), responseId: Id }),
 ]);
 export type OpenChatInput = z.infer<typeof OpenChatInput>;
+
+/**
+ * «Поделиться в Aitu Dating»: a Встреча sent as a card to someone (`memberId`) or into an
+ * open chat (`chatId`), always the pair's one chat, with an optional note.
+ */
+export const ShareMeetingInput = z
+  .strictObject({
+    planId: Id,
+    memberId: Id.optional(),
+    chatId: Id.optional(),
+    message: z.string().trim().max(LIMITS.messageText, 'too_long').optional(),
+    idempotencyKey: z.string().min(8),
+  })
+  .refine((s) => !!s.memberId !== !!s.chatId, {
+    message: 'Exactly one recipient',
+    path: ['memberId'],
+  });
+export type ShareMeetingInput = z.infer<typeof ShareMeetingInput>;
+
+/** Who a Встреча can be sent to: people one may write to, by name or Населённый пункт. */
+export const ShareRecipientsQuery = z.strictObject({
+  text: z.string().max(100).optional(),
+  cursor: z.string().optional(),
+  limit: z.number().int().min(1).max(50).optional(),
+});
+export type ShareRecipientsQuery = z.infer<typeof ShareRecipientsQuery>;
