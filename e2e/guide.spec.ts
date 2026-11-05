@@ -1,6 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { joinAsMadina, openDemoPanel, showFeed, signInAs, answerQuestion } from './helpers';
+import {
+  answerQuestion,
+  choosePhotos,
+  joinAsMadina,
+  openCreate,
+  openDemoPanel,
+  pickSettlement,
+  showFeed,
+  signInAs,
+} from './helpers';
 
 /**
  * Screens for the product guide (`docs/product-guide.html`): one test per screenshot, each
@@ -18,19 +27,30 @@ async function shot(page: Page, name: string, { keepToast = false } = {}) {
   await page.screenshot({ path: `${dir}/${name}.jpg`, type: 'jpeg', quality: 82 });
 }
 
-const answers = [
-  ['city', 'almaty'],
-  ['intent', 'dating'],
-  ['communication', 'messages_first'],
-  ['pace', 'gradual'],
-  ['firstMeeting', 'coffee_talk'],
-  ['boundaries', 'public_place'],
-] as const;
-
 async function demoToggle(page: Page, id: string, settled: string) {
   await page.goto('/settings');
   await page.getByTestId(id).click();
   await expect(page.getByTestId(settled)).toBeVisible();
+}
+
+/** The last card of a Встреча in the open chat, and its status. */
+const meetingCard = (page: Page) => page.locator('[data-testid$="-meeting"]').last();
+const meetingCardStatus = (page: Page) => page.locator('[data-testid$="-meeting-status"]').last();
+
+/** A Запрос on plan1 (m06's coffee Встреча) from whoever is signed in. */
+async function sendRequest(page: Page, message?: string) {
+  await page.goto('/meeting/plan1');
+  await page.getByTestId('plan-respond').click();
+  if (message) await page.getByTestId('plan-message').fill(message);
+  await page.getByTestId('plan-send').click();
+  await expect(page.getByTestId('plan-pending')).toBeVisible();
+}
+
+async function openChatWith(page: Page, memberId: string) {
+  await page.goto(`/member/${memberId}`);
+  await page.getByTestId('member-write').click();
+  await expect(page.getByTestId('screen-chat')).toBeVisible();
+  await expect(page.getByTestId('chat-messages')).toBeVisible();
 }
 
 test.describe('guide @guide', () => {
@@ -39,18 +59,18 @@ test.describe('guide @guide', () => {
     test.setTimeout(120_000);
   });
 
-  // 1. Guest
+  // 1. Unverified user
   test('guest-home', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByTestId('post-type').first()).toBeVisible();
     await shot(page, 'guest-home');
   });
 
-  test('guest-plans-feed', async ({ page }) => {
+  test('guest-meetings-feed', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('feed-content-plans').click();
     await expect(page.getByTestId('plan-card').first()).toBeVisible();
-    await shot(page, 'guest-plans-feed');
+    await shot(page, 'guest-meetings-feed');
   });
 
   test('guest-filters', async ({ page }) => {
@@ -58,6 +78,13 @@ test.describe('guide @guide', () => {
     await page.getByTestId('home-filters').click();
     await expect(page.getByTestId('feed-filters-guest-note')).toBeVisible();
     await shot(page, 'guest-filters');
+  });
+
+  test('guest-following', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('feed-tab-following').click();
+    await expect(page.getByTestId('feed-empty')).toBeVisible();
+    await shot(page, 'guest-following');
   });
 
   test('guest-post', async ({ page }) => {
@@ -73,11 +100,42 @@ test.describe('guide @guide', () => {
     await shot(page, 'guest-plan');
   });
 
+  test('guest-photo', async ({ page }) => {
+    // Мадина publishes a generated picture, then leaves into preview and opens the post.
+    await joinAsMadina(page);
+    await openCreate(page);
+    await page.getByTestId('compose-input').fill('Вечерняя набережная — нарисовала нейросеть');
+    await choosePhotos(page, () => page.getByTestId('compose-photos-add').click(), ['ai']);
+    await expect(page.getByTestId('compose-photos-ai-0')).toBeVisible();
+    await page.getByTestId('compose-submit').click();
+    await expect(page.getByTestId('toast')).toContainText('Опубликовано');
+    const article = page
+      .getByTestId('screen-home')
+      .getByRole('article')
+      .filter({ hasText: 'Вечерняя набережная' });
+    const postId = (await article.getAttribute('data-testid'))!.replace(/^post-/, '');
+    await page.getByTestId('home-menu').click();
+    await page.getByTestId('menu-logout').click();
+    await expect(page.getByTestId('home-login')).toBeVisible();
+    await page.goto(`/post/${postId}`);
+    await expect(
+      page.getByTestId('screen-post').locator('[data-testid$="-0-blurred"]'),
+    ).toBeVisible();
+    await shot(page, 'guest-photo');
+  });
+
   test('guest-activity', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('tab-activity').click();
     await expect(page.getByTestId('activity-access-prompt')).toBeVisible();
     await shot(page, 'guest-activity');
+  });
+
+  test('guest-chats', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('tab-chats').click();
+    await expect(page.getByTestId('chats-access-prompt')).toBeVisible();
+    await shot(page, 'guest-chats');
   });
 
   test('guest-profile', async ({ page }) => {
@@ -94,7 +152,7 @@ test.describe('guide @guide', () => {
     await shot(page, 'menu-guest');
   });
 
-  // 2. Joining
+  // 2. Verification
   test('join-steps', async ({ page }) => {
     await page.goto('/access');
     await expect(page.getByTestId('candidate-passport-1')).toBeVisible();
@@ -118,20 +176,71 @@ test.describe('guide @guide', () => {
     await page.getByTestId('profile-style-calm_dialogue').click();
     await shot(page, 'join-card');
     await page.getByTestId('access-next').click();
-    for (const [question, answer] of answers) {
+
+    // Question 1: the Passport city is matched to the directory; a second place is found by name.
+    await expect(page.getByTestId('questionnaire-question')).toBeVisible();
+    await page.getByTestId('question-city-open').click();
+    await page.getByTestId('question-city-picker-search').fill('Карааул');
+    await expect(page.getByTestId('question-city-picker-option-103230100')).toBeVisible();
+    await shot(page, 'join-settlement');
+    await page.getByTestId('question-city-picker-option-103230100').click();
+    await page.getByTestId('question-city-picker-done').click();
+    await expect(page.getByTestId('question-city-chosen-103230100')).toBeVisible();
+    await page.getByTestId('questionnaire-next').click();
+
+    // Question 2 takes up to three answers.
+    await page.getByTestId('question-intent-dating').click();
+    await page.getByTestId('question-intent-friendship').click();
+    await shot(page, 'join-questionnaire');
+    await page.getByTestId('questionnaire-next').click();
+    for (const [question, answer] of [
+      ['communication', 'messages_first'],
+      ['pace', 'gradual'],
+      ['firstMeeting', 'coffee_talk'],
+      ['boundaries', 'public_place'],
+      ['dateFormat', 'walk'],
+    ] as const) {
       await answerQuestion(page, question, answer);
     }
-    await page.getByTestId('question-dateFormat-walk').click();
-    await shot(page, 'join-questionnaire');
     await page.getByTestId('questionnaire-create').click();
     await expect(page.getByTestId('access-welcome')).toBeVisible();
+    await shot(page, 'join-welcome');
     await page.getByTestId('welcome-feed').click();
     await expect(page.getByTestId('home-member')).toBeVisible();
     await expect(page.getByTestId('author-name').first()).toBeVisible();
     await shot(page, 'member-home');
   });
 
-  // 3. Posts and replies
+  // 3. Feeds and the filter
+  test('feed-filters', async ({ page }) => {
+    await signInAs(page, 'm01');
+    await page.goto('/');
+    await page.getByTestId('home-filters').click();
+    await page.getByTestId('feed-filter-interests-coffee').click();
+    await page.getByTestId('feed-filter-topics-meetings').click();
+    await page.getByTestId('feed-filter-format-coffee').click();
+    await page.getByTestId('feed-filter-soon-weekend').click();
+    await page.getByTestId('feed-filter-format-coffee').scrollIntoViewIfNeeded();
+    await shot(page, 'feed-filters');
+    await page.getByTestId('feed-filters-apply').click();
+    await expect(page.getByTestId('screen-feed-filters')).toHaveCount(0);
+    await expect(page.getByTestId('feed-chip-interests-coffee')).toBeVisible();
+    await shot(page, 'feed-chips');
+  });
+
+  test('feed-liked', async ({ page }) => {
+    await joinAsMadina(page);
+    await showFeed(page, 'popular');
+    const post = page.getByTestId('screen-home').getByRole('article').first();
+    await post.getByTestId('post-like').click();
+    await post.getByTestId('post-repost').click();
+    await expect(post.getByTestId('post-like')).toHaveAttribute('aria-pressed', 'true');
+    await expect(post.getByTestId('post-repost')).toHaveAttribute('aria-pressed', 'true');
+    await post.scrollIntoViewIfNeeded();
+    await shot(page, 'feed-liked');
+  });
+
+  // 4. Posts and replies
   test('post-member', async ({ page }) => {
     await joinAsMadina(page);
     await page.goto('/post/p02');
@@ -179,28 +288,25 @@ test.describe('guide @guide', () => {
     await shot(page, 'thread-deleted');
   });
 
-  test('feed-liked', async ({ page }) => {
+  // 5. Creating and deleting
+  test('create-sheet', async ({ page }) => {
     await joinAsMadina(page);
-    await showFeed(page, 'popular');
-    const post = page.getByTestId('screen-home').getByRole('article').first();
-    await post.getByTestId('post-like').click();
-    await post.getByTestId('post-repost').click();
-    await expect(post.getByTestId('post-like')).toHaveAttribute('aria-pressed', 'true');
-    await expect(post.getByTestId('post-repost')).toHaveAttribute('aria-pressed', 'true');
-    await post.scrollIntoViewIfNeeded();
-    await shot(page, 'feed-liked');
+    await page.getByTestId('tab-create').click();
+    await expect(page.getByTestId('create-sheet')).toBeVisible();
+    await shot(page, 'create-sheet');
   });
 
-  // 4. Creating
-  test('compose-question', async ({ page }) => {
+  test('compose-post', async ({ page }) => {
     await joinAsMadina(page);
-    await expect(page.getByTestId('home-member')).toBeVisible();
-    await page.getByTestId('tab-create').click();
-    await page.getByTestId('create-post').click();
+    await openCreate(page);
     await page.getByTestId('compose-topic-city').click();
-    await page.getByTestId('compose-topic-meetings').click();
-    await page.getByTestId('compose-input').fill('Где в Алматы можно тихо поговорить за кофе?');
-    await shot(page, 'compose-question');
+    await page.getByTestId('compose-topic-thoughts').click();
+    await page
+      .getByTestId('compose-input')
+      .fill('Нарисовала вечерний Алматы, каким хочу его увидеть. Где у вас любимый вид на горы?');
+    await choosePhotos(page, () => page.getByTestId('compose-photos-add').click(), ['ai']);
+    await expect(page.getByTestId('compose-photos-ai-0')).toHaveText('Сгенерировано с ИИ');
+    await shot(page, 'compose-post');
     await page.getByTestId('compose-submit').click();
     await expect(page.getByTestId('toast')).toContainText('Опубликовано');
     await shot(page, 'compose-published', { keepToast: true });
@@ -222,23 +328,29 @@ test.describe('guide @guide', () => {
 
   test('compose-draft', async ({ page }) => {
     await joinAsMadina(page);
-    await expect(page.getByTestId('home-member')).toBeVisible();
-    await page.getByTestId('tab-create').click();
-    await page.getByTestId('create-post').click();
+    await openCreate(page);
     await page.getByTestId('compose-input').fill('Черновик: о чём поговорить на первой встрече');
     await page.getByTestId('compose-cancel').click();
     await expect(page.getByTestId('compose-sheet')).toBeVisible();
     await shot(page, 'compose-draft');
   });
 
-  test('create-choice', async ({ page }) => {
-    await joinAsMadina(page);
-    await page.goto('/create');
-    await expect(page.getByTestId('create-plan')).toBeVisible();
-    await shot(page, 'create-choice');
+  test('post-delete', async ({ page }) => {
+    await signInAs(page, 'm01');
+    await page.goto('/post/p13');
+    await expect(page.getByTestId('screen-post')).toBeVisible();
+    await page.getByTestId('post-menu').click();
+    await page.getByTestId('sheet-delete').click();
+    await expect(page.getByTestId('post-sheet')).toContainText('Удалить этот пост?');
+    await shot(page, 'post-delete');
+    await page.getByTestId('sheet-confirm-delete').click();
+    await expect(page.getByTestId('toast')).toContainText('Публикация удалена');
+    await page.goto('/post/p13');
+    await expect(page.getByText('Публикация недоступна')).toBeVisible();
+    await shot(page, 'post-unavailable');
   });
 
-  // 5. Profiles
+  // 6. Profiles and the Анкета
   test('own-profile', async ({ page }) => {
     await joinAsMadina(page);
     await page.getByTestId('tab-profile').click();
@@ -253,6 +365,13 @@ test.describe('guide @guide', () => {
     await page.getByTestId('profile-edit-card').click();
     await expect(page.getByTestId('card-edit-passport')).toBeVisible();
     await shot(page, 'card-edit');
+    await page.getByTestId('card-edit-answer-intent-dating').click();
+    await pickSettlement(page, 'card-edit-answer-city', '103230100', 'Карааул');
+    await page.getByTestId('card-edit-answer-city').scrollIntoViewIfNeeded();
+    await shot(page, 'card-edit-answers');
+    await page.getByTestId('card-edit-cancel').click();
+    await expect(page.getByTestId('card-edit-sheet')).toBeVisible();
+    await shot(page, 'card-edit-discard');
   });
 
   test('member-profile', async ({ page }) => {
@@ -261,15 +380,19 @@ test.describe('guide @guide', () => {
     await expect(page.getByTestId('member-card')).toBeVisible();
     await page.getByTestId('member-follow').click();
     await expect(page.getByTestId('member-follow')).toHaveText('Вы подписаны');
+    await expect(page.getByTestId('member-write')).toHaveText('Написать сообщение');
     await shot(page, 'member-profile');
   });
 
-  test('member-mutual', async ({ page }) => {
-    await signInAs(page, 'm01');
-    await page.goto('/member/m09');
-    await expect(page.getByTestId('member-mutual')).toBeVisible();
-    await expect(page.getByTestId('member-write')).toBeVisible();
-    await shot(page, 'member-mutual');
+  test('member-content', async ({ page }) => {
+    await signInAs(page, 'm02');
+    await page.goto('/member/m06');
+    const list = page.getByTestId('member-posts');
+    await expect(list.getByRole('article').first()).toBeVisible();
+    await page.getByTestId('member-posts-content-plans').click();
+    await expect(list.getByTestId('plan-card').first()).toBeVisible();
+    await list.getByTestId('plan-card').first().scrollIntoViewIfNeeded();
+    await shot(page, 'member-content');
   });
 
   test('follows-list', async ({ page }) => {
@@ -280,7 +403,7 @@ test.describe('guide @guide', () => {
     await shot(page, 'follows-list');
   });
 
-  // 6. Search
+  // 7. Search
   test('search-people', async ({ page }) => {
     await joinAsMadina(page);
     await page.getByTestId('feed-tab-for_you').click();
@@ -303,25 +426,42 @@ test.describe('guide @guide', () => {
     await shot(page, 'search-plans');
   });
 
-  // 7. Plans
+  // 8. Meetings and requests
   test('plan-new', async ({ page }) => {
     await joinAsMadina(page);
-    await page.goto('/meeting/new');
+    await openCreate(page, 'plan');
+    await expect(page.getByTestId('new-plan-city-chosen-351010000')).toBeVisible();
     await page.getByTestId('new-plan-date-2026-09-28').click();
     await page.getByTestId('new-plan-time-18:00').click();
     await shot(page, 'plan-new');
+    await page.getByTestId('new-plan-format-coffee').click();
+    await page.getByTestId('new-plan-budget-up_to_3000').click();
+    await page.getByTestId('new-plan-place-area').fill('Центр, рядом с бульваром Бухар-Жырау');
+    await page.getByTestId('new-plan-place').fill('Кофейня «Зерно», ул. Ерубаева, 40');
+    await page.getByTestId('new-plan-description').fill('Кофе и разговор о кино и книгах.');
+    await choosePhotos(page, () => page.getByTestId('new-plan-photos-add').click(), ['ai']);
+    await expect(page.getByTestId('new-plan-photos-slot-0')).toBeVisible();
+    await page.getByTestId('new-plan-public').click();
+    await page.getByTestId('new-plan-public').scrollIntoViewIfNeeded();
+    await shot(page, 'plan-new-place');
+    await page.getByTestId('new-plan-submit').click();
+    await expect(page.getByTestId('screen-plan')).toBeVisible();
+    await expect(page.getByTestId('plan-photo-0-ai')).toHaveText('Сгенерировано с ИИ');
+    await shot(page, 'plan-own');
   });
 
   test('plan-member', async ({ page }) => {
     await joinAsMadina(page);
     await page.goto('/meeting/plan1');
     await expect(page.getByTestId('plan-place-area')).toBeVisible();
+    await expect(page.getByTestId('plan-go-to-chat')).toBeVisible();
     await shot(page, 'plan-member');
     await page.getByTestId('plan-respond').click();
     await page.getByTestId('plan-message').fill('Люблю утренний кофе, буду рада компании.');
     await shot(page, 'plan-respond');
     await page.getByTestId('plan-send').click();
     await expect(page.getByTestId('plan-pending')).toBeVisible();
+    await expect(page.getByTestId('plan-withdraw')).toBeVisible();
     await shot(page, 'plan-pending');
   });
 
@@ -331,11 +471,7 @@ test.describe('guide @guide', () => {
       ['m03', 'С удовольствием составлю компанию.'],
     ] as const) {
       await signInAs(page, userId);
-      await page.goto('/meeting/plan1');
-      await page.getByTestId('plan-respond').click();
-      await page.getByTestId('plan-message').fill(text);
-      await page.getByTestId('plan-send').click();
-      await expect(page.getByTestId('plan-pending')).toBeVisible();
+      await sendRequest(page, text);
     }
     await signInAs(page, 'm06');
     await page.goto('/meeting/plan1');
@@ -349,18 +485,97 @@ test.describe('guide @guide', () => {
     await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
     await shot(page, 'plan-matched');
     await page.getByTestId('plan-menu').click();
+    await expect(page.getByTestId('plan-sheet')).toBeVisible();
     await shot(page, 'plan-author-menu');
+
+    // Someone else now reads that it is agreed.
+    await signInAs(page, 'm04');
+    await page.goto('/meeting/plan1');
+    await expect(page.getByTestId('plan-matched-other')).toHaveText('Встреча уже договорена');
+    await shot(page, 'plan-matched-other');
   });
 
-  test('my-plans', async ({ page }) => {
+  test('plan-delete', async ({ page }) => {
     await signInAs(page, 'm06');
+    await page.goto('/meeting/plan1');
+    await page.getByTestId('plan-menu').click();
+    await page.getByTestId('sheet-delete-plan').click();
+    await expect(page.getByTestId('plan-sheet')).toContainText('Удалить эту встречу?');
+    await shot(page, 'plan-delete');
+    await page.getByTestId('sheet-confirm-delete').click();
+    await expect(page.getByTestId('toast')).toContainText('Встреча удалена');
     await page.goto('/my-plans');
-    await expect(page.getByTestId('screen-my-plans')).toBeVisible();
-    await page.waitForTimeout(800);
+    await expect(page.getByTestId('my-plan-plan1-status')).toHaveText('Удалена');
     await shot(page, 'my-plans');
   });
 
-  // 8. Chats
+  test('chat-request-card', async ({ page }) => {
+    await signInAs(page, 'm02');
+    await sendRequest(page, 'Давно хотел в эту кофейню. Суббота в силе?');
+    await page.goto('/meeting/plan1');
+    await page.getByTestId('plan-go-to-chat').click();
+    await expect(page.getByTestId('screen-chat')).toBeVisible();
+    await expect(meetingCard(page)).toContainText('Вы отправили запрос на встречу');
+    await expect(meetingCardStatus(page)).toHaveText('Запрос отправлен');
+    await shot(page, 'chat-request-card');
+
+    await signInAs(page, 'm06');
+    await page.goto('/meeting/plan1');
+    await page.getByTestId('plan-accept-response-1').click();
+    await page.getByTestId('sheet-confirm-accept').click();
+    await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
+    await page.getByTestId('plan-write').click();
+    await expect(page.getByTestId('screen-chat')).toBeVisible();
+    await expect(meetingCard(page)).toContainText('Запрос на вашу встречу');
+    await expect(meetingCardStatus(page)).toHaveText('Встреча договорена');
+    await shot(page, 'chat-request-matched');
+  });
+
+  // 9. Sharing a Встреча
+  test('share-in-app', async ({ page }) => {
+    await signInAs(page, 'm03');
+    await page.goto('/meeting/plan1');
+    await page.getByTestId('plan-share').click();
+    await expect(page.getByTestId('plan-share-sheet')).toBeVisible();
+    await shot(page, 'share-sheet');
+    await page.getByTestId('share-in-app').click();
+    await expect(page.getByTestId('screen-share-meeting')).toBeVisible();
+    await page.getByTestId('share-note').fill('Сходим вместе?');
+    await expect(page.locator('[data-testid^="share-to-"]').first()).toBeVisible();
+    await shot(page, 'share-in-app');
+    await page.locator('[data-testid^="share-to-"]').first().click();
+    await expect(page.getByTestId('screen-chat')).toBeVisible();
+    await expect(meetingCard(page)).toContainText('Вы поделились встречей');
+    await shot(page, 'share-card');
+  });
+
+  test('share-copied', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await signInAs(page, 'm03');
+    await page.goto('/meeting/plan1');
+    await page.getByTestId('plan-share').click();
+    await page.getByTestId('share-copy').click();
+    await expect(page.getByTestId('toast')).toHaveText('Ссылка на встречу скопирована');
+    await shot(page, 'share-copied', { keepToast: true });
+  });
+
+  test('share-pick', async ({ page }) => {
+    await signInAs(page, 'm06');
+    await openChatWith(page, 'm10');
+    await page.getByTestId('chat-share').click();
+    await expect(page.getByTestId('share-picker')).toContainText('Выберите встречу для отправки');
+    await shot(page, 'share-pick');
+  });
+
+  // 10. Chats
+  test('chat-new', async ({ page }) => {
+    // m03 and m10 share nothing: no Подписка, no Встреча, no Комментарий.
+    await signInAs(page, 'm03');
+    await openChatWith(page, 'm10');
+    await expect(page.getByTestId('chat-empty')).toBeVisible();
+    await shot(page, 'chat-new');
+  });
+
   test('chats-list', async ({ page }) => {
     await signInAs(page, 'm01');
     await page.goto('/chats');
@@ -378,36 +593,26 @@ test.describe('guide @guide', () => {
     await shot(page, 'chat');
   });
 
-  test('chat-message-report', async ({ page }) => {
-    await signInAs(page, 'm01');
-    await page.goto('/chats/chat1');
-    await page.getByTestId('message-chat1-m25-bubble').click();
-    await expect(page.getByTestId('sheet-report-message')).toBeVisible();
-    await shot(page, 'chat-message-report');
-  });
-
-  test('chat-meeting-cancelled', async ({ page }) => {
-    // m02 and m06 talk already (a mutual Подписка); a Встреча joins, then is cancelled.
-    await signInAs(page, 'm02');
-    await page.goto('/meeting/plan1');
-    await page.getByTestId('plan-respond').click();
-    await page.getByTestId('plan-send').click();
-    await expect(page.getByTestId('plan-pending')).toBeVisible();
-    await signInAs(page, 'm06');
-    await page.goto('/meeting/plan1');
-    await page.getByTestId('plan-accept-response-1').click();
-    await page.getByTestId('sheet-confirm-accept').click();
-    await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
-    await page.getByTestId('plan-write').click();
-    await expect(page.getByTestId('screen-chat')).toBeVisible();
-    await page.goto('/meeting/plan1');
-    await page.getByTestId('plan-menu').click();
-    await page.getByTestId('sheet-cancel-plan').click();
-    await page.getByTestId('sheet-confirm-cancel').click();
-    await expect(page.getByTestId('plan-status')).toHaveText('Отменена');
-    await page.goto('/chats/chat3');
-    await expect(page.getByTestId('chat-context')).toContainText('Встреча отменена');
-    await shot(page, 'chat-meeting-cancelled');
+  test('chat-voice', async ({ page }) => {
+    await signInAs(page, 'm03');
+    await openChatWith(page, 'm10');
+    await page.getByTestId('chat-input').fill('Привет! Записала коротко голосом');
+    await page.getByTestId('chat-send').click();
+    await expect(page.getByTestId('chat-input')).toHaveValue('');
+    await page.getByTestId('chat-voice-record').click();
+    await expect(page.getByTestId('chat-voice-time')).toContainText('0:02 / 1:00', {
+      timeout: 6_000,
+    });
+    await shot(page, 'chat-voice-recording');
+    await page.getByTestId('chat-voice-stop').click();
+    await expect(page.getByTestId('chat-voice-preview')).toBeVisible();
+    await page.getByTestId('chat-voice-send').click();
+    const voice = page.locator('[data-testid$="-voice"]').last();
+    await expect(voice).toBeVisible();
+    await expect(
+      page.locator('[data-testid^="message-"][data-testid$="-status"]').last(),
+    ).toHaveText('Отправлено');
+    await shot(page, 'chat-voice');
   });
 
   test('chat-failed', async ({ page }) => {
@@ -425,16 +630,45 @@ test.describe('guide @guide', () => {
     await shot(page, 'chat-failed');
   });
 
-  test('chat-write-from-comment', async ({ page }) => {
-    await joinAsMadina(page);
-    await page.goto('/post/p02');
-    await page.getByTestId('comment-c-p02-2').getByTestId('comment-menu').first().click();
-    await page.getByTestId('sheet-write').click();
-    await expect(page.getByTestId('chat-context')).toHaveText('Из комментария');
-    await shot(page, 'chat-from-comment');
+  test('chat-message-report', async ({ page }) => {
+    await signInAs(page, 'm01');
+    await page.goto('/chats/chat1');
+    await page.getByTestId('message-chat1-m25-bubble').click();
+    await expect(page.getByTestId('sheet-report-message')).toBeVisible();
+    await shot(page, 'chat-message-report');
   });
 
-  // 9. Activity
+  test('chat-meeting-cancelled', async ({ page }) => {
+    // m02 and m06 talk already; a Запрос is accepted, then the Встреча is cancelled.
+    await signInAs(page, 'm02');
+    await sendRequest(page);
+    await signInAs(page, 'm06');
+    await page.goto('/meeting/plan1');
+    await page.getByTestId('plan-accept-response-1').click();
+    await page.getByTestId('sheet-confirm-accept').click();
+    await expect(page.getByTestId('plan-status')).toHaveText('Встреча договорена');
+    await page.getByTestId('plan-write').click();
+    await expect(page.getByTestId('screen-chat')).toBeVisible();
+    await page.goto('/meeting/plan1');
+    await page.getByTestId('plan-menu').click();
+    await page.getByTestId('sheet-cancel-plan').click();
+    await page.getByTestId('sheet-confirm-cancel').click();
+    await expect(page.getByTestId('plan-status')).toHaveText('Отменена');
+    await page.goto('/chats/chat3');
+    await expect(page.getByTestId('chat-context')).toContainText('Встреча отменена');
+    await expect(meetingCardStatus(page)).toHaveText('Встреча отменена');
+    await shot(page, 'chat-meeting-cancelled');
+  });
+
+  test('expired-chat', async ({ page }) => {
+    await signInAs(page, 'm01');
+    await demoToggle(page, 'demo-expire', 'demo-restore');
+    await page.goto('/chats/chat1');
+    await expect(page.getByTestId('chat-read-only')).toBeVisible();
+    await shot(page, 'expired-chat');
+  });
+
+  // 11. Notifications
   test('activity', async ({ page }) => {
     await signInAs(page, 'm01');
     await page.goto('/');
@@ -451,10 +685,7 @@ test.describe('guide @guide', () => {
 
   test('activity-plans', async ({ page }) => {
     await signInAs(page, 'm02');
-    await page.goto('/meeting/plan1');
-    await page.getByTestId('plan-respond').click();
-    await page.getByTestId('plan-send').click();
-    await expect(page.getByTestId('plan-pending')).toBeVisible();
+    await sendRequest(page);
     await signInAs(page, 'm06');
     await page.goto('/activity');
     await page.getByTestId('activity-category-plans').click();
@@ -462,7 +693,7 @@ test.describe('guide @guide', () => {
     await shot(page, 'activity-plans');
   });
 
-  // 10. Safety
+  // 12. Safety
   test('report', async ({ page }) => {
     await joinAsMadina(page);
     await page.goto('/report?targetType=post&targetId=p02');
@@ -577,7 +808,7 @@ test.describe('guide @guide', () => {
     await shot(page, 'restricted');
   });
 
-  // 11. Membership
+  // 13. Подписка на клуб
   test('membership', async ({ page }) => {
     await joinAsMadina(page);
     await page.getByTestId('home-menu').click();
@@ -605,15 +836,7 @@ test.describe('guide @guide', () => {
     await shot(page, 'renew');
   });
 
-  test('expired-chat', async ({ page }) => {
-    await signInAs(page, 'm01');
-    await demoToggle(page, 'demo-expire', 'demo-restore');
-    await page.goto('/chats/chat1');
-    await expect(page.getByTestId('chat-read-only')).toBeVisible();
-    await shot(page, 'expired-chat');
-  });
-
-  // 12. About, settings, demo
+  // 14. About, settings, demo
   test('about-and-rules', async ({ page }) => {
     await page.goto('/about');
     await expect(page.getByTestId('about-demo')).toBeVisible();

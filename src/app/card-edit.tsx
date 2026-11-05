@@ -323,8 +323,8 @@ const useStyles = createStyles((colors) => ({
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
   },
-  // Centred on the screen, not between the buttons.
-  title: { position: 'absolute', left: 0, right: 0, textAlign: 'center' },
+  // «Отменить изменения» is long: the title takes the rest of the row instead of overlapping it.
+  title: { flex: 1, textAlign: 'center', paddingRight: spacing.lg },
   content: { padding: spacing.lg, gap: spacing.lg },
   passport: {
     flexDirection: 'row',

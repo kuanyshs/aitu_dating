@@ -148,7 +148,7 @@ test.describe('План встречи', () => {
     await expect(page.getByTestId('plan-status')).toHaveCount(0);
     await page.goto('/activity');
     await expect(page.getByTestId('screen-activity')).toContainText(
-      'Участник отказался от встречи',
+      'Пользователь отказался от встречи',
     );
     await page.goto('/chats');
     await expect(page.getByTestId('chats-list').getByRole('link')).not.toHaveCount(0);
