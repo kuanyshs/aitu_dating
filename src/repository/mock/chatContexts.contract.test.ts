@@ -75,11 +75,16 @@ describe('Контексты чата', () => {
     await on(store, 'm06').setFollow({ memberId: 'm04', active: true });
     const both = await on(store, 'm06').openChat({ kind: 'mutual_follow', memberId: 'm04' });
     expect(both.id).toBe(chat.id);
-    expect(both.contexts.map((c) => c.kind)).toEqual(['mutual_follow', 'plan_response']);
+    // The chat began with the Запрос itself («Переписка»), then its acceptance.
+    expect(both.contexts.map((c) => c.kind)).toEqual([
+      'mutual_follow',
+      'plan_response',
+      'conversation',
+    ]);
     expect(both.context.kind).toBe('mutual_follow');
 
     const again = await on(store, 'm04').openChat({ kind: 'mutual_follow', memberId: 'm06' });
-    expect(again.contexts).toHaveLength(2);
+    expect(again.contexts).toHaveLength(3);
     const list = await on(store, 'm04').listChats({});
     expect(list.items.filter((c) => c.peer.view === 'member' && c.peer.id === 'm06')).toHaveLength(
       1,

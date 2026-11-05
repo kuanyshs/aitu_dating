@@ -102,16 +102,23 @@ describe('Активность', () => {
       ]),
     );
 
+    const kinds = async (userId: string) =>
+      (await on(store, userId).listActivity({ category: 'plans' })).items;
+    // The sender is told their Запрос went.
+    expect(await kinds('m02')).toContainEqual(
+      expect.objectContaining({ kind: 'response_sent', planId: 'plan1' }),
+    );
+
     await on(store, 'm06').acceptPlanResponse({ responseId: one.id });
-    expect((await on(store, 'm02').listActivity({ category: 'plans' })).items[0]).toMatchObject({
-      kind: 'response_accepted',
-      planId: 'plan1',
-      actor: { id: 'm06' },
-    });
+    expect(await kinds('m02')).toContainEqual(
+      expect.objectContaining({
+        kind: 'response_accepted',
+        planId: 'plan1',
+        actor: expect.objectContaining({ id: 'm06' }),
+      }),
+    );
     // The other waiting one was declined with the acceptance.
-    expect((await on(store, 'm03').listActivity({ category: 'plans' })).items[0]).toMatchObject({
-      kind: 'response_declined',
-    });
+    expect((await kinds('m03')).map((i) => i.kind)).toContain('response_declined');
     expect(two.status).toBe('pending');
   });
 
@@ -147,5 +154,30 @@ describe('Активность', () => {
     const items = await all(store, 'm01');
     expect(items.length).toBeGreaterThan(0);
     expect(items.every((i) => !i.actor || i.actor.view === 'safe')).toBe(true);
+  });
+});
+
+describe('Встреча notifications (v4 §17)', () => {
+  it('tell those waiting that the Встреча was cancelled or closed, once each', async () => {
+    const store = createMemoryStore();
+    await on(store, 'm02').respondToPlan({ planId: 'plan1', idempotencyKey: 'notice-cancel-1' });
+    await on(store, 'm06').closePlan({ planId: 'plan1' });
+    const closed = (await on(store, 'm02').listActivity({ category: 'plans' })).items;
+    expect(closed.map((i) => i.kind)).toContain('plan_closed');
+
+    await on(store, 'm06').cancelPlan({ planId: 'plan1' });
+    const kinds = (await on(store, 'm02').listActivity({ category: 'plans' })).items.map(
+      (i) => i.kind,
+    );
+    expect(kinds).toContain('plan_cancelled');
+    // Cancelling answers the Запрос, but the notice is «Встреча отменена», not a decline too.
+    expect(kinds).not.toContain('response_declined');
+  });
+
+  it('confirm a Блокировка to whoever made it', async () => {
+    const store = createMemoryStore();
+    await on(store, 'm03').setBlock({ target: { type: 'user', id: 'm10' }, active: true });
+    const system = (await on(store, 'm03').listActivity({ category: 'system' })).items;
+    expect(system.map((i) => i.kind)).toContain('user_blocked');
   });
 });

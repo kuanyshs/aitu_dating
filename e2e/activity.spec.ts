@@ -25,7 +25,7 @@ test.describe('Активность', () => {
     // Another category in the same visit keeps its marks.
     await page.getByTestId('activity-category-follows').click();
     await expect(rows).toHaveCount(2);
-    await expect(page.getByTestId('activity-follow-m09')).toContainText('Подписка на вас');
+    await expect(page.getByTestId('activity-follow-m09')).toContainText('На вас подписались');
     await expect(page.getByTestId('activity-follow-m09-new')).toBeVisible();
     await expect(page.getByTestId('activity-follow-m12-new')).toBeVisible();
     await page.getByTestId('activity-follow-m09').click();

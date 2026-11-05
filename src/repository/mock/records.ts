@@ -206,6 +206,8 @@ export const MessageRecord = z.strictObject({
   text: z.string().max(2000),
   photoId: z.string().optional(),
   voiceId: z.string().optional(),
+  /** The card a Запрос put in the chat. */
+  meeting: z.strictObject({ planId: Id, responseId: Id }).optional(),
   createdAt: IsoDateTime,
   /** «Прочитано» is derived from the other side's read mark, never stored. */
   status: z.enum(['sent', 'failed']),

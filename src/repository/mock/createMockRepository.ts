@@ -103,6 +103,7 @@ import {
   UploadPhotoInput,
   UploadVoiceInput,
   type VoiceRef,
+  type MeetingCard,
   type PhotoRef,
   UpdateSettingsInput,
   UserSettings,
@@ -923,7 +924,13 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       ...(photo ? { photo } : {}),
       createdAt: plan.createdAt,
       ...(mine && mine.status !== 'withdrawn'
-        ? { myResponse: { id: mine.id, status: mine.status } }
+        ? {
+            myResponse: {
+              id: mine.id,
+              status: mine.status,
+              ...(mine.message ? { message: mine.message } : {}),
+            },
+          }
         : {}),
     });
   }
@@ -970,7 +977,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
   async function setPlanStatus(plan: CurrentPlan, status: PlanRecord['status']) {
     await saveState({
       ...state,
-      planUpdates: { ...state.planUpdates, [plan.id]: { status } },
+      planUpdates: { ...state.planUpdates, [plan.id]: { status, at: clock.now().toISOString() } },
       // Cancelling or deleting answers everyone still waiting.
       planResponses:
         status === 'cancelled' || status === 'deleted'
@@ -1028,6 +1035,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     const full = fromMe || seesFullView(viewerOf(effectiveSession()));
     const photo = message.photoId && full ? photoRef(message.photoId) : undefined;
     const voice = message.voiceId && full ? voiceRef(message.voiceId) : undefined;
+    const meeting = message.meeting ? meetingCard(message.meeting) : undefined;
     return MessageView.parse({
       id: message.id,
       chatId: chat.id,
@@ -1035,9 +1043,46 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
       text: message.text,
       ...(photo ? { photo } : {}),
       ...(voice ? { voice } : {}),
+      ...(meeting ? { meeting } : {}),
       createdAt: message.createdAt,
       status: message.status === 'failed' ? 'failed' : read ? 'read' : 'sent',
     });
+  }
+
+  /** A Встреча's card in a chat, as it stands now; never the exact place. */
+  function meetingCard(ref: { planId: string; responseId: string }): MeetingCard {
+    const plan = planById(ref.planId);
+    const response = state.planResponses.find((r) => r.id === ref.responseId);
+    const unavailable = !plan || !isShown(member(plan.authorId));
+    const status: MeetingCard['state'] = unavailable
+      ? 'unavailable'
+      : plan.status === 'deleted'
+        ? 'deleted'
+        : plan.status === 'cancelled'
+          ? 'cancelled'
+          : response?.status === 'withdrawn'
+            ? 'withdrawn'
+            : response?.status === 'declined'
+              ? 'declined'
+              : plan.status === 'past'
+                ? 'past'
+                : response?.status === 'accepted'
+                  ? 'matched'
+                  : 'requested';
+    if (unavailable || status === 'deleted') {
+      return { kind: 'request', planId: ref.planId, state: status };
+    }
+    const post = allPosts().find((p) => p.planId === plan.id);
+    const photoId = post?.photoIds?.[0];
+    const photo =
+      photoId && seesFullView(viewerOf(effectiveSession())) ? photoRef(photoId) : undefined;
+    return {
+      kind: 'request',
+      planId: plan.id,
+      state: status,
+      plan: toPlanSummary(plan),
+      ...(photo ? { photo } : {}),
+    };
   }
 
   /** Every Контекст of a chat, oldest first: the one it started from, then the added ones. */
@@ -1213,7 +1258,42 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           r.authorId,
         );
       }
-      if (r.authorId === me.id && (r.status === 'accepted' || r.status === 'declined')) {
+      if (r.authorId === me.id) {
+        push({
+          id: `sent-${r.id}`,
+          kind: 'response_sent',
+          createdAt: r.createdAt,
+          planId: plan.id,
+        });
+      }
+      // A Встреча called off, or no longer taking Запросы, says so to whoever was in it.
+      const changedAt = state.planUpdates[plan.id]?.at ?? plan.createdAt;
+      const endedByAuthor =
+        (plan.status === 'cancelled' || plan.status === 'deleted') &&
+        r.status !== 'withdrawn' &&
+        (r.status === 'accepted' || (r.decidedAt ?? '') >= changedAt);
+      if (r.authorId === me.id && plan.status === 'cancelled' && endedByAuthor) {
+        push(
+          {
+            id: `cancelled-${r.id}`,
+            kind: 'plan_cancelled',
+            createdAt: changedAt,
+            planId: plan.id,
+          },
+          plan.authorId,
+        );
+      }
+      if (r.authorId === me.id && plan.status === 'closed' && r.status === 'pending') {
+        push(
+          { id: `closed-${r.id}`, kind: 'plan_closed', createdAt: changedAt, planId: plan.id },
+          plan.authorId,
+        );
+      }
+      if (
+        r.authorId === me.id &&
+        !(endedByAuthor && r.status === 'declined') &&
+        (r.status === 'accepted' || r.status === 'declined')
+      ) {
         push(
           {
             id: `decision-${r.id}`,
@@ -1223,6 +1303,11 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           },
           plan.authorId,
         );
+      }
+    }
+    for (const b of state.blocks) {
+      if (b.blockerId === me.id) {
+        push({ id: `blocked-${b.id}`, kind: 'user_blocked', createdAt: b.createdAt });
       }
     }
     // A Membership ending within a week: the event appears a week before its end.
@@ -1247,8 +1332,16 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     conversations: ['comment', 'reply', 'mention'],
     mentions: ['mention'],
     reactions: ['reaction', 'repost'],
-    plans: ['plan_response', 'response_accepted', 'response_declined', 'meeting_left'],
-    system: ['membership_expiring', 'system'],
+    plans: [
+      'plan_response',
+      'response_sent',
+      'response_accepted',
+      'response_declined',
+      'plan_cancelled',
+      'plan_closed',
+      'meeting_left',
+    ],
+    system: ['membership_expiring', 'user_blocked', 'system'],
   };
 
   /** Readers of community content: anyone but a restricted session. */
@@ -2299,7 +2392,34 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           idempotencyKey,
           createdAt: clock.now().toISOString(),
         });
-        await saveState({ ...state, planResponses: [...state.planResponses, record] });
+        // The Запрос lands in the pair's one chat as a card of this Встреча.
+        const existingChat = allChats().find(
+          (c) => c.memberIds.includes(me.id) && c.memberIds.includes(plan.authorId),
+        );
+        const chat =
+          existingChat ??
+          ChatRecord.parse({
+            id: `chat-${state.chats.length + 1}`,
+            memberIds: [me.id, plan.authorId],
+            context: { kind: 'direct' },
+            createdAt: record.createdAt,
+          });
+        const card = MessageRecord.parse({
+          id: `message-${state.messages.length + 1}`,
+          chatId: chat.id,
+          authorId: me.id,
+          text: message ?? '',
+          meeting: { planId, responseId: record.id },
+          createdAt: record.createdAt,
+          status: 'sent',
+          idempotencyKey: `${idempotencyKey}:card`,
+        });
+        await saveState({
+          ...state,
+          planResponses: [...state.planResponses, record],
+          chats: existingChat ? state.chats : [...state.chats, chat],
+          messages: [...state.messages, card],
+        });
         return responseView(record, viewer);
       }),
 

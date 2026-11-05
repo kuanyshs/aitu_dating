@@ -460,6 +460,11 @@ function RespondArea({ plan }: { plan: PlanView }) {
     return (
       <View style={styles.notice} testID="plan-pending">
         <AppText>{t.pending}</AppText>
+        {mine.message ? (
+          <AppText tone="textMuted" testID="plan-pending-message">
+            {`«${mine.message}»`}
+          </AppText>
+        ) : null}
         <SecondaryButton
           label={t.withdraw}
           loading={withdraw.isPending}
@@ -471,6 +476,13 @@ function RespondArea({ plan }: { plan: PlanView }) {
           }
           testID="plan-withdraw"
         />
+      </View>
+    );
+  }
+  if (plan.status === 'matched') {
+    return (
+      <View style={styles.notice} testID="plan-matched-other">
+        <AppText tone="textMuted">{t.matchedOther}</AppText>
       </View>
     );
   }
@@ -569,7 +581,21 @@ function Responses({ plan }: { plan: PlanView }) {
   const list = usePlanResponses(plan.id, true);
   const accept = useAcceptResponse();
   const decline = useDeclineResponse();
+  const setBlock = useSetBlock();
   const [confirming, setConfirming] = useState<PlanResponseView>();
+  const [blocking, setBlocking] = useState<PlanResponseView>();
+  const blockSender = () => {
+    const chosen = blocking;
+    setBlocking(undefined);
+    if (!chosen || chosen.author.view !== 'member') return;
+    setBlock.mutate(
+      { target: { type: 'user', id: chosen.author.id }, active: true },
+      {
+        onSuccess: () => toast(strings.block.done),
+        onError: () => toast(strings.block.failed),
+      },
+    );
+  };
   const items = list.data?.pages.flatMap((p) => p.items) ?? [];
   const decides = plan.status === 'published' || plan.status === 'closed';
 
@@ -626,6 +652,25 @@ function Responses({ plan }: { plan: PlanView }) {
             testID="plan-write"
           />
         ) : null}
+        {response.author.view === 'member' ? (
+          <View style={styles.decide}>
+            {response.status !== 'accepted' ? (
+              <TextButton
+                label={strings.chat.goToChat}
+                onPress={() =>
+                  response.author.view === 'member' &&
+                  void write({ kind: 'member', memberId: response.author.id })
+                }
+                testID={`plan-response-chat-${response.id}`}
+              />
+            ) : null}
+            <TextButton
+              label={t.blockSender}
+              onPress={() => setBlocking(response)}
+              testID={`plan-response-block-${response.id}`}
+            />
+          </View>
+        ) : null}
       </View>
     ));
 
@@ -667,6 +712,23 @@ function Responses({ plan }: { plan: PlanView }) {
         ]}
         onClose={() => setConfirming(undefined)}
         testID="plan-accept-sheet"
+      />
+      <ActionSheet
+        visible={!!blocking}
+        title={strings.block.title}
+        message={strings.block.hint(
+          blocking?.author.view === 'member' ? blocking.author.name : undefined,
+        )}
+        actions={[
+          {
+            label: strings.block.confirm,
+            danger: true,
+            onPress: blockSender,
+            testID: 'sheet-confirm-block',
+          },
+        ]}
+        onClose={() => setBlocking(undefined)}
+        testID="plan-block-sheet"
       />
     </View>
   );

@@ -13,9 +13,13 @@ export const ActivityKind = z.enum([
   'reaction',
   'repost',
   'plan_response',
+  'response_sent',
   'response_accepted',
   'response_declined',
+  'plan_cancelled',
+  'plan_closed',
   'meeting_left',
+  'user_blocked',
   'membership_expiring',
   'system',
 ]);

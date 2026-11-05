@@ -4,6 +4,7 @@ import { Id, IsoDateTime, Page } from './common';
 import { LIMITS } from './limits';
 import { AuthorView } from './people';
 import { PhotoRef } from './photo';
+import { PlanSummary } from './post';
 import { VoiceRef } from './voice';
 
 /**
@@ -41,6 +42,36 @@ export type ChatContextKind = ChatContextView['kind'];
 export const MessageStatus = z.enum(['sent', 'read', 'failed']);
 export type MessageStatus = z.infer<typeof MessageStatus>;
 
+/**
+ * Where a Встреча in a chat stands for the two who see it, worked out each time it is
+ * shown: the Запрос, then the Встреча itself.
+ */
+export const MeetingCardState = z.enum([
+  'requested',
+  'matched',
+  'declined',
+  'withdrawn',
+  'cancelled',
+  'deleted',
+  'past',
+  'unavailable',
+]);
+export type MeetingCardState = z.infer<typeof MeetingCardState>;
+
+/**
+ * A Встреча as a card in a chat: put there by a Запрос. The exact place is never in it;
+ * details are left out once the Встреча is deleted or out of reach.
+ */
+export const MeetingCard = z.strictObject({
+  kind: z.literal('request'),
+  planId: Id,
+  state: MeetingCardState,
+  plan: PlanSummary.optional(),
+  /** The Встреча's Фото, for active members only. */
+  photo: PhotoRef.optional(),
+});
+export type MeetingCard = z.infer<typeof MeetingCard>;
+
 export const MessageView = z.strictObject({
   id: Id,
   chatId: Id,
@@ -51,6 +82,8 @@ export const MessageView = z.strictObject({
   photo: PhotoRef.optional(),
   /** A voice message; for active members, and always for its sender. */
   voice: VoiceRef.optional(),
+  /** A Встреча this message carries; its text, if any, is what came with the Запрос. */
+  meeting: MeetingCard.optional(),
   createdAt: IsoDateTime,
   status: MessageStatus,
 });

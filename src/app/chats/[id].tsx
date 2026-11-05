@@ -35,6 +35,7 @@ import { PhotoSlotsEditor } from '@/features/photo/PhotoSlotsEditor';
 import { usePhotoSlots } from '@/features/photo/usePhotoSlots';
 import { newIdempotencyKey } from '@/features/access/steps';
 import { ContextLine, ContextText } from '@/features/chat/ContextLine';
+import { MeetingCardView } from '@/features/chat/MeetingCardView';
 import { useVoiceDraft } from '@/features/chat/useVoiceDraft';
 import { VoicePlayer } from '@/features/chat/VoicePlayer';
 import { formatDuration } from '@/media';
@@ -362,6 +363,15 @@ function Bubble({
   // Фото still opens the viewer.
   const content = (
     <>
+      {message.meeting ? (
+        <View style={styles.bubblePhoto}>
+          <MeetingCardView
+            card={message.meeting}
+            fromMe={mine}
+            testID={`message-${message.id}-meeting`}
+          />
+        </View>
+      ) : null}
       {message.photo ? (
         <View style={styles.bubblePhoto}>
           <PhotoGallery
@@ -646,7 +656,7 @@ const useStyles = createStyles((colors) => ({
     justifyContent: 'flex-end',
     gap: spacing.sm,
   },
-  bubblePhoto: { width: 200, marginBottom: spacing.xs },
+  bubblePhoto: { minWidth: 200, marginBottom: spacing.xs },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -162,7 +162,11 @@ export const MockState = z.strictObject({
   /** Created plans by idempotency key → plan id, so a retry publishes once. */
   planKeys: z.record(z.string(), z.string()),
   /** Status changes by plan id, seed plans too: closed, matched, cancelled. */
-  planUpdates: z.record(z.string(), z.strictObject({ status: StoredPlanStatus })),
+  /** When the author changed it, for «Встреча отменена» and «Автор встречи закрыл набор». */
+  planUpdates: z.record(
+    z.string(),
+    z.strictObject({ status: StoredPlanStatus, at: z.string().optional() }),
+  ),
   /** Отклики sent during the demo. */
   planResponses: z.array(PlanResponseRecord),
   /** Chats opened during the demo, on top of the seed. */

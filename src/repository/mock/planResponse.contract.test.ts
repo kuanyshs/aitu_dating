@@ -53,6 +53,7 @@ describe('sending an Отклик', () => {
     expect((await on(store, 'm02').getPlan({ planId: 'plan1' })).myResponse).toEqual({
       id: sent.id,
       status: 'pending',
+      message: 'Привет!',
     });
     expect((await on(store, 'm06').getPlan({ planId: 'plan1' })).pendingResponses).toBe(2);
     expect((await on(store, 'm04').getPlan({ planId: 'plan1' })).myResponse).toBeUndefined();

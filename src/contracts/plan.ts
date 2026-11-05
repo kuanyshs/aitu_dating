@@ -29,7 +29,12 @@ export const PlanView = PlanSummary.extend({
   createdAt: IsoDateTime,
   /** The viewer's standing Отклик (not withdrawn), if any. */
   myResponse: z
-    .strictObject({ id: Id, status: z.enum(['pending', 'accepted', 'declined']) })
+    .strictObject({
+      id: Id,
+      status: z.enum(['pending', 'accepted', 'declined']),
+      /** What the viewer wrote with it. */
+      message: z.string().optional(),
+    })
     .optional(),
 });
 export type PlanView = z.infer<typeof PlanView>;
