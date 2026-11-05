@@ -93,7 +93,9 @@ function ChatRow({ chat }: { chat: ChatSummary }) {
   const last = chat.lastMessage;
   const name = chat.peer.view === 'member' ? chat.peer.name : '';
   // A Фото without words reads «Фото» in the list.
-  const lastText = last ? last.text || strings.photo.label : '';
+  const lastText = last
+    ? last.text || (last.voice ? strings.chat.voice.label : strings.photo.label)
+    : '';
   const preview = !last
     ? t.noMessages
     : last.status === 'failed'

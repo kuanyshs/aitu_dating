@@ -101,6 +101,8 @@ import {
   UpdatePhotosInput,
   type MyAction,
   UploadPhotoInput,
+  UploadVoiceInput,
+  type VoiceRef,
   type PhotoRef,
   UpdateSettingsInput,
   UserSettings,
@@ -218,15 +220,27 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     state = loadedState.data;
     resetNotice = loadedSession.reset ?? loadedState.reset;
     // Pictures are kept apart from the state; bring them back into memory once.
-    await Promise.all(
-      Object.keys(state.photos).map(async (id) => {
+    await Promise.all([
+      ...Object.keys(state.photos).map(async (id) => {
         const url = await store.getItem(`${storageKeys.photoPrefix}${id}`);
         if (url) photoData.set(id, url);
       }),
-    );
+      ...Object.keys(state.voices).map(async (id) => {
+        const url = await store.getItem(`${storageKeys.voicePrefix}${id}`);
+        if (url) voiceData.set(id, url);
+      }),
+    ]);
   })();
 
   const photoData = new Map<string, string>();
+  const voiceData = new Map<string, string>();
+
+  /** A voice message as a DTO, or nothing when it is gone. */
+  function voiceRef(id: string): VoiceRef | undefined {
+    const url = voiceData.get(id);
+    const meta = state.voices[id];
+    return url && meta ? { kind: 'voice', id, url, durationMs: meta.durationMs } : undefined;
+  }
 
   /** A Фото as a DTO, or nothing when it is gone. */
   function photoRef(id: string): PhotoRef | undefined {
@@ -1010,17 +1024,17 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
     // Mine is read once the other side's mark reaches it; theirs once mine does.
     const mark = readMark(chat.id, fromMe ? peerIdOf(chat, me) : me);
     const read = !!mark && mark >= message.createdAt;
-    // An expired member reads their chats in the safe view: no one else's Фото.
-    const photo =
-      message.photoId && (fromMe || seesFullView(viewerOf(effectiveSession())))
-        ? photoRef(message.photoId)
-        : undefined;
+    // An expired member reads their chats in the safe view: no one else's Фото or voice.
+    const full = fromMe || seesFullView(viewerOf(effectiveSession()));
+    const photo = message.photoId && full ? photoRef(message.photoId) : undefined;
+    const voice = message.voiceId && full ? voiceRef(message.voiceId) : undefined;
     return MessageView.parse({
       id: message.id,
       chatId: chat.id,
       fromMe,
       text: message.text,
       ...(photo ? { photo } : {}),
+      ...(voice ? { voice } : {}),
       createdAt: message.createdAt,
       status: message.status === 'failed' ? 'failed' : read ? 'read' : 'sent',
     });
@@ -1040,6 +1054,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
   /** A Контекст as it stands now: a cancelled Встреча, or «Переписка» once its source is gone. */
   function contextView(context: ChatContext, chat: ChatRecord): ChatContextView {
+    if (context.kind === 'direct') return { kind: 'conversation' };
     if (context.kind === 'comment') {
       const comment = allComments().find((c) => c.id === context.commentId);
       const post = postById(context.postId);
@@ -1351,6 +1366,37 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           photoKeys: { ...state.photoKeys, [idempotencyKey]: id },
         });
         return photoRef(id)!;
+      }),
+
+    uploadVoice: (input) =>
+      respond('data', async (requestId) => {
+        // Only someone who may write records: an active member.
+        const me = requireActiveMember(requestId);
+        const parsed = UploadVoiceInput.safeParse(input);
+        if (!parsed.success) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'A voice message of up to a minute and 2 MB is required.',
+            fieldErrors: access.fieldErrorsOf(parsed.error, ''),
+          });
+        }
+        const { mimeType, durationMs, dataUrl, idempotencyKey } = parsed.data;
+        const existing = state.voiceKeys[idempotencyKey];
+        const known = existing ? voiceRef(existing) : undefined;
+        if (known) return known;
+
+        const id = `voice-${Object.keys(state.voices).length + 1}-${idempotencyKey.slice(-6)}`;
+        await store.setItem(`${storageKeys.voicePrefix}${id}`, dataUrl);
+        voiceData.set(id, dataUrl);
+        await saveState({
+          ...state,
+          voices: {
+            ...state.voices,
+            [id]: { ownerId: me.id, mimeType, durationMs, createdAt: clock.now().toISOString() },
+          },
+          voiceKeys: { ...state.voiceKeys, [idempotencyKey]: id },
+        });
+        return voiceRef(id)!;
       }),
 
     updateMyPhotos: (input) =>
@@ -2396,7 +2442,13 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
 
         let peerId: string;
         let context: ChatRecord['context'];
-        if (opening.kind === 'comment') {
+        if (opening.kind === 'member') {
+          // Anyone verified writes to anyone: no Подписка, Запрос or Комментарий needed.
+          peerId = opening.memberId;
+          if (peerId === me.id) return conflict('Nobody writes to themselves.');
+          if (!isShown(member(peerId))) return notFound();
+          context = { kind: 'direct' };
+        } else if (opening.kind === 'comment') {
           const comment = allComments().find((c) => c.id === opening.commentId);
           const post = comment ? postById(comment.postId) : undefined;
           if (!comment || comment.deleted || !post || !isVisible(post)) return notFound();
@@ -2503,8 +2555,15 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             fieldErrors: access.fieldErrorsOf(parsed.error, ''),
           });
         }
-        const { chatId, text, photoId, idempotencyKey } = parsed.data;
+        const { chatId, text, photoId, voiceId, idempotencyKey } = parsed.data;
         const chat = findChat(chatId, me.id, requestId);
+        if (voiceId && state.voices[voiceId]?.ownerId !== me.id) {
+          fail(requestId, {
+            code: 'VALIDATION_ERROR',
+            message: 'Unknown voice message.',
+            fieldErrors: { voiceId: 'unknown' },
+          });
+        }
         if (photoId && state.photos[photoId]?.ownerId !== me.id) {
           fail(requestId, {
             code: 'VALIDATION_ERROR',
@@ -2524,6 +2583,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           authorId: me.id,
           text,
           ...(photoId ? { photoId } : {}),
+          ...(voiceId ? { voiceId } : {}),
           createdAt: clock.now().toISOString(),
           status: failed ? 'failed' : 'sent',
           idempotencyKey,
@@ -3270,8 +3330,12 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         ...Object.keys(state.photos).map((id) =>
           store.removeItem(`${storageKeys.photoPrefix}${id}`),
         ),
+        ...Object.keys(state.voices).map((id) =>
+          store.removeItem(`${storageKeys.voicePrefix}${id}`),
+        ),
       ]);
       photoData.clear();
+      voiceData.clear();
       resumable?.restart();
       session = guestSession();
       state = defaultMockState();

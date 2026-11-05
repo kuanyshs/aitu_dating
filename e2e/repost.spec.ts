@@ -106,6 +106,8 @@ test.describe('repost, quote and the «•••» menu', () => {
     await page.getByTestId('demo-expire').click();
     await expect(page.getByTestId('demo-restore')).toBeVisible();
     await page.goto('/post/p02');
+    // The screen knows the membership has expired before anything is tapped.
+    await expect(page.getByTestId('post-footer-expired')).toBeVisible();
     await postScreen(page).getByTestId('post-repost').click();
     await expect(page.getByTestId('renew-choose')).toBeVisible();
 

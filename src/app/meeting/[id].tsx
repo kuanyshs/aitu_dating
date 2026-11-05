@@ -141,6 +141,7 @@ function PlanDetail({ plan, onLeave }: { plan: PlanView; onLeave: () => void }) 
   const closePlan = useClosePlan();
   const cancelPlan = useCancelPlan();
   const deletePost = useDeletePost();
+  const { write, isPending: writing } = useWriteTo();
   const [sheet, setSheet] = useState<Sheet>();
 
   const accessState = session.data?.accessState;
@@ -263,6 +264,18 @@ function PlanDetail({ plan, onLeave }: { plan: PlanView; onLeave: () => void }) 
       ) : null}
       {/* Who is looking decides the actions: nothing until the session is known. */}
       {!session.data ? null : isOwner ? <Responses plan={plan} /> : <RespondArea plan={plan} />}
+      {/* «Перейти в чат»: the pair's one chat with the author, apart from any Запрос. */}
+      {accessState === 'ACTIVE_MEMBER' && !isOwner && plan.author.view === 'member' ? (
+        <SecondaryButton
+          label={strings.chat.goToChat}
+          loading={writing}
+          onPress={() =>
+            plan.author.view === 'member' &&
+            void write({ kind: 'member', memberId: plan.author.id })
+          }
+          testID="plan-go-to-chat"
+        />
+      ) : null}
       <ActionSheet
         visible={!!sheet}
         title={

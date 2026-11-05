@@ -205,6 +205,7 @@ export const MessageRecord = z.strictObject({
   /** Empty when the message is a Фото alone. */
   text: z.string().max(2000),
   photoId: z.string().optional(),
+  voiceId: z.string().optional(),
   createdAt: IsoDateTime,
   /** «Прочитано» is derived from the other side's read mark, never stored. */
   status: z.enum(['sent', 'failed']),

@@ -15,4 +15,6 @@ export const storageKeys = {
   clock: 'aitu.demo.clock.v1',
   /** Each uploaded Фото is stored under this prefix plus its id. */
   photoPrefix: 'aitu.demo.photo.v1.',
+  /** Each recorded voice message is stored under this prefix plus its id. */
+  voicePrefix: 'aitu.demo.voice.v1.',
 } as const;

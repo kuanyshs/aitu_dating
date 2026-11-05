@@ -15,6 +15,7 @@ import {
   PartialAnswers,
   PaymentReceipt,
   PHOTO_TYPES,
+  VOICE_TYPES,
   ProfileStepInput,
 } from '@/contracts';
 
@@ -190,10 +191,21 @@ export const MockState = z.strictObject({
     }),
   ),
   photoKeys: z.record(z.string(), z.string()),
+  /** Recorded voice messages: who owns each one and how long it is. */
+  voices: z.record(
+    z.string(),
+    z.strictObject({
+      ownerId: z.string(),
+      mimeType: z.enum(VOICE_TYPES),
+      durationMs: z.number().int().positive(),
+      createdAt: z.string(),
+    }),
+  ),
+  voiceKeys: z.record(z.string(), z.string()),
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 24;
+export const MOCK_STATE_VERSION = 25;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -301,6 +313,8 @@ export const mockStateMigrations = [
       })),
     };
   },
+  // v25: voice messages in chats.
+  (v24: unknown) => ({ ...(v24 as object), voices: {}, voiceKeys: {} }),
 ];
 
 const legacyCities: Record<string, string | undefined> = {
@@ -396,6 +410,8 @@ export const defaultMockState = (): MockState => ({
   feedFilters: {},
   planOpens: {},
   photos: {},
+  voices: {},
+  voiceKeys: {},
   photoKeys: {},
 });
 

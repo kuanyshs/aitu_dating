@@ -52,6 +52,7 @@ import {
 } from './onboarding';
 import { MyActionsPage, MyActionsQuery } from './myActions';
 import { PhotoRef, UploadPhotoInput } from './photo';
+import { UploadVoiceInput, VoiceRef } from './voice';
 import {
   CreatePlanInput,
   MyResponsePage,
@@ -131,6 +132,7 @@ export const repositoryContract = {
   renewMembership: { input: RenewMembershipInput, output: MyProfile },
 
   uploadPhoto: { input: UploadPhotoInput, output: PhotoRef },
+  uploadVoice: { input: UploadVoiceInput, output: VoiceRef },
 
   getHomeFeed: { input: FeedQuery, output: FeedPage },
   getFeedFilters: { input: none, output: FeedFilters },

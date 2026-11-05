@@ -12,6 +12,7 @@ export * from './myActions';
 export * from './onboarding';
 export * from './people';
 export * from './photo';
+export * from './voice';
 export * from './plan';
 export * from './post';
 export * from './profile';

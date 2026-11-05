@@ -53,10 +53,10 @@ test.describe('Написать', () => {
     await page.getByTestId('member-write').click();
     await expectChat(page);
     await expect(page.getByTestId('message-chat1-m25')).toBeVisible();
-    // A one-way Подписка offers no chat.
+    // Anyone verified writes to anyone now: a one-way Подписка, or none, is enough.
     await page.goto('/member/m12');
     await expect(page.getByTestId('member-follow')).toBeVisible();
-    await expect(page.getByTestId('member-write')).toHaveCount(0);
+    await expect(page.getByTestId('member-write')).toHaveText('Написать сообщение');
   });
 
   test('from a Встреча, for both of its people', async ({ page }) => {

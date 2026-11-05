@@ -35,6 +35,9 @@ import { PhotoSlotsEditor } from '@/features/photo/PhotoSlotsEditor';
 import { usePhotoSlots } from '@/features/photo/usePhotoSlots';
 import { newIdempotencyKey } from '@/features/access/steps';
 import { ContextLine, ContextText } from '@/features/chat/ContextLine';
+import { useVoiceDraft } from '@/features/chat/useVoiceDraft';
+import { VoicePlayer } from '@/features/chat/VoicePlayer';
+import { formatDuration } from '@/media';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { ActionSheet, type SheetAction } from '@/ui/components/ActionSheet';
 import { Avatar } from '@/ui/components/Avatar';
@@ -44,12 +47,13 @@ import { Screen } from '@/ui/components/Screen';
 import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
 import { formatRelative } from '@/ui/format';
-import { ChevronLeft, Ellipsis, ImagePlus } from '@/ui/icons';
+import { ChevronLeft, Ellipsis, ImagePlus, Mic, Square, Trash } from '@/ui/icons';
 import { useReportFooter } from '@/ui/navigation/statusInset';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { useTheme } from '@/ui/theme/ThemeProvider';
 import { radius, spacing, typography } from '@/ui/theme/tokens';
+import { VOICE_MAX_MS } from '@/contracts';
 import { createStyles } from '@/ui/theme/useStyles';
 
 const t = strings.chat;
@@ -348,6 +352,7 @@ function Bubble({
 }) {
   const styles = useStyles();
   const clock = useClock();
+  const { colors } = useTheme();
   const toast = useToast((s) => s.show);
   const retry = useRetryMessage(chatId);
   const mine = message.fromMe;
@@ -365,6 +370,14 @@ function Bubble({
             height={180}
           />
         </View>
+      ) : null}
+      {message.voice ? (
+        <VoicePlayer
+          url={message.voice.url}
+          durationMs={message.voice.durationMs}
+          color={mine ? colors.onPrimary : colors.text}
+          testID={`message-${message.id}-voice`}
+        />
       ) : null}
       {message.text ? <AppText tone={mine ? 'onPrimary' : 'text'}>{message.text}</AppText> : null}
     </>
@@ -424,12 +437,17 @@ function Composer({ chatId }: { chatId: string }) {
   const [idempotencyKey, setKey] = useState(newIdempotencyKey);
   const photo = usePhotoSlots(PHOTO_LIMITS.message);
   const photoId = photo.photoIds[0];
+  const voice = useVoiceDraft(chatId);
   // Text, a Фото or both; a Фото still uploading or failed holds the message back.
   const ready =
     (text.trim().length > 0 || !!photoId) && !photo.busy && !photo.failed && !send.isPending;
 
+  // A request that got no answer (no network, say): all of it stays here, and «Повторить»
+  // sends it again with the same key, so it never arrives twice.
+  const [unsent, setUnsent] = useState(false);
   const submit = () => {
     if (!ready) return;
+    setUnsent(false);
     send.mutate(
       { text: text.trim(), idempotencyKey, ...(photoId ? { photoId } : {}) },
       {
@@ -439,13 +457,44 @@ function Composer({ chatId }: { chatId: string }) {
           photo.reset([]);
           setKey(newIdempotencyKey());
         },
-        onError: () => toast(t.failedToast),
+        onError: () => {
+          setUnsent(true);
+          toast(t.failedToast);
+        },
       },
     );
   };
+  const editing = (next: string) => {
+    // Something else written is a new message, with a new key.
+    if (unsent && next !== text) {
+      setUnsent(false);
+      setKey(newIdempotencyKey());
+    }
+    setText(next);
+  };
+
+  if (voice.draft.phase !== 'idle') return <VoicePanel voice={voice} />;
 
   return (
     <View style={styles.composerBox}>
+      {send.isPending ? (
+        <View style={[styles.line, styles.lineMine]} testID="chat-sending">
+          <View style={[styles.bubble, styles.bubbleMine, styles.pending]}>
+            {text.trim() ? <AppText tone="onPrimary">{text.trim()}</AppText> : null}
+          </View>
+          <AppText variant="caption" tone="textMuted">
+            {t.sending}
+          </AppText>
+        </View>
+      ) : null}
+      {unsent && !send.isPending ? (
+        <View style={styles.unsent} role="alert" testID="chat-unsent">
+          <AppText variant="caption" tone="danger">
+            {t.unsent}
+          </AppText>
+          <TextButton label={t.retry} onPress={submit} testID="chat-unsent-retry" />
+        </View>
+      ) : null}
       {photo.slots.length ? (
         <PhotoSlotsEditor
           slots={photo.slots}
@@ -468,7 +517,7 @@ function Composer({ chatId }: { chatId: string }) {
         )}
         <TextInput
           value={text}
-          onChangeText={setText}
+          onChangeText={editing}
           placeholder={t.placeholder}
           placeholderTextColor={colors.textMuted}
           aria-label={t.inputLabel}
@@ -477,12 +526,107 @@ function Composer({ chatId }: { chatId: string }) {
           style={styles.input}
           testID="chat-input"
         />
+        {/* Nothing typed or attached: the microphone instead of «Отправить». */}
+        {!text.trim() && !photo.slots.length && !unsent ? (
+          <IconAction
+            icon={Mic}
+            accessibilityLabel={t.voice.record}
+            onPress={() => void voice.start()}
+            testID="chat-voice-record"
+          />
+        ) : (
+          <SecondaryButton
+            label={t.send}
+            onPress={submit}
+            disabled={!ready}
+            loading={send.isPending}
+            testID="chat-send"
+          />
+        )}
+      </View>
+      <AppText variant="caption" tone="textMuted" testID="chat-photo-limit">
+        {strings.photo.maxSize}
+      </AppText>
+    </View>
+  );
+}
+
+/** Recording, then listening and sending a voice message; the text field steps aside. */
+function VoicePanel({ voice }: { voice: ReturnType<typeof useVoiceDraft> }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
+  const v = t.voice;
+  const { draft } = voice;
+  if (draft.phase === 'recording') {
+    return (
+      <View style={styles.voicePanel} role="status" testID="chat-voice-recording">
+        <View style={styles.recDot} />
+        <AppText variant="bodyStrong" style={styles.grow}>
+          {v.recording}
+        </AppText>
+        <AppText tone="textMuted" testID="chat-voice-time">
+          {v.time(formatDuration(draft.elapsedMs), formatDuration(VOICE_MAX_MS))}
+        </AppText>
+        <IconAction
+          icon={Trash}
+          accessibilityLabel={v.discard}
+          onPress={voice.discard}
+          testID="chat-voice-discard"
+        />
+        <IconAction
+          icon={Square}
+          accessibilityLabel={v.stop}
+          onPress={() => void voice.stop()}
+          testID="chat-voice-stop"
+        />
+      </View>
+    );
+  }
+  if (draft.phase !== 'recorded') return null;
+  return (
+    <View style={styles.composerBox}>
+      {draft.sending ? (
+        <AppText
+          variant="caption"
+          tone="textMuted"
+          style={styles.right}
+          testID="chat-voice-sending"
+        >
+          {t.sending}
+        </AppText>
+      ) : null}
+      {draft.unsent && !draft.sending ? (
+        <View style={styles.unsent} role="alert" testID="chat-voice-unsent">
+          <AppText variant="caption" tone="danger">
+            {t.unsent}
+          </AppText>
+          <TextButton
+            label={t.retry}
+            onPress={() => void voice.submit()}
+            testID="chat-voice-retry"
+          />
+        </View>
+      ) : null}
+      <View style={styles.voicePanel}>
+        <View style={styles.grow}>
+          <VoicePlayer
+            url={draft.voice.url}
+            durationMs={draft.voice.durationMs}
+            color={colors.text}
+            testID="chat-voice-preview"
+          />
+        </View>
+        <IconAction
+          icon={Trash}
+          accessibilityLabel={v.discard}
+          onPress={voice.discard}
+          testID="chat-voice-discard"
+        />
         <SecondaryButton
-          label={t.send}
-          onPress={submit}
-          disabled={!ready}
-          loading={send.isPending}
-          testID="chat-send"
+          label={v.send}
+          onPress={() => void voice.submit()}
+          loading={draft.sending}
+          testID="chat-voice-send"
         />
       </View>
     </View>
@@ -491,7 +635,17 @@ function Composer({ chatId }: { chatId: string }) {
 
 const useStyles = createStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
+  voicePanel: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44 },
+  recDot: { width: 10, height: 10, borderRadius: radius.pill, backgroundColor: colors.danger },
+  right: { textAlign: 'right' },
   composerBox: { gap: spacing.sm },
+  pending: { opacity: 0.6 },
+  unsent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
   bubblePhoto: { width: 200, marginBottom: spacing.xs },
   header: {
     flexDirection: 'row',

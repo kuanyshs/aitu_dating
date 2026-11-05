@@ -268,19 +268,19 @@ function FollowButton({
         <PrimaryButton label={t.follow} onPress={toggle} testID="member-follow" />
       )}
       {relation.following && relation.followsMe ? (
-        <>
-          <View style={styles.badge} testID="member-mutual">
-            <AppText variant="caption">{t.mutual}</AppText>
-          </View>
-          {/* A mutual Подписка opens a chat. */}
-          <SecondaryButton
-            label={strings.chat.write}
-            loading={isPending}
-            onPress={() => void write({ kind: 'mutual_follow', memberId })}
-            testID="member-write"
-          />
-        </>
+        <View style={styles.badge} testID="member-mutual">
+          <AppText variant="caption">{t.mutual}</AppText>
+        </View>
       ) : null}
+      {/* Anyone verified writes to anyone; a Блокировка takes the button away. */}
+      {relation.blocked ? null : (
+        <SecondaryButton
+          label={strings.chat.write}
+          loading={isPending}
+          onPress={() => void write({ kind: 'member', memberId })}
+          testID="member-write"
+        />
+      )}
     </View>
   );
 }

@@ -4,9 +4,14 @@ import { Id, IsoDateTime, Page } from './common';
 import { LIMITS } from './limits';
 import { AuthorView } from './people';
 import { PhotoRef } from './photo';
+import { VoiceRef } from './voice';
 
-/** Why a Контекстный чат exists: there are no chats out of nowhere. */
+/**
+ * How a pair's chat came about. `direct`: one wrote to the other from a profile or a
+ * Встреча, with nothing else needed (задание v4: anyone verified writes to anyone).
+ */
 export const ChatContext = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('direct') }),
   z.strictObject({ kind: z.literal('comment'), postId: Id, commentId: Id }),
   z.strictObject({ kind: z.literal('mutual_follow') }),
   z.strictObject({ kind: z.literal('plan_response'), planId: Id, responseId: Id }),
@@ -44,6 +49,8 @@ export const MessageView = z.strictObject({
   text: z.string().max(LIMITS.messageText),
   /** One Фото; for active members, and always for its sender. */
   photo: PhotoRef.optional(),
+  /** A voice message; for active members, and always for its sender. */
+  voice: VoiceRef.optional(),
   createdAt: IsoDateTime,
   status: MessageStatus,
 });
@@ -102,20 +109,26 @@ export const SendMessageInput = z
     text: z.string().trim().max(LIMITS.messageText, 'too_long'),
     /** One of the sender's uploaded Фото. */
     photoId: Id.optional(),
+    /** One of the sender's recorded voice messages; it goes on its own. */
+    voiceId: Id.optional(),
     idempotencyKey: z.string().min(8),
   })
-  .refine((m) => m.text.length > 0 || !!m.photoId, { message: 'required', path: ['text'] });
+  .refine((m) => m.text.length > 0 || !!m.photoId || !!m.voiceId, {
+    message: 'required',
+    path: ['text'],
+  });
 export type SendMessageInput = z.infer<typeof SendMessageInput>;
 
 export const MessageRef = z.strictObject({ messageId: Id });
 export type MessageRef = z.infer<typeof MessageRef>;
 
 /**
- * Where a chat is opened from: someone else's Комментарий, a mutual Подписка or an
- * accepted Отклик. The server fills in the rest of the context; two people share one chat,
- * and a new context is added to it.
+ * Where a chat is opened from: a person («Написать сообщение», «Перейти в чат»), someone
+ * else's Комментарий, a mutual Подписка or an accepted Запрос. Two people share one chat:
+ * an existing one is opened, a new reason is added to it.
  */
 export const OpenChatInput = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('member'), memberId: Id }),
   z.strictObject({ kind: z.literal('comment'), commentId: Id }),
   z.strictObject({ kind: z.literal('mutual_follow'), memberId: Id }),
   z.strictObject({ kind: z.literal('plan_response'), responseId: Id }),

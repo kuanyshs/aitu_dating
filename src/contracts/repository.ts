@@ -49,6 +49,7 @@ import type {
 } from './onboarding';
 import type { MyActionsPage, MyActionsQuery } from './myActions';
 import type { PhotoRef, UploadPhotoInput } from './photo';
+import type { UploadVoiceInput, VoiceRef } from './voice';
 import type {
   CreatePlanInput,
   MyResponsePage,
@@ -149,6 +150,8 @@ export interface AituRepository {
   listMyActions(input: MyActionsQuery): Promise<MyActionsPage>;
   /** Stores a Фото for the current active member; a retried key returns the same one. */
   uploadPhoto(input: UploadPhotoInput): Promise<PhotoRef>;
+  /** Stores a recorded voice message for a chat; a retry with the same key returns it. */
+  uploadVoice(input: UploadVoiceInput): Promise<VoiceRef>;
   getPost(input: PostRef): Promise<PostView>;
   createPost(input: CreatePostInput): Promise<PostView>;
   /** Soft delete of the viewer's own post. */

@@ -28,6 +28,11 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${port}`,
     trace: 'retain-on-failure',
+    // Voice messages record from Chromium's fake microphone, already allowed.
+    permissions: ['microphone'],
+    launchOptions: {
+      args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
+    },
   },
   // The device preset brings its own desktop viewport, so the phone size is set after it.
   projects: [
