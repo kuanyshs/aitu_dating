@@ -89,7 +89,7 @@ export function SettlementField({
         </AppText>
       ) : null}
       <TextButton
-        label={chosen.length ? t.change : t.choose}
+        label={chosen.length ? t.change : withCountries ? t.choosePlace : t.choose}
         onPress={() => setOpen(true)}
         testID={`${testID}-open`}
       />
