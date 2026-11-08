@@ -71,7 +71,7 @@ test.describe('guest feed', () => {
     await expect(page.getByTestId('post-reasons')).toHaveCount(0);
     await page.getByTestId('home-filters').click();
     await expect(page.getByTestId('feed-filters-guest-note')).toBeVisible();
-    await pickSettlement(page, 'feed-filter-city', '790000000', 'Шымкент');
+    await pickSettlement(page, 'feed-filter-city-field', '790000000', 'Шымкент');
     await page.getByTestId('feed-filters-apply').click();
     await expect(page.getByTestId('home-filters-count')).toHaveText('1');
     await expect(page.getByTestId('feed-chip-city-790000000')).toBeVisible();

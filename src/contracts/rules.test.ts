@@ -75,7 +75,7 @@ describe('limits 1000 / 500 / 360 / 160, two Темы', () => {
   });
 
   it('bound the bio', () => {
-    const step = { interests: ['coffee'], communicationStyle: 'short_messages' };
+    const step = { communicationStyle: 'short_messages' };
     expect(ProfileStepInput.safeParse({ ...step, bio: 'а'.repeat(160) }).success).toBe(true);
     expect(ProfileStepInput.safeParse({ ...step, bio: 'а'.repeat(161) }).success).toBe(false);
   });

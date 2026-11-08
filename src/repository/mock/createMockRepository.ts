@@ -1,5 +1,5 @@
 import { addMonths } from './calendar';
-import { settlementName } from '@/catalogs';
+import { firstSettlement, privateQuestions, settlementName } from '@/catalogs';
 import { isResumable, type Clock } from '@/clock';
 import {
   AccessFlowState,
@@ -53,6 +53,8 @@ import {
   MemberPage,
   ConfirmPaymentInput,
   MyProfile,
+  isCompleteAnswers,
+  safeFeedFilters,
   FeedFilters,
   emptyFeedFilters,
   FeedPage,
@@ -173,6 +175,42 @@ export type MockRepositoryOptions = {
 export type MockRepository = AituRepository & DemoControls;
 
 const guestSession = (): Session => ({ accessState: 'GUEST_PREVIEW', roles: [] });
+
+/** The profile's city: the first Населённый пункт of Kazakhstan the Анкета names. */
+function cityOf(answers: { city?: readonly string[] }): { city?: string } {
+  const city = firstSettlement(answers.city ?? []);
+  return city ? { city } : {};
+}
+
+/** What an active member sees of someone's Карточка: everything but the income answers. */
+function publicCard(record: MemberRecord) {
+  const answers = Object.fromEntries(
+    Object.entries(record.card.questionnaire).filter(
+      ([question]) => !(privateQuestions as readonly string[]).includes(question),
+    ),
+  );
+  return {
+    bio: record.card.bio,
+    communicationStyle: record.card.communicationStyle,
+    answers,
+  };
+}
+
+/** Card errors as the screen keys them: `profile.<field>` or `answers.<question>`. */
+function cardFieldErrors(error: {
+  issues: readonly { path: readonly PropertyKey[]; message: string }[];
+}): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const [first, second] = issue.path;
+    const key =
+      first === 'answers' && second !== undefined
+        ? `answers.${String(second)}`
+        : `profile.${String(first ?? 'form')}`;
+    result[key] ??= issue.message;
+  }
+  return result;
+}
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -822,9 +860,11 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         ? { kind: 'photo', url: mainPhoto(record)! }
         : { kind: 'synthetic', key: record.photoKey },
       photos: profilePhotos(record),
-      card: (({ photoIds: _ids, ...card }) => ({ ...card, showSurname: !!card.showSurname }))(
-        record.card,
-      ),
+      card: (({ photoIds: _ids, ...card }) => ({
+        ...card,
+        showSurname: !!card.showSurname,
+        questionnaireComplete: isCompleteAnswers(card.questionnaire),
+      }))(record.card),
       membership: {
         tier: record.membership.tier,
         periodMonths: record.membership.periodMonths,
@@ -1674,15 +1714,16 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
                 .map((f) => f.followingId)
             : [],
         );
-        const filters =
+        const chosen =
           query.filters ?? (viewerRecord ? feedFiltersOf(viewerRecord) : emptyFeedFilters());
+        // Someone in the Безопасный вид filters only by what it shows.
+        const filters = isMember ? chosen : safeFeedFilters(chosen);
 
         const ordered = selectFeed(allPosts().filter(isVisible), query, {
           viewerId: viewerRecord?.id,
           now: clock.now(),
           filters,
           wanted: isMember ? viewerRecord?.card.questionnaire : undefined,
-          viewerInterests: new Set(isMember && viewerRecord ? viewerRecord.card.interests : []),
           followingIds,
           withReasons: isMember,
           counters,
@@ -1690,8 +1731,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
             const author = member(post.authorId);
             return {
               answers: author?.card.questionnaire,
-              interests: author?.card.interests ?? [],
               city: author?.city,
+              gender: author?.gender,
+              age: author?.age,
             };
           },
           plan: (id) => planById(id),
@@ -1810,9 +1852,9 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
         saveFlow(flowResult(requestId, access.saveProfileStep(state.accessFlow, input))),
       ),
 
-    saveAnswer: (input) =>
+    saveAnswers: (input) =>
       respond('data', (requestId) =>
-        saveFlow(flowResult(requestId, access.saveAnswer(state.accessFlow, input))),
+        saveFlow(flowResult(requestId, access.saveAnswers(state.accessFlow, input))),
       ),
 
     completeOnboarding: (input) =>
@@ -1848,7 +1890,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           surname: candidate.surname,
           gender: candidate.gender,
           age: candidate.age,
-          ...(outcome.value.answers.city[0] ? { city: outcome.value.answers.city[0] } : {}),
+          ...cityOf(outcome.value.answers),
           photoKey: `avatar-${candidate.id}`,
           verified: true,
           card: {
@@ -1898,16 +1940,16 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           fail(requestId, {
             code: 'VALIDATION_ERROR',
             message: 'Check the profile fields.',
-            fieldErrors: access.fieldErrorsOf(parsed.error, 'profile'),
+            fieldErrors: cardFieldErrors(parsed.error),
           });
         }
         const { answers, ...fields } = parsed.data;
-        // The profile's city follows the Анкета's first Населённый пункт.
+        // The profile's city follows the Анкета's first Населённый пункт of Kazakhstan.
         const questionnaire = answers ?? record.card.questionnaire;
         const { city: _city, ...rest } = record;
         const updated: MemberRecord = {
           ...rest,
-          ...(questionnaire.city[0] ? { city: questionnaire.city[0] } : {}),
+          ...cityOf(questionnaire),
           card: { ...record.card, ...fields, questionnaire },
         };
         await saveMember(updated);
@@ -2003,12 +2045,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
           person: authorView(record, viewer),
           ...(full
             ? {
-                card: {
-                  bio: record.card.bio,
-                  intents: record.card.questionnaire.intent,
-                  interests: record.card.interests,
-                  communicationStyle: record.card.communicationStyle,
-                },
+                card: publicCard(record),
                 photos: profilePhotos(record),
               }
             : {}),
@@ -2264,12 +2301,7 @@ export function createMockRepository(options: MockRepositoryOptions): MockReposi
               people.map((person) => ({
                 kind: 'person' as const,
                 person: authorView(person, viewer),
-                card: {
-                  bio: person.card.bio,
-                  intents: person.card.questionnaire.intent,
-                  interests: person.card.interests,
-                  communicationStyle: person.card.communicationStyle,
-                },
+                card: publicCard(person),
               })),
               query.cursor,
               limit,

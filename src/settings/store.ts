@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { create } from 'zustand';
 
-import { FeedContent, FeedFilters, fromLegacyFeedFilters, type FeedTab } from '@/contracts';
+import {
+  FeedContent,
+  FeedFilters,
+  fromLegacyFeedFilters,
+  keepKnownFeedFilters,
+  type FeedTab,
+} from '@/contracts';
 import { createSlot, storageKeys, type KeyValueStore } from '@/storage';
 import type { ThemePreference } from '@/ui/theme/scheme';
 
@@ -36,7 +42,7 @@ export function createSettingsStore(store: KeyValueStore) {
     store,
     key: storageKeys.settings,
     schema: Settings,
-    version: 4,
+    version: 5,
     // v2 adds the content type of each Лента and a guest's Фильтры ленты.
     // v3: Фильтры ленты name settlements by KATO code; older ones start over.
     migrations: [
@@ -60,6 +66,14 @@ export function createSettingsStore(store: KeyValueStore) {
             popular: content(old.feedContent?.popular),
           },
           guestFilters: old.guestFilters ? fromLegacyFeedFilters(old.guestFilters) : null,
+        };
+      },
+      // v5: the Анкета's catalogs changed; the filter keeps what they still know.
+      (v4: unknown) => {
+        const old = v4 as { guestFilters?: unknown };
+        return {
+          ...old,
+          guestFilters: old.guestFilters ? keepKnownFeedFilters(old.guestFilters) : null,
         };
       },
     ],

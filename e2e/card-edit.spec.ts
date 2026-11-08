@@ -45,11 +45,14 @@ test.describe('Редактирование Карточки', () => {
     await expect(page.getByTestId('card-edit-save')).toHaveAttribute('aria-disabled', 'true');
 
     await page.getByTestId('card-edit-bio').fill('Теперь больше про кино и долгие прогулки.');
-    await page.getByTestId('card-edit-interest-cinema').click();
-    await page.getByTestId('card-edit-answer-intent-dating').click();
-    // A second Населённый пункт from the full directory, found by name.
-    await pickSettlement(page, 'card-edit-answer-city', '103230100', 'Карааул');
-    await expect(page.getByTestId('card-edit-answer-city-picker')).toHaveCount(0);
+    await page.getByTestId('answer-intent-marriage').click();
+    await page.getByTestId('answer-interests-cooking').click();
+    // A second Населённый пункт from the full directory, found by name, and a country.
+    await pickSettlement(page, 'answer-city', '103230100', 'Карааул');
+    await pickSettlement(page, 'answer-city', 'TR', 'Турция');
+    await expect(page.getByTestId('answer-city-picker')).toHaveCount(0);
+    // Пол and возраст stay Passport's.
+    await expect(page.getByTestId('card-edit-passport')).toContainText('Женщина');
     await testInfo.attach('card-edit', { body: await page.screenshot(), contentType: 'image/png' });
     await page.getByTestId('card-edit-save').click();
     await expect(page.getByTestId('toast')).toContainText('Анкета сохранена');
@@ -59,10 +62,13 @@ test.describe('Редактирование Карточки', () => {
     await expect(card.getByTestId('profile-bio-text')).toHaveText(
       'Теперь больше про кино и долгие прогулки.',
     );
-    await expect(card).toContainText('кино');
-    await expect(card).toContainText('Свидания');
-    await expect(card.getByTestId('profile-intents')).toHaveText('Дружба, Свидания');
-    await expect(card.getByTestId('profile-answer-city')).toHaveText('Караганда, Карааул');
+    await expect(card.getByTestId('profile-answer-intent')).toHaveText(
+      'Создание серьёзных отношений, Брак',
+    );
+    await expect(card.getByTestId('profile-answer-interests')).toHaveText(
+      'Литература и чтение, Путешествия и туризм, Кулинария и гастрономия',
+    );
+    await expect(card.getByTestId('profile-answer-city')).toHaveText('Караганда, Карааул, Турция');
 
     // Also after a restart.
     await page.reload();

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import * as keys from './keys';
 import * as labels from './labels';
+import * as places from './places';
 
 const pairs: [string, readonly (string | number)[], Record<string, string>][] = [
   ['genders', keys.genders, labels.genderLabels],
@@ -28,23 +29,56 @@ describe.each(pairs)('%s catalog', (_name, catalogKeys, catalogLabels) => {
 });
 
 describe('questionnaire', () => {
-  it('has seven questions, each labelled', () => {
-    expect(keys.questionKeys).toHaveLength(7);
-    for (const key of keys.questionKeys) expect(labels.questionLabels[key]).toBeTruthy();
+  it('asks the 18 questions of the owner’s document besides Passport’s Пол and возраст', () => {
+    expect(keys.questionKeys.filter((k) => k !== 'interestOther')).toHaveLength(18);
+    for (const key of keys.questionKeys) {
+      expect(labels.questionLabels[key]).toBeTruthy();
+      expect(labels.partnerQuestionLabels[key]).toBeTruthy();
+    }
   });
 
-  it('labels every option that is not another catalog', () => {
-    for (const key of [
-      'communication',
-      'pace',
-      'firstMeeting',
-      'boundaries',
-      'dateFormat',
-    ] as const) {
+  it('puts every question on exactly one page', () => {
+    const paged = keys.questionnairePages.flatMap((p) => [...p.questions]);
+    expect([...paged].sort()).toEqual([...keys.questionKeys].sort());
+  });
+
+  it('labels every option', () => {
+    for (const key of keys.choiceQuestionKeys) {
       for (const option of keys.questionnaire[key]) {
-        expect(labels.questionOptionLabels[option], `${key}.${option}`).toBeTruthy();
+        const label = labels.answerLabel(key, option);
+        expect(label, `${key}.${option}`).toBeTruthy();
+        if (key !== 'childrenCount') expect(label).not.toBe(option);
       }
     }
+  });
+
+  it('pairs the habits', () => {
+    expect(keys.habits.map(keys.habitOf)).toEqual([
+      'smoking',
+      'smoking',
+      'alcohol',
+      'alcohol',
+      'gambling',
+      'gambling',
+    ]);
+  });
+});
+
+describe('reference lists', () => {
+  it('has the BNS nationalities, «Другая национальность» last', () => {
+    expect(places.nationalities).toHaveLength(71);
+    expect(places.nationalities[0]).toEqual({ code: '005', name: 'Казахи' });
+    expect(places.nationalities.at(-1)).toEqual({ code: '199', name: 'Другая национальность' });
+    expect(places.searchNationalities('кор').map((n) => n.name)).toEqual(['Корейцы']);
+  });
+
+  it('has every country but Kazakhstan, named in Russian', () => {
+    expect(places.countries).toHaveLength(248);
+    expect(places.isCountryCode('KZ')).toBe(false);
+    expect(places.placeName('TR')).toBe('Турция');
+    expect(places.placeName('750000000')).toBe('Алматы');
+    expect(places.searchCountries('турц').map((c) => c.code)).toEqual(['TR']);
+    expect(places.firstSettlement(['TR', '750000000'])).toBe('750000000');
   });
 });
 

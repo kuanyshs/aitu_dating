@@ -3,10 +3,12 @@ import { Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  countries,
   districtsOf,
+  placeName,
   regions,
+  searchCountries,
   searchSettlements,
-  settlementByCode,
   settlementsOf,
   type Settlement,
 } from '@/catalogs';
@@ -33,19 +35,33 @@ type Props = {
   max: number;
   /** Offers «Не указывать», which clears the choice. */
   allowNone?: boolean;
+  /** Offers other countries next to the settlements of Kazakhstan. */
+  withCountries?: boolean;
   label?: string;
   testID: string;
 };
+
+const COUNTRIES = 'countries';
 
 /**
  * A Населённый пункт from the KATO directory: the chosen ones as chips, and a full-screen
  * picker with search by name and a region → district → settlement browser. There is no
  * flat list of all 9 789 places.
  */
-export function SettlementField({ value, onChange, max, allowNone, label, testID }: Props) {
+export function SettlementField({
+  value,
+  onChange,
+  max,
+  allowNone,
+  withCountries,
+  label,
+  testID,
+}: Props) {
   const styles = useStyles();
   const [open, setOpen] = useState(false);
-  const chosen = value.map((code) => settlementByCode(code)).filter((s) => !!s) as Settlement[];
+  const chosen = value
+    .map((code) => ({ code, name: placeName(code) }))
+    .filter((place) => !!place.name);
   return (
     <View style={styles.field} testID={testID}>
       {label ? <AppText variant="bodyStrong">{label}</AppText> : null}
@@ -82,6 +98,7 @@ export function SettlementField({ value, onChange, max, allowNone, label, testID
         value={value}
         max={max}
         allowNone={allowNone}
+        withCountries={withCountries}
         onClose={() => setOpen(false)}
         onDone={(codes) => {
           onChange(codes);
@@ -98,6 +115,7 @@ function SettlementPicker({
   value,
   max,
   allowNone,
+  withCountries,
   onClose,
   onDone,
   testID,
@@ -106,6 +124,7 @@ function SettlementPicker({
   value: string[];
   max: number;
   allowNone?: boolean;
+  withCountries?: boolean;
   onClose: () => void;
   onDone: (codes: string[]) => void;
   testID: string;
@@ -132,14 +151,22 @@ function SettlementPicker({
   }
 
   const results = useMemo(() => searchSettlements(query), [query]);
+  const countryResults = useMemo(
+    () => (withCountries ? searchCountries(query) : []),
+    [query, withCountries],
+  );
   const searching = query.trim().length >= 2;
   const regionItem = regions.find((r) => r.code === region);
-  const districtList = useMemo(() => (region ? districtsOf(region) : []), [region]);
+  const browsingCountries = region === COUNTRIES;
+  const districtList = useMemo(
+    () => (region && region !== COUNTRIES ? districtsOf(region) : []),
+    [region],
+  );
   const browse = useMemo(
     () =>
       district
         ? settlementsOf({ district })
-        : region && districtList.length === 0
+        : region && region !== COUNTRIES && districtList.length === 0
           ? settlementsOf({ region })
           : [],
     [district, region, districtList.length],
@@ -178,6 +205,29 @@ function SettlementPicker({
     );
   };
 
+  const countryRow = (c: { code: string; name: string }) => {
+    const selected = draft.includes(c.code);
+    return (
+      <Pressable
+        key={c.code}
+        role={max === 1 ? 'radio' : 'checkbox'}
+        aria-checked={selected}
+        aria-label={`${c.name}, ${t.country}`}
+        onPress={() => toggle(c.code)}
+        style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        testID={`${testID}-option-${c.code}`}
+      >
+        <View style={styles.grow}>
+          <AppText variant="bodyStrong">{c.name}</AppText>
+          <AppText variant="caption" tone="textMuted">
+            {t.country}
+          </AppText>
+        </View>
+        {selected ? <Check size={20} color={colors.text} aria-hidden /> : null}
+      </Pressable>
+    );
+  };
+
   const nav = (key: string, title: string, onPress: () => void) => (
     <Pressable
       key={key}
@@ -194,13 +244,17 @@ function SettlementPicker({
 
   let body: React.ReactNode;
   if (searching) {
-    body = results.length ? (
-      results.map(row)
-    ) : (
-      <AppText tone="textMuted" testID={`${testID}-nothing`}>
-        {t.nothing}
-      </AppText>
-    );
+    body =
+      results.length || countryResults.length ? (
+        <>
+          {results.map(row)}
+          {countryResults.map(countryRow)}
+        </>
+      ) : (
+        <AppText tone="textMuted" testID={`${testID}-nothing`}>
+          {t.nothing}
+        </AppText>
+      );
   } else if (!region) {
     body = (
       <>
@@ -208,8 +262,11 @@ function SettlementPicker({
           {t.regions}
         </AppText>
         {regions.map((r) => nav(r.code, r.name, () => setRegion(r.code)))}
+        {withCountries ? nav(COUNTRIES, t.countries, () => setRegion(COUNTRIES)) : null}
       </>
     );
+  } else if (browsingCountries) {
+    body = countries.map(countryRow);
   } else if (!district && districtList.length) {
     body = districtList.map((d) => nav(d.code, d.name, () => setDistrict(d.code)));
   } else {
@@ -222,7 +279,7 @@ function SettlementPicker({
         <View style={styles.header}>
           <TextButton label={t.close} onPress={onClose} testID={`${testID}-close`} />
           <AppText variant="bodyStrong" role="heading" style={styles.title}>
-            {t.title}
+            {withCountries ? t.titlePlaces : t.title}
           </AppText>
           <View style={styles.headerSpace} />
         </View>
@@ -231,7 +288,7 @@ function SettlementPicker({
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder={t.searchPlaceholder}
+            placeholder={withCountries ? t.searchPlaces : t.searchPlaceholder}
             placeholderTextColor={colors.textMuted}
             aria-label={t.searchLabel}
             autoCorrect={false}
@@ -253,7 +310,11 @@ function SettlementPicker({
               testID={`${testID}-back`}
             />
             <AppText variant="bodyStrong" style={styles.grow}>
-              {district ? districtList.find((d) => d.code === district)?.name : regionItem?.name}
+              {district
+                ? districtList.find((d) => d.code === district)?.name
+                : browsingCountries
+                  ? t.countries
+                  : regionItem?.name}
             </AppText>
           </View>
         ) : null}

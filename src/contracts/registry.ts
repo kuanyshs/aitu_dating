@@ -48,7 +48,7 @@ import {
   CompleteOnboardingInput,
   MyProfile,
   ProfileStepInput,
-  SaveAnswerInput,
+  SaveAnswersInput,
   UpdateCardInput,
   UpdatePhotosInput,
 } from './onboarding';
@@ -126,7 +126,7 @@ export const repositoryContract = {
   confirmPayment: { input: ConfirmPaymentInput, output: AccessFlowState },
 
   saveProfileStep: { input: ProfileStepInput, output: AccessFlowState },
-  saveAnswer: { input: SaveAnswerInput, output: AccessFlowState },
+  saveAnswers: { input: SaveAnswersInput, output: AccessFlowState },
   completeOnboarding: { input: CompleteOnboardingInput, output: MyProfile },
   getMyProfile: { input: none, output: MyProfile },
   updateMyCard: { input: UpdateCardInput, output: MyProfile },

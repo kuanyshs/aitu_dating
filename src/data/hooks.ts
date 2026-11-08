@@ -41,7 +41,7 @@ import type {
   SearchQuery,
   UpdateCardInput,
   RenewMembershipInput,
-  SaveAnswerInput,
+  SaveAnswersInput,
 } from '@/contracts';
 import { drafts, responseDrafts } from '@/drafts';
 import type { DemoFlags } from '@/repository/mock';
@@ -242,9 +242,9 @@ export function useSaveProfileStep() {
   return useFlowMutation((input: ProfileStepInput) => repository.saveProfileStep(input));
 }
 
-export function useSaveAnswer() {
+export function useSaveAnswers() {
   const repository = useRepository();
-  return useFlowMutation((input: SaveAnswerInput) => repository.saveAnswer(input));
+  return useFlowMutation((input: SaveAnswersInput) => repository.saveAnswers(input));
 }
 
 /** Publishes the card; afterwards every cached response belongs to the guest and is reset. */

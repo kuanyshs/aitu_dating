@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { sampleAnswers } from './testAnswers';
 
 import { fixedClock } from '@/clock';
 import {
@@ -15,15 +16,7 @@ import { createMockRepository, type MockRepository } from './createMockRepositor
 
 const clock = fixedClock();
 
-const answers: QuestionnaireAnswers = {
-  city: ['710000000'],
-  intent: ['dating'],
-  communication: ['messages_first'],
-  pace: ['gradual'],
-  firstMeeting: ['coffee_talk'],
-  boundaries: ['public_place'],
-  dateFormat: ['walk'],
-};
+const answers: QuestionnaireAnswers = { ...sampleAnswers, city: ['710000000'] };
 
 function repositoryOn(store = createMemoryStore(), now = clock) {
   return createMockRepository({ clock: now, latency: 0, store });
@@ -37,7 +30,6 @@ async function joinPaid(repo: MockRepository, months: 1 | 3 = 1) {
   await repo.confirmPayment({ idempotencyKey: 'join-checkout-1' });
   await repo.saveProfileStep({
     bio: 'Коротко о себе.',
-    interests: ['coffee'],
     communicationStyle: 'short_messages',
   });
   return repo.completeOnboarding({ answers, idempotencyKey: 'onboard-1' });

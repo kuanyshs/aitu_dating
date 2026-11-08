@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,25 +10,25 @@ import {
   communicationStyleLabels,
   communicationStyles,
   genderLabels,
-  interestLabels,
-  interests,
-  questionKeys,
+  questionnairePageLabels,
+  questionnairePages,
   type CommunicationStyle,
+  type QuestionKey,
 } from '@/catalogs';
 import {
   BIO_MAX,
-  INTERESTS_MAX,
   isRepositoryError,
   UpdateCardInput,
   type MyProfile,
+  type PartialAnswers,
 } from '@/contracts';
 import { useMyProfile, useSession, useUpdateMyCard } from '@/data/hooks';
-import { AnswerInput } from '@/features/questionnaire/AnswerInput';
+import { QuestionnairePage } from '@/features/questionnaire/QuestionnairePage';
+import { asAnswers } from '@/features/questionnaire/rules';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { ActionSheet } from '@/ui/components/ActionSheet';
 import { Avatar } from '@/ui/components/Avatar';
 import { PrimaryButton, TextButton } from '@/ui/components/buttons';
-import { Chip } from '@/ui/components/Chip';
 import { FeedSkeleton } from '@/ui/components/FeedSkeleton';
 import { RadioGroup } from '@/ui/components/RadioGroup';
 import { Screen } from '@/ui/components/Screen';
@@ -44,12 +44,13 @@ import { createStyles } from '@/ui/theme/useStyles';
 
 const t = strings.cardEdit;
 const step = strings.access.profileStep;
-type FieldName = 'bio' | 'interests' | 'communicationStyle';
+type FieldName = 'bio' | 'communicationStyle';
+const answerErrors = strings.questionnaireEdit.errors;
 
 /**
- * «Редактировать анкету», for active and expired members alike: «О себе», interests,
- * communication style, photos and every Анкета answer, the Населённые пункты and Намерения
- * included. What Passport says stays read-only.
+ * «Редактировать анкету», for active and expired members alike: «О себе», communication
+ * style, photos and every answer of the Анкета «Вопросы о тебе», in the sections of its
+ * pages. What Passport says — Пол and возраст included — stays read-only.
  */
 export default function CardEditScreen() {
   const session = useSession();
@@ -86,7 +87,6 @@ function CardForm({ me }: { me: MyProfile }) {
     resolver: zodResolver(UpdateCardInput),
     defaultValues: {
       bio: me.card.bio,
-      interests: me.card.interests,
       communicationStyle: me.card.communicationStyle,
       showSurname: me.card.showSurname,
       answers: me.card.questionnaire,
@@ -94,7 +94,6 @@ function CardForm({ me }: { me: MyProfile }) {
     mode: 'onChange',
   });
   const { control, handleSubmit, formState, setError } = form;
-  const chosen = useWatch({ control, name: 'interests' }) ?? [];
 
   const onSave = handleSubmit((values) =>
     save.mutate(values, {
@@ -104,7 +103,11 @@ function CardForm({ me }: { me: MyProfile }) {
       },
       onError: (error) => {
         if (!isRepositoryError(error) || !error.fieldErrors) return;
-        for (const key of Object.keys(error.fieldErrors)) {
+        for (const [key, code] of Object.entries(error.fieldErrors)) {
+          if (key.startsWith('answers.')) {
+            setError(key as `answers.${QuestionKey}`, { message: code });
+            continue;
+          }
           const name = key.replace('profile.', '') as FieldName;
           if (name in step.errors) setError(name, { message: step.errors[name] });
         }
@@ -167,50 +170,6 @@ function CardForm({ me }: { me: MyProfile }) {
           />
 
           <View style={styles.section}>
-            <AppText variant="bodyStrong">{step.interests}</AppText>
-            <Controller
-              control={control}
-              name="interests"
-              render={({ field }) => {
-                const value = field.value ?? [];
-                const full = value.length >= INTERESTS_MAX;
-                return (
-                  <View role="group" aria-label={step.interests} style={styles.chips}>
-                    {interests.map((key) => {
-                      const selected = value.includes(key);
-                      return (
-                        <Chip
-                          key={key}
-                          role="checkbox"
-                          label={interestLabels[key]}
-                          selected={selected}
-                          disabled={full && !selected}
-                          onPress={() =>
-                            field.onChange(
-                              selected ? value.filter((v) => v !== key) : [...value, key],
-                            )
-                          }
-                          testID={`card-edit-interest-${key}`}
-                        />
-                      );
-                    })}
-                  </View>
-                );
-              }}
-            />
-            <AppText
-              variant="caption"
-              tone={errorOf('interests') ? 'danger' : 'textMuted'}
-              testID="card-edit-interests-hint"
-            >
-              {errorOf('interests') ??
-                (chosen.length >= INTERESTS_MAX
-                  ? step.interestsLimit(INTERESTS_MAX)
-                  : step.interestsHint(chosen.length, INTERESTS_MAX))}
-            </AppText>
-          </View>
-
-          <View style={styles.section}>
             <AppText variant="bodyStrong">{step.communication}</AppText>
             <Controller
               control={control}
@@ -234,22 +193,28 @@ function CardForm({ me }: { me: MyProfile }) {
             <AppText variant="title" role="heading">
               {strings.profile.questionnaire}
             </AppText>
-            {questionKeys.map((question) => (
-              <Controller
-                key={question}
-                control={control}
-                name={`answers.${question}`}
-                render={({ field }) => (
-                  <AnswerInput
-                    question={question}
-                    value={(field.value as string[] | undefined) ?? []}
-                    onChange={field.onChange}
-                    showLabel
-                    testID={`card-edit-answer-${question}`}
-                  />
-                )}
-              />
-            ))}
+            <Controller
+              control={control}
+              name="answers"
+              render={({ field }) => (
+                <View style={styles.pages}>
+                  {questionnairePages.map((page) => (
+                    <View key={page.key} style={styles.section}>
+                      <AppText variant="bodyStrong" role="heading" style={styles.pageTitle}>
+                        {questionnairePageLabels[page.key]}
+                      </AppText>
+                      <QuestionnairePage
+                        questions={page.questions}
+                        answers={asAnswers(field.value)}
+                        onChange={(next) => field.onChange(next as PartialAnswers)}
+                        errors={answerErrorsOf(formState.errors.answers)}
+                        testID={`card-edit-${page.key}`}
+                      />
+                    </View>
+                  ))}
+                </View>
+              )}
+            />
           </View>
 
           {me.surname ? (
@@ -313,6 +278,16 @@ function CardForm({ me }: { me: MyProfile }) {
   );
 }
 
+/** Answer errors as texts, by question; the schema and the server give codes. */
+function answerErrorsOf(errors: unknown): Partial<Record<QuestionKey, string>> {
+  const result: Partial<Record<QuestionKey, string>> = {};
+  for (const [question, error] of Object.entries((errors ?? {}) as Record<string, unknown>)) {
+    const code = (error as { message?: string } | undefined)?.message;
+    if (code) result[question as QuestionKey] = answerErrors[code] ?? answerErrors.required;
+  }
+  return result;
+}
+
 const useStyles = createStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   header: {
@@ -335,7 +310,8 @@ const useStyles = createStyles((colors) => ({
   },
   grow: { flex: 1, gap: 2 },
   section: { gap: spacing.sm },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  pages: { gap: spacing.xl },
+  pageTitle: { textTransform: 'uppercase', letterSpacing: 0.5 },
   footer: {
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,

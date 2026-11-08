@@ -2,70 +2,83 @@ import { useRouter, type Href } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
-import { questionKeys, questionLabels, type QuestionKey } from '@/catalogs';
+import { questionnairePageLabels, questionnairePages, type QuestionKey } from '@/catalogs';
 import { isRepositoryError, type PartialAnswers } from '@/contracts';
-import { useCompleteOnboarding, useSaveAnswer } from '@/data/hooks';
+import { useCompleteOnboarding, useSaveAnswers } from '@/data/hooks';
 import { StepScreen } from '@/features/access/StepScreen';
 import { accessErrorText, newIdempotencyKey } from '@/features/access/steps';
 import { useStepGuard } from '@/features/access/useStepGuard';
-import { AnswerInput } from '@/features/questionnaire/AnswerInput';
+import { QuestionnairePage } from '@/features/questionnaire/QuestionnairePage';
+import { asAnswers, isPageReady, pageAnswers, type Answers } from '@/features/questionnaire/rules';
 import { PrimaryButton, SecondaryButton } from '@/ui/components/buttons';
 import { AppText } from '@/ui/components/Text';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
 import { spacing } from '@/ui/theme/tokens';
 
-const LAST = questionKeys.length - 1;
+const LAST = questionnairePages.length - 1;
+const errorText = strings.questionnaireEdit.errors;
 
+/**
+ * The Анкета «Вопросы о тебе» in six pages by topic. Each page is saved on «Далее»; the
+ * last one travels with the publish request, so the card and its final answers are stored
+ * together or not at all.
+ */
 export default function QuestionnaireStep() {
   const router = useRouter();
   const flow = useStepGuard('questionnaire');
-  const saveAnswer = useSaveAnswer();
+  const saveAnswers = useSaveAnswers();
   const complete = useCompleteOnboarding();
   const toast = useToast((s) => s.show);
   const t = strings.access.questionnaire;
 
-  // The answer being chosen. It is saved on «Далее»; the last one travels with the publish
-  // request so the card and its final answer are stored together or not at all.
-  const [draft, setDraft] = useState<{ question: QuestionKey; value: string[] }>();
+  const [draft, setDraft] = useState<Answers>({});
   const [index, setIndex] = useState<number | undefined>(undefined);
-  const [missing, setMissing] = useState<QuestionKey | undefined>(undefined);
+  const [errors, setErrors] = useState<Partial<Record<QuestionKey, string>>>({});
   const [idempotencyKey] = useState(newIdempotencyKey);
 
-  const saved = flow.data?.answers;
-  const answers: PartialAnswers = useMemo(
-    () => ({ ...saved, ...(draft ? { [draft.question]: draft.value } : {}) }),
-    [saved, draft],
+  const saved = asAnswers(flow.data?.answers);
+  const passportCity = flow.data?.candidate?.city;
+  // The Passport city is the first suggestion of «Где ты живёшь».
+  const answers: Answers = useMemo(
+    () => ({
+      ...(passportCity && !saved.city ? { city: [passportCity] } : {}),
+      ...saved,
+      ...draft,
+    }),
+    [saved, draft, passportCity],
   );
 
-  // Until the person navigates, resume at the first unanswered question.
-  const firstOpen = questionKeys.findIndex((k) => !(k in (saved ?? {})));
+  const done = (i: number) => isPageReady(questionnairePages[i]!.questions, saved);
+  // Until the person navigates, resume at the first page not saved yet.
+  const firstOpen = questionnairePages.findIndex((_, i) => !done(i));
   const current = index ?? (firstOpen === -1 ? LAST : firstOpen);
-  const question = questionKeys[current]!;
-  // The Населённый пункт starts from the Passport city; it may be left out.
-  const passportCity = flow.data?.candidate?.city;
-  const value: string[] =
-    (answers[question] as string[] | undefined) ??
-    (question === 'city' && passportCity ? [passportCity] : []);
-  // The questions before the last one that are already saved.
-  const answeredCount = questionKeys.slice(0, LAST).filter((k) => k in (saved ?? {})).length;
+  const page = questionnairePages[current]!;
+  const ready = isPageReady(page.questions, answers);
   const isLast = current === LAST;
-  // Every question but the Населённый пункт needs at least one option.
-  const ready = question === 'city' || value.length > 0;
+  const savedPages = questionnairePages.slice(0, LAST).filter((_, i) => done(i)).length;
 
-  const choose = (next: string[]) => {
-    setMissing(undefined);
-    setDraft({ question, value: next });
+  const showErrors = (fieldErrors: Record<string, string>) => {
+    const next: Partial<Record<QuestionKey, string>> = {};
+    for (const [key, code] of Object.entries(fieldErrors)) {
+      if (key.startsWith('answers.')) next[key.slice(8) as QuestionKey] = errorText[code] ?? code;
+    }
+    setErrors(next);
+    return next;
   };
 
   const next = () => {
     if (!ready) return;
-    saveAnswer.mutate(
-      { question, answer: value },
+    saveAnswers.mutate(
+      { answers: pageAnswers(page.questions, answers) },
       {
         onSuccess: () => {
-          setDraft(undefined);
+          setDraft({});
+          setErrors({});
           setIndex(Math.min(current + 1, LAST));
+        },
+        onError: (error) => {
+          if (isRepositoryError(error) && error.fieldErrors) showErrors(error.fieldErrors);
         },
       },
     );
@@ -73,7 +86,7 @@ export default function QuestionnaireStep() {
 
   const publish = () =>
     complete.mutate(
-      { answers: { [questionKeys[LAST]!]: value }, idempotencyKey },
+      { answers: pageAnswers(page.questions, answers) as PartialAnswers, idempotencyKey },
       {
         onSuccess: () => {
           toast(t.created);
@@ -87,22 +100,21 @@ export default function QuestionnaireStep() {
             router.replace(`/access/profile?field=${profileField.slice(8)}` as Href);
             return;
           }
-          const answerKey = keys
-            .map((k) => k.replace('answers.', ''))
-            .find((k): k is QuestionKey => (questionKeys as string[]).includes(k));
-          if (answerKey) {
-            setIndex(questionKeys.indexOf(answerKey));
-            setMissing(answerKey);
-          }
+          const wrong = showErrors(error.fieldErrors);
+          const pageOf = questionnairePages.findIndex((p) => p.questions.some((q) => q in wrong));
+          if (pageOf >= 0) setIndex(pageOf);
         },
       },
     );
 
   const failed =
-    (saveAnswer.isError ? saveAnswer.error : undefined) ??
+    (saveAnswers.isError && !(isRepositoryError(saveAnswers.error) && saveAnswers.error.fieldErrors)
+      ? saveAnswers.error
+      : undefined) ??
     (complete.isError && !(isRepositoryError(complete.error) && complete.error.fieldErrors)
       ? complete.error
       : undefined);
+  const candidate = flow.data?.candidate;
 
   return (
     <StepScreen
@@ -118,15 +130,15 @@ export default function QuestionnaireStep() {
           ) : null}
           {isLast ? (
             <>
-              {answeredCount < LAST ? (
+              {savedPages < LAST ? (
                 <AppText variant="caption" tone="textMuted" testID="questionnaire-remaining">
-                  {t.remaining(LAST - answeredCount)}
+                  {t.remaining(LAST - savedPages)}
                 </AppText>
               ) : null}
               <PrimaryButton
                 label={t.create}
                 onPress={publish}
-                disabled={answeredCount < LAST || !ready}
+                disabled={savedPages < LAST || !ready}
                 loading={complete.isPending}
                 testID="questionnaire-create"
               />
@@ -135,8 +147,8 @@ export default function QuestionnaireStep() {
             <PrimaryButton
               label={t.next}
               onPress={next}
-              disabled={!ready || saveAnswer.isPending}
-              loading={saveAnswer.isPending}
+              disabled={!ready || saveAnswers.isPending}
+              loading={saveAnswers.isPending}
               testID="questionnaire-next"
             />
           )}
@@ -144,7 +156,8 @@ export default function QuestionnaireStep() {
             <SecondaryButton
               label={t.previous}
               onPress={() => {
-                setDraft(undefined);
+                setDraft({});
+                setErrors({});
                 setIndex(current - 1);
               }}
               testID="questionnaire-previous"
@@ -154,25 +167,44 @@ export default function QuestionnaireStep() {
       }
     >
       <View style={{ gap: spacing.md }}>
-        <AppText variant="caption" tone="textMuted" testID="questionnaire-progress">
-          {t.progress(current + 1, questionKeys.length)}
-        </AppText>
-        <AppText variant="title" role="heading" testID="questionnaire-question">
-          {questionLabels[question]}
-        </AppText>
-        <AnswerInput
-          key={question}
-          question={question}
-          value={value}
-          onChange={choose}
-          testID={`question-${question}`}
-        />
-        {missing === question ? (
-          <AppText variant="caption" tone="danger" role="alert">
-            {t.missing}
+        {current === 0 ? (
+          <AppText tone="textMuted" testID="questionnaire-intro">
+            {t.intro}
           </AppText>
         ) : null}
+        <AppText variant="caption" tone="textMuted" testID="questionnaire-progress">
+          {t.progress(current + 1, questionnairePages.length)}
+        </AppText>
+        <AppText variant="title" role="heading" testID="questionnaire-page">
+          {questionnairePageLabels[page.key]}
+        </AppText>
+        <QuestionnairePage
+          key={page.key}
+          questions={page.questions}
+          answers={answers}
+          onChange={(next) => {
+            setErrors({});
+            setDraft((d) => ({ ...d, ...diff(answers, next) }));
+          }}
+          passport={
+            current === 0 && candidate
+              ? { gender: candidate.gender, age: candidate.age }
+              : undefined
+          }
+          errors={errors}
+          testID={`questionnaire-${page.key}`}
+        />
       </View>
     </StepScreen>
   );
+}
+
+/** What changed between two sets of answers, removed answers included as undefined. */
+function diff(before: Answers, after: Answers): Answers {
+  const changed: Answers = {};
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]) as Set<QuestionKey>;
+  for (const key of keys) {
+    if (before[key] !== after[key]) changed[key] = after[key];
+  }
+  return changed;
 }

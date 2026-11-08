@@ -4,15 +4,66 @@ import { loadSeed } from '../src/repository/mock/seed';
 
 const seed = loadSeed();
 
-const LAST_QUESTION = 'dateFormat';
+/** Answers by question, as chips pick them; the first page keeps the Passport city. */
+export type QuestionnaireChoice = Record<string, string[]>;
+
+export const defaultChoices: QuestionnaireChoice = {
+  nationality: ['005'],
+  intent: ['serious_relationship'],
+  familyPlans: ['within_5_years'],
+  maritalStatus: ['never_married'],
+  children: ['no'],
+  wantChildren: ['later'],
+  education: ['bachelor'],
+  occupation: ['employed'],
+  incomeSource: ['salary'],
+  income: ['250k_400k'],
+  car: ['no'],
+  housing: ['rent'],
+  livingWith: ['alone'],
+  parents: ['discussable'],
+  habits: ['smoking_never'],
+  interests: ['reading', 'travel'],
+};
+
+/** Chooses one question's answers on the current page. */
+export async function chooseAnswer(page: Page, question: string, values: string[]) {
+  if (question === 'nationality') {
+    await page.getByTestId('answer-nationality-open').click();
+    await page.getByTestId(`answer-nationality-picker-option-${values[0]}`).click();
+    return;
+  }
+  for (const value of values) await page.getByTestId(`answer-${question}-${value}`).click();
+}
+
+const PAGES = [
+  ['nationality'],
+  ['intent', 'familyPlans', 'maritalStatus'],
+  ['children', 'childrenCount', 'wantChildren'],
+  ['education', 'occupation', 'incomeSource', 'income'],
+  ['car', 'housing', 'livingWith', 'parents'],
+  ['habits', 'interests'],
+];
 
 /**
- * Answers one Анкета question: picks the option and moves on with «Далее» (the last one
- * waits for «Создать карточку»). The Населённый пункт keeps the Passport city.
+ * Fills the six pages of the Анкета with «Далее» between them; the last page waits for
+ * «Создать карточку». `pages` limits how many pages are filled.
  */
-export async function answerQuestion(page: Page, question: string, answer: string) {
-  if (question !== 'city') await page.getByTestId(`question-${question}-${answer}`).click();
-  if (question !== LAST_QUESTION) await page.getByTestId('questionnaire-next').click();
+export async function fillQuestionnaire(
+  page: Page,
+  choices: QuestionnaireChoice = defaultChoices,
+  pages = PAGES.length,
+) {
+  for (const [i, questions] of PAGES.slice(0, pages).entries()) {
+    await expect(page.getByTestId('questionnaire-progress')).toHaveText(
+      `Страница ${i + 1} из ${PAGES.length}`,
+    );
+    for (const question of questions) {
+      const values = choices[question];
+      if (values) await chooseAnswer(page, question, values);
+    }
+    if (i < PAGES.length - 1) await page.getByTestId('questionnaire-next').click();
+  }
 }
 
 /** Picks a Населённый пункт in a settlements field by searching its name. */
@@ -36,20 +87,9 @@ export async function joinAsMadina(page: Page) {
   await page.getByTestId('payment-pay').click();
   await expect(page.getByTestId('access-profile')).toBeVisible({ timeout: 10_000 });
   await page.getByTestId('profile-bio').fill('Люблю книги и долгие прогулки.');
-  await page.getByTestId('interest-books').click();
   await page.getByTestId('profile-style-calm_dialogue').click();
   await page.getByTestId('access-next').click();
-  for (const [question, answer] of <[string, string][]>[
-    ['city', 'passport'],
-    ['intent', 'friendship'],
-    ['communication', 'topic_comment_first'],
-    ['pace', 'gradual'],
-    ['firstMeeting', 'coffee_talk'],
-    ['boundaries', 'public_place'],
-    ['dateFormat', 'walk'],
-  ]) {
-    await answerQuestion(page, question, answer);
-  }
+  await fillQuestionnaire(page);
   await page.getByTestId('questionnaire-create').click();
   await expect(page.getByTestId('access-welcome')).toBeVisible();
   await page.getByTestId('welcome-feed').click();

@@ -50,15 +50,15 @@ test.describe('Поиск', () => {
     await joinAsMadina(page);
     await openSearch(page);
     await page.getByTestId('search-filters').click();
-    await page.getByTestId('search-interest-coffee').click();
+    await page.getByTestId('search-interest-travel').click();
     await expect(page.getByTestId('search-filters')).toHaveText('Фильтры · 1');
     const rows = page.getByTestId('search-results').getByRole('link');
     await expect(rows.first()).toBeVisible();
-    const withCoffee = seed.members.filter(
-      (m) => m.card.interests.includes('coffee') && !m.restricted,
+    const withTravel = seed.members.filter(
+      (m) => m.card.questionnaire.interests?.includes('travel') && !m.restricted,
     ).length;
-    await expect(rows).toHaveCount(withCoffee);
-    for (const row of await rows.all()) await expect(row).toContainText('кофе');
+    await expect(rows).toHaveCount(withTravel);
+    for (const row of await rows.all()) await expect(row).toContainText('Путешествия и туризм');
 
     await page.getByTestId('search-reset').click();
     await expect(page.getByTestId('search-filters')).toHaveText('Фильтры');

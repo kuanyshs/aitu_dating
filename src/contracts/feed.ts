@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 import {
-  interests as catalogInterests,
+  genders,
+  INTEREST_OTHER_MAX,
+  MAX_CHILDREN,
   meetingFormats,
   meetingGoals,
   paymentPolicies,
@@ -10,7 +12,7 @@ import {
   topics as catalogTopics,
 } from '@/catalogs';
 
-import { SettlementCode } from './people';
+import { NationalityCode, PlaceCode } from './people';
 
 import { IsoDate, Page } from './common';
 import { PostView } from './post';
@@ -23,8 +25,25 @@ export type FeedTab = z.infer<typeof FeedTab>;
 export const FeedContent = z.enum(['all', 'posts', 'plans']);
 export type FeedContent = z.infer<typeof FeedContent>;
 
-const options = <T extends readonly [string, ...string[]]>(values: T) =>
-  z.array(z.enum(values)).max(values.length);
+const options = <T extends readonly [string, ...string[]]>(values: T, max = values.length) =>
+  z.array(z.enum(values)).max(max);
+
+/** The ages a person may have, as the Анкета allows them. */
+export const AGE_MIN = 18;
+export const AGE_MAX = 100;
+
+/** «от … до …», both ends included: one value «25-35». */
+const range = (min: number, max: number) =>
+  z
+    .string()
+    .regex(/^\d{1,3}-\d{1,3}$/)
+    .refine((v) => v.split('-').every((n) => Number(n) >= min && Number(n) <= max), 'range');
+
+/** The two ends of a range value, smaller first. */
+export function rangeEnds(value: string): [number, number] {
+  const [a, b] = value.split('-').map(Number) as [number, number];
+  return a <= b ? [a, b] : [b, a];
+}
 
 /** «Ближайшие даты» of a Встреча, counted in Asia/Almaty from today. */
 export const FeedSoon = z.enum(['today', 'tomorrow', 'weekend', 'week']);
@@ -34,19 +53,41 @@ export type FeedSoon = z.infer<typeof FeedSoon>;
 export const FEED_DAYS_AHEAD = 14;
 
 /**
- * The one filter of «Поиск» and «Мои подписки». Within a field one chosen value is enough;
- * every field with something chosen must match. Meeting fields and dates narrow Встречи
- * only and never hide ordinary posts. The content type is a device setting, not part of it.
+ * The one filter of «Поиск» and «Мои подписки». «Кого ищу» (owner's document, block 2) holds
+ * the same answers as the Анкета and is compared with the author's; nothing chosen is «Все
+ * варианты». Within a field any chosen value is enough, the habits excepted: there each
+ * habit chosen must match. Every field with something chosen must match, and a person
+ * who did not answer a question does not. Meeting fields and dates narrow Встречи only and
+ * never hide ordinary posts. The content type is a device setting, not part of it.
  */
 export const FeedFilters = z.strictObject({
-  /** The author's Населённый пункт for a post, the Встреча's own for a Встреча. */
-  city: z.array(SettlementCode).max(20),
-  /** The author's interests. */
-  interests: options(catalogInterests),
+  gender: options(genders, 1),
+  /** «от … до …» лет, one value. */
+  age: z.array(range(AGE_MIN, AGE_MAX)).max(1),
+  nationality: z.array(NationalityCode).max(100),
+  /** Where the author lives; for a Встреча its own Населённый пункт counts too. */
+  city: z.array(PlaceCode).max(20),
+  intent: options(questionnaire.intent),
+  familyPlans: options(questionnaire.familyPlans, 1),
+  maritalStatus: options(questionnaire.maritalStatus),
+  children: options(questionnaire.children, 1),
+  /** «Нет детей» or «от … до …», one value. */
+  childrenCount: z.array(z.union([z.literal('none'), range(1, MAX_CHILDREN)])).max(1),
+  wantChildren: options(questionnaire.wantChildren, 1),
+  education: options(questionnaire.education),
+  occupation: options(questionnaire.occupation),
+  incomeSource: options(questionnaire.incomeSource),
+  income: options(questionnaire.income, 1),
+  car: options(questionnaire.car, 1),
+  housing: options(questionnaire.housing, 1),
+  livingWith: options(questionnaire.livingWith, 1),
+  parents: options(questionnaire.parents),
+  habits: options(questionnaire.habits),
+  interests: options(questionnaire.interests),
+  /** The text «Свой вариант» looks for in the author's own one. */
+  interestOther: z.array(z.string().trim().min(1).max(INTEREST_OTHER_MAX)).max(1),
   /** The publication's Темы. */
   topics: options(catalogTopics),
-  /** The author's Намерения. */
-  intent: options(questionnaire.intent),
   format: options(meetingFormats),
   goal: options(meetingGoals),
   budget: options(planBudgets),
@@ -59,6 +100,26 @@ export type FeedFilterKey = keyof FeedFilters;
 
 export const feedFilterKeys = Object.keys(FeedFilters.shape) as FeedFilterKey[];
 
+/** «Кого ищу»: the fields compared with the author's Пол, возраст and Анкета. */
+export const partnerFilterKeys = feedFilterKeys.filter(
+  (k) => !['topics', 'format', 'goal', 'budget', 'payment', 'soon', 'days'].includes(k),
+);
+
+/**
+ * What the Безопасный вид shows, the only «Кого ищу» fields a guest or an expired member
+ * filters by: anything else would tell them answers they may not see.
+ */
+export const safeFilterKeys: readonly FeedFilterKey[] = ['gender', 'age', 'city'];
+
+/** The filter without what a viewer in the Безопасный вид may not filter by. */
+export function safeFeedFilters(filters: FeedFilters): FeedFilters {
+  const result = { ...filters };
+  for (const key of partnerFilterKeys) {
+    if (!safeFilterKeys.includes(key)) (result as Record<string, unknown>)[key] = [];
+  }
+  return result;
+}
+
 /** The fields that narrow Встречи only. */
 export const meetingFilterKeys: readonly FeedFilterKey[] = [
   'format',
@@ -69,18 +130,8 @@ export const meetingFilterKeys: readonly FeedFilterKey[] = [
   'days',
 ];
 
-export const emptyFeedFilters = (): FeedFilters => ({
-  city: [],
-  interests: [],
-  topics: [],
-  intent: [],
-  format: [],
-  goal: [],
-  budget: [],
-  payment: [],
-  soon: [],
-  days: [],
-});
+export const emptyFeedFilters = (): FeedFilters =>
+  Object.fromEntries(feedFilterKeys.map((k) => [k, []])) as unknown as FeedFilters;
 
 /**
  * A filter saved before v4: the Анкета questions. Only its Населённые пункты and Намерения
@@ -99,6 +150,27 @@ export function fromLegacyFeedFilters(old: unknown): FeedFilters {
     return [...new Set(kept)].slice(0, 20) as FeedFilters[K];
   };
   return { ...emptyFeedFilters(), city: keep('city'), intent: keep('intent') };
+}
+
+/**
+ * A saved filter after its catalogs changed: every value still known is kept, field by
+ * field; unknown values and fields drop out.
+ */
+export function keepKnownFeedFilters(old: unknown): FeedFilters {
+  const parsed = FeedFilters.safeParse(old);
+  if (parsed.success) return parsed.data;
+  const source = (old && typeof old === 'object' ? old : {}) as Record<string, unknown>;
+  const result = emptyFeedFilters() as Record<FeedFilterKey, unknown[]>;
+  for (const key of feedFilterKeys) {
+    const values = Array.isArray(source[key]) ? (source[key] as unknown[]) : [];
+    const field = FeedFilters.shape[key];
+    const item = field.element;
+    const kept = [...new Set(values.filter((v) => item.safeParse(v).success))];
+    result[key] = kept;
+    // Respect each field's limit.
+    while (!field.safeParse(result[key]).success && result[key].length) result[key].pop();
+  }
+  return result as FeedFilters;
 }
 
 /** How many values are chosen across all fields. */

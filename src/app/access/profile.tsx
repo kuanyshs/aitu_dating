@@ -1,23 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { View } from 'react-native';
 
-import {
-  communicationStyleLabels,
-  communicationStyles,
-  interestLabels,
-  interests,
-  type CommunicationStyle,
-} from '@/catalogs';
-import {
-  BIO_MAX,
-  INTERESTS_MAX,
-  isRepositoryError,
-  PHOTO_LIMITS,
-  ProfileStepInput,
-} from '@/contracts';
+import { communicationStyleLabels, communicationStyles, type CommunicationStyle } from '@/catalogs';
+import { BIO_MAX, isRepositoryError, PHOTO_LIMITS, ProfileStepInput } from '@/contracts';
 import { useSaveProfileStep } from '@/data/hooks';
 import { StepScreen } from '@/features/access/StepScreen';
 import { accessErrorText, stepRoute } from '@/features/access/steps';
@@ -25,7 +13,6 @@ import { useStepGuard } from '@/features/access/useStepGuard';
 import { PhotoSlotsEditor } from '@/features/photo/PhotoSlotsEditor';
 import { usePhotoSlots } from '@/features/photo/usePhotoSlots';
 import { PrimaryButton } from '@/ui/components/buttons';
-import { Chip } from '@/ui/components/Chip';
 import { RadioGroup } from '@/ui/components/RadioGroup';
 import { TextArea } from '@/ui/components/TextArea';
 import { ToggleRow } from '@/ui/components/ToggleRow';
@@ -37,7 +24,6 @@ type FieldName = Exclude<keyof ProfileStepInput, 'showSurname' | 'photoIds'>;
 
 const empty: ProfileStepInput = {
   bio: '',
-  interests: [],
   communicationStyle: undefined as never,
   showSurname: false,
 };
@@ -69,7 +55,6 @@ export default function ProfileStep() {
     }
   }, [field, setError, t.errors]);
 
-  const chosen = useWatch({ control, name: 'interests' }) ?? [];
   const surname = flow.data?.candidate?.surname;
   const photos = usePhotoSlots(PHOTO_LIMITS.profile);
   // Coming back to this step shows the Фото already chosen.
@@ -142,52 +127,6 @@ export default function ProfileStep() {
           />
         )}
       />
-
-      <View style={{ gap: spacing.sm }}>
-        <AppText variant="bodyStrong">{t.interests}</AppText>
-        <Controller
-          control={control}
-          name="interests"
-          render={({ field: f }) => {
-            const value = f.value ?? [];
-            const full = value.length >= INTERESTS_MAX;
-            return (
-              <View
-                role="group"
-                aria-label={t.interests}
-                style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}
-              >
-                {interests.map((key) => {
-                  const selected = value.includes(key);
-                  return (
-                    <Chip
-                      key={key}
-                      role="checkbox"
-                      label={interestLabels[key]}
-                      selected={selected}
-                      disabled={full && !selected}
-                      onPress={() =>
-                        f.onChange(selected ? value.filter((v) => v !== key) : [...value, key])
-                      }
-                      testID={`interest-${key}`}
-                    />
-                  );
-                })}
-              </View>
-            );
-          }}
-        />
-        <AppText
-          variant="caption"
-          tone={errorOf('interests') ? 'danger' : 'textMuted'}
-          testID="profile-interests-hint"
-        >
-          {errorOf('interests') ??
-            (chosen.length >= INTERESTS_MAX
-              ? t.interestsLimit(INTERESTS_MAX)
-              : t.interestsHint(chosen.length, INTERESTS_MAX))}
-        </AppText>
-      </View>
 
       <View style={{ gap: spacing.sm }}>
         <AppText variant="bodyStrong">{t.communication}</AppText>

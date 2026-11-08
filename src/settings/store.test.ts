@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { sampleAnswers } from '@/repository/mock/testAnswers';
 
 import { emptyFeedFilters } from '@/contracts';
 import { createMemoryStore, storageKeys } from '@/storage';
@@ -70,15 +71,7 @@ describe('Ленты on the device', () => {
         data: {
           themePreference: 'light',
           feedContent: { for_you: 'plans', popular: 'posts', following: 'all' },
-          guestFilters: {
-            city: ['750000000'],
-            intent: ['dating'],
-            communication: ['messages_first'],
-            pace: [],
-            firstMeeting: [],
-            boundaries: [],
-            dateFormat: ['walk'],
-          },
+          guestFilters: { ...sampleAnswers, city: ['750000000'] },
         },
       }),
     });
@@ -87,7 +80,11 @@ describe('Ленты on the device', () => {
     expect(useSettings.getState()).toMatchObject({
       themePreference: 'light',
       feedContent: { feeds: 'plans', popular: 'posts' },
-      guestFilters: { ...emptyFeedFilters(), city: ['750000000'], intent: ['dating'] },
+      guestFilters: {
+        ...emptyFeedFilters(),
+        city: ['750000000'],
+        intent: ['serious_relationship'],
+      },
     });
   });
 });

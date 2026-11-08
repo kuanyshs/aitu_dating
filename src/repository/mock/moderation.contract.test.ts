@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { sampleAnswers } from './testAnswers';
 
 import { fixedClock } from '@/clock';
 import { CLUB_RULES_VERSION, ModerationResult, type QuestionnaireAnswers } from '@/contracts';
@@ -8,15 +9,7 @@ import { createMockRepository, type MockRepository } from './createMockRepositor
 
 const clock = fixedClock();
 
-const answers: QuestionnaireAnswers = {
-  city: ['750000000'],
-  intent: ['communication'],
-  communication: ['messages_first'],
-  pace: ['gradual'],
-  firstMeeting: ['coffee_talk'],
-  boundaries: ['public_place'],
-  dateFormat: ['walk'],
-};
+const answers: QuestionnaireAnswers = { ...sampleAnswers, city: ['750000000'] };
 
 function repositoryOn(store = createMemoryStore()) {
   return createMockRepository({ clock, latency: 0, store });
@@ -30,7 +23,6 @@ async function join(repo: MockRepository) {
   await repo.confirmPayment({ idempotencyKey: 'join-checkout' });
   await repo.saveProfileStep({
     bio: 'Коротко о себе.',
-    interests: ['sport'],
     communicationStyle: 'short_messages',
   });
   return repo.completeOnboarding({ answers, idempotencyKey: 'onboard-mod-1' });

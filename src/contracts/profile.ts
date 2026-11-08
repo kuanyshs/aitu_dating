@@ -1,20 +1,22 @@
 import { z } from 'zod';
 
-import { communicationStyles, datingIntents, interests } from '@/catalogs';
+import { communicationStyles } from '@/catalogs';
 
 import { Id, Page } from './common';
 import { LIMITS } from './limits';
 import { FeedContent } from './feed';
+import { PartialAnswers } from './onboarding';
 import { AuthorView } from './people';
 import { PhotoRef } from './photo';
 
-/** What an active member may see of another member's Карточка. Never sent to guests. */
+/**
+ * What an active member may see of another member's Карточка and Анкета. Never sent to
+ * guests. The income answers are left out: they serve search only.
+ */
 export const PublicCard = z.strictObject({
   bio: z.string().max(LIMITS.bio),
-  /** Намерения: up to three, the Анкета's answer. */
-  intents: z.array(z.enum(datingIntents)).min(1).max(3),
-  interests: z.array(z.enum(interests)),
   communicationStyle: z.enum(communicationStyles),
+  answers: PartialAnswers,
 });
 export type PublicCard = z.infer<typeof PublicCard>;
 

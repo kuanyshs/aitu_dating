@@ -7,11 +7,8 @@ import {
   meetingGoals,
   paymentPolicies,
   planBudgets,
-  questionKeys,
   topics,
 } from '@/catalogs';
-
-import type { QuestionKey as QuestionKeyName } from '@/catalogs';
 
 import { Id, IsoDate, IsoDateTime } from './common';
 import { LIMITS } from './limits';
@@ -79,14 +76,15 @@ export const QuotedPost = z.strictObject({
 export type QuotedPost = z.infer<typeof QuotedPost>;
 
 /**
- * Why «Для тебя» picked a post for an active member: a shared interest or an Анкета
- * answer that matched their filters. At most two are given.
+ * Why «Поиск» picked a post for an active member: a shared interest, the same Намерение or
+ * the same place. At most two are given.
  */
 export const FeedReason = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('interest'), interest: z.enum(interests) }),
   z.strictObject({
     kind: z.literal('answer'),
-    question: z.enum(questionKeys as [QuestionKeyName, ...QuestionKeyName[]]),
+    /** «Тоже ищет» or «Живёт там же». */
+    question: z.enum(['intent', 'city']),
     option: z.string(),
   }),
 ]);

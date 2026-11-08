@@ -28,14 +28,17 @@ export function matchPeople(
   const text = normalize(query.text ?? '');
   const city = query.city ?? (!text && !hasFilters(query) ? viewerCity : undefined);
   const found = people.filter((person) => {
-    if (city && !person.card.questionnaire.city.includes(city)) return false;
-    if (query.intent && !person.card.questionnaire.intent.includes(query.intent)) return false;
-    if (query.interests?.some((i) => !person.card.interests.includes(i))) return false;
+    const answers = person.card.questionnaire;
+    const interests = answers.interests ?? [];
+    if (city && !(answers.city ?? []).includes(city)) return false;
+    if (query.intent && !(answers.intent ?? []).includes(query.intent)) return false;
+    if (query.interests?.some((i) => !interests.includes(i))) return false;
     if (!text) return true;
     const haystack = [
       person.name,
       person.card.bio,
-      ...person.card.interests.map((i) => interestLabels[i]),
+      ...interests.filter((i) => i !== 'other').map((i) => interestLabels[i]),
+      ...(answers.interestOther ?? []),
     ].map(normalize);
     return haystack.some((field) => field.includes(text));
   });

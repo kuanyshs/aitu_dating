@@ -45,7 +45,7 @@ import type {
   CompleteOnboardingInput,
   MyProfile,
   ProfileStepInput,
-  SaveAnswerInput,
+  SaveAnswersInput,
   UpdateCardInput,
   UpdatePhotosInput,
 } from './onboarding';
@@ -131,7 +131,7 @@ export interface AituRepository {
   // Onboarding. Field errors use `profile.<field>` and `answers.<question>` keys so the
   // client can send the person to the exact step and field.
   saveProfileStep(input: ProfileStepInput): Promise<AccessFlowState>;
-  saveAnswer(input: SaveAnswerInput): Promise<AccessFlowState>;
+  saveAnswers(input: SaveAnswersInput): Promise<AccessFlowState>;
   /** Publishes the Карточка together with the last answer, all or nothing. */
   completeOnboarding(input: CompleteOnboardingInput): Promise<MyProfile>;
   getMyProfile(): Promise<MyProfile>;

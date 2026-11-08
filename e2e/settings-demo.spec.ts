@@ -93,6 +93,8 @@ test.describe('settings and demo controls', () => {
 
   test('unreadable stored state is reset with an explanation', async ({ page }) => {
     await page.goto('/');
+    // The app reads its storage once it has started: break it after that, not before.
+    await expect(page.getByRole('article').first()).toBeVisible();
     await page.evaluate(() => localStorage.setItem('aitu.demo.state.v1', '{broken'));
     await page.reload();
     await expect(page.getByTestId('toast')).toBeVisible();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { sampleAnswers } from './testAnswers';
 
-import { questionKeys } from '@/catalogs';
 import { fixedClock } from '@/clock';
 import {
   CLUB_RULES_VERSION,
@@ -15,15 +15,7 @@ import { createMockRepository } from './createMockRepository';
 
 const safeKeys = ['age', 'avatar', 'city', 'gender', 'view'];
 
-const answers: QuestionnaireAnswers = {
-  city: ['750000000'],
-  intent: ['dating'],
-  communication: ['messages_first'],
-  pace: ['gradual'],
-  firstMeeting: ['coffee_talk'],
-  boundaries: ['public_place'],
-  dateFormat: ['walk'],
-};
+const answers: QuestionnaireAnswers = { ...sampleAnswers, city: ['750000000'] };
 
 /**
  * Flows A–D and the expiry part of flow G from the spec package
@@ -56,13 +48,11 @@ describe('first slice: guest → member → logout → login → expiry → rene
     await repo.confirmPayment({ idempotencyKey: 'first-slice-pay-1' });
     await repo.saveProfileStep({
       bio: 'Люблю разговоры о книгах.',
-      interests: ['books', 'coffee'],
       communicationStyle: 'calm_dialogue',
     });
-    for (const key of questionKeys.slice(0, -1)) {
-      await repo.saveAnswer({ question: key, answer: answers[key] });
-    }
-    const last = questionKeys[questionKeys.length - 1]!;
+    const last = 'interestOther' as const;
+    const { [last]: _final, ...earlier } = answers;
+    await repo.saveAnswers({ answers: earlier });
     const aidana = MyProfile.parse(
       await repo.completeOnboarding({
         answers: { [last]: answers[last] },
@@ -99,7 +89,6 @@ describe('first slice: guest → member → logout → login → expiry → rene
     expect(afterPayment.payment?.amountKzt).toBe(4990);
     await repo.saveProfileStep({
       bio: 'Бегаю по утрам.',
-      interests: ['sport'],
       communicationStyle: 'short_messages',
     });
     const timur = await repo.completeOnboarding({

@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { useLogout, useMyProfile, useProfile, useSession, useUnreadMessages } from '@/data/hooks';
 import { ProfileSections } from '@/features/profile/ProfileSections';
 import { ProfileStats } from '@/features/profile/ProfileStats';
+import { OutdatedBanner } from '@/features/questionnaire/OutdatedBanner';
 import { AccessPrompt } from '@/ui/components/AccessPrompt';
 import { TextButton } from '@/ui/components/buttons';
 import { ProfileCardView } from '@/ui/components/ProfileCardView';
@@ -56,6 +57,9 @@ export default function ProfileScreen() {
   return (
     <Screen testID="screen-profile">
       {isExpired ? <RenewBanner testID="profile-renew-banner" /> : null}
+      {me.data && !me.data.card.questionnaireComplete ? (
+        <OutdatedBanner testID="profile-outdated" />
+      ) : null}
       {me.data ? (
         <ProfileCardView
           me={me.data}

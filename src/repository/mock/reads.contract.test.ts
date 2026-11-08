@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { sampleAnswers } from './testAnswers';
 
 import { fixedClock } from '@/clock';
 import {
@@ -13,15 +14,7 @@ import { createMemoryStore } from '@/storage';
 
 import { createMockRepository, type MockRepository } from './createMockRepository';
 
-const answers: QuestionnaireAnswers = {
-  city: ['750000000'],
-  intent: ['dating'],
-  communication: ['messages_first'],
-  pace: ['gradual'],
-  firstMeeting: ['coffee_talk'],
-  boundaries: ['public_place'],
-  dateFormat: ['walk'],
-};
+const answers: QuestionnaireAnswers = { ...sampleAnswers, city: ['750000000'] };
 
 function repositoryOn(store = createMemoryStore()) {
   return createMockRepository({ clock: fixedClock(), latency: 0, store });
@@ -35,7 +28,6 @@ async function join(repo: MockRepository) {
   await repo.confirmPayment({ idempotencyKey: 'join-checkout' });
   await repo.saveProfileStep({
     bio: 'Коротко о себе.',
-    interests: ['coffee'],
     communicationStyle: 'short_messages',
   });
   return repo.completeOnboarding({ answers, idempotencyKey: 'onboard-reads' });
@@ -115,7 +107,10 @@ describe('profile', () => {
     await join(repo);
     const profile = ProfileView.parse(await repo.getProfile({ memberId: 'm01' }));
     expect(profile.person).toMatchObject({ view: 'member', id: 'm01' });
-    expect(profile.card?.interests.length).toBeGreaterThan(0);
+    expect(profile.card?.answers.interests?.length).toBeGreaterThan(0);
+    // Income serves search only.
+    expect(profile.card?.answers).not.toHaveProperty('income');
+    expect(profile.card?.answers).not.toHaveProperty('incomeSource');
     expect(profile.relation).toEqual({ following: false, followsMe: false, blocked: false });
     const posts = await repo.listProfilePosts({ memberId: 'm01', limit: 50 });
     expect(profile.stats.posts).toBe(posts.items.length);
@@ -168,29 +163,27 @@ describe('own card and settings', () => {
     await join(repo);
     await repo.expireMembership();
     await expect(
-      repo.updateMyCard({ bio: '', interests: ['coffee'], communicationStyle: 'short_messages' }),
+      repo.updateMyCard({ bio: '', communicationStyle: 'short_messages' }),
     ).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
       fieldErrors: { 'profile.bio': 'required' },
     });
     const me = await repo.updateMyCard({
       bio: 'Теперь про книги.',
-      interests: ['books'],
       communicationStyle: 'calm_dialogue',
     });
-    expect(me.card).toMatchObject({ bio: 'Теперь про книги.', interests: ['books'] });
+    expect(me.card).toMatchObject({ bio: 'Теперь про книги.', questionnaireComplete: true });
     expect(me.card.questionnaire).toEqual(answers);
 
     // «Редактировать анкету»: the answers change too, and the city follows the first one.
     const withAnswers = await repo.updateMyCard({
       bio: 'Теперь про книги.',
-      interests: ['books'],
       communicationStyle: 'calm_dialogue',
-      answers: { ...answers, intent: ['friendship', 'dating'], city: ['103230100'] },
+      answers: { ...answers, intent: ['friendship', 'marriage'], city: ['103230100'] },
     });
     expect(withAnswers.card.questionnaire).toEqual({
       ...answers,
-      intent: ['friendship', 'dating'],
+      intent: ['friendship', 'marriage'],
       city: ['103230100'],
     });
     expect(withAnswers.city).toBe('103230100');

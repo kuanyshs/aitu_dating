@@ -7,7 +7,7 @@ import {
   PartialAnswers,
   ProfileStepInput,
   QuestionnaireAnswers,
-  SaveAnswerInput,
+  SaveAnswersInput,
   type AccessFlowState,
   type AccessFlowStep,
   type ApiError,
@@ -150,20 +150,25 @@ export function saveProfileStep(
   return ok({ ...flow, step: 'questionnaire', profile: parsed.data });
 }
 
-export function saveAnswer(
+/** Saves one page of the Анкета: its answers are checked together, with the ones before. */
+export function saveAnswers(
   flow: AccessFlowRecord | null,
   input: unknown,
 ): Outcome<AccessFlowRecord> {
   if (flow?.step !== 'questionnaire') return conflict('Fill the profile step first.');
-  const parsed = SaveAnswerInput.safeParse(input);
+  const parsed = SaveAnswersInput.safeParse(input);
   if (!parsed.success) return invalid('Unknown question.', { question: 'unknown' });
-  const { question, answer } = parsed.data;
-  const answers = PartialAnswers.safeParse({ ...flow.answers, [question]: answer });
+  const answers = PartialAnswers.safeParse({ ...flow.answers, ...parsed.data.answers });
   if (!answers.success) {
-    // «too_many», «required», «duplicate» or «unknown» for a settlement not in the directory.
-    const reason = answers.error.issues[0]?.message;
-    const code = ['too_many', 'required', 'duplicate'].includes(reason ?? '') ? reason! : 'unknown';
-    return invalid('Check the answer.', { [`answers.${question}`]: code });
+    // «too_many», «required», «duplicate», «conflict», «mismatch», «too_long», or «unknown»
+    // for a code not in its directory.
+    const known = ['too_many', 'required', 'duplicate', 'conflict', 'mismatch', 'too_long'];
+    const errors: Record<string, string> = {};
+    for (const issue of answers.error.issues) {
+      const key = `answers.${String(issue.path[0])}`;
+      errors[key] ??= known.includes(issue.message) ? issue.message : 'unknown';
+    }
+    return invalid('Check the answers.', errors);
   }
   return ok({ ...flow, answers: answers.data });
 }

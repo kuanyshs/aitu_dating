@@ -261,16 +261,44 @@ describe('the filter of «Поиск» and «Мои подписки»', () => {
     await expect(guestRepository().getFeedFilters()).rejects.toMatchObject({
       code: 'UNAUTHENTICATED',
     });
-    const filters = { ...emptyFeedFilters(), interests: ['coffee' as const] };
+    // A guest filters by what the Безопасный вид shows; the rest of «Кого ищу» is ignored,
+    // so nobody learns an answer through the filter.
+    const filters = {
+      ...emptyFeedFilters(),
+      gender: ['woman' as const],
+      interests: ['travel' as const],
+      income: ['over_2m' as const],
+    };
     const posts = await allPages(guestRepository(), { tab: 'for_you', filters });
-    const coffee = new Set(
-      seed.members.filter((m) => m.card.interests.includes('coffee')).map((m) => m.id),
-    );
+    const authorOf = (id: string) =>
+      seed.members.find((m) => m.id === seed.posts.find((p) => p.id === id)!.authorId)!;
     expect(posts.length).toBeGreaterThan(0);
     for (const post of posts) {
-      const author = seed.posts.find((p) => p.id === post.id)!.authorId;
-      expect(coffee.has(author)).toBe(true);
+      expect(authorOf(post.id).gender).toBe('woman');
       expect(post.reasons).toBeUndefined();
+    }
+    expect(
+      posts.some((p) => !authorOf(p.id).card.questionnaire.interests?.includes('travel')),
+    ).toBe(true);
+  });
+
+  it('compares «Кого ищу» with the author’s answers for an active member', async () => {
+    const repo = memberRepository('m02');
+    await repo.updateFeedFilters({
+      ...emptyFeedFilters(),
+      gender: ['woman'],
+      age: ['25-30'],
+      interests: ['travel'],
+    });
+    const posts = await allPages(repo, { tab: 'for_you' });
+    expect(posts.length).toBeGreaterThan(0);
+    for (const post of posts.filter((p) => !p.mine)) {
+      const record = seed.posts.find((p) => p.id === post.id)!;
+      const author = seed.members.find((m) => m.id === record.authorId)!;
+      expect(author.gender).toBe('woman');
+      expect(author.age).toBeGreaterThanOrEqual(25);
+      expect(author.age).toBeLessThanOrEqual(30);
+      expect(author.card.questionnaire.interests).toContain('travel');
     }
   });
 

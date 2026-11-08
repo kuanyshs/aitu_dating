@@ -6,23 +6,13 @@ import {
   joinAsMadina,
   showFeed,
   signInAs,
-  answerQuestion,
+  fillQuestionnaire,
 } from './helpers';
 
 /**
  * Visual baselines of the first slice in both themes (390×844). They are rendered and
  * compared in CI inside the Playwright image; see README → «Визуальные эталоны».
  */
-
-const answers = [
-  ['city', 'almaty'],
-  ['intent', 'dating'],
-  ['communication', 'messages_first'],
-  ['pace', 'gradual'],
-  ['firstMeeting', 'coffee_talk'],
-  ['boundaries', 'public_place'],
-  ['dateFormat', 'walk'],
-] as const;
 
 async function snap(page: Page, name: string) {
   await expect(page).toHaveScreenshot(`${name}.png`);
@@ -63,17 +53,14 @@ test.describe('visual baselines @visual', () => {
     await page.getByTestId('payment-pay').click();
     await expect(page.getByTestId('access-profile')).toBeVisible({ timeout: 10_000 });
     await page.getByTestId('profile-bio').fill('Люблю разговоры о книгах.');
-    await page.getByTestId('interest-books').click();
     await page.getByTestId('profile-style-calm_dialogue').click();
     await page.getByTestId('access-next').click();
-    for (const [question, answer] of answers) {
-      await answerQuestion(page, question, answer);
-    }
+    await fillQuestionnaire(page);
     await expect(page.getByTestId('questionnaire-create')).not.toHaveAttribute(
       'aria-disabled',
       'true',
     );
-    await snap(page, 'questionnaire-7of7');
+    await snap(page, 'questionnaire-6of6');
 
     await page.getByTestId('questionnaire-create').click();
 

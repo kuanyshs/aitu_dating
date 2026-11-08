@@ -30,30 +30,47 @@ describe('matchPeople', () => {
   });
 
   it('matches interests by their label and needs all the chosen ones', () => {
-    const found = matchPeople(people, { kind: 'people', text: 'кофе' }, undefined);
+    const interestsOf = (p: (typeof people)[number]) => p.card.questionnaire.interests ?? [];
+    const found = matchPeople(people, { kind: 'people', text: 'путешеств' }, undefined);
     expect(found.length).toBeGreaterThan(0);
     expect(
-      found.every((p) => p.card.interests.includes('coffee') || /кофе/i.test(p.name + p.card.bio)),
+      found.every(
+        (p) => interestsOf(p).includes('travel') || /путешеств/i.test(p.name + p.card.bio),
+      ),
     ).toBe(true);
+    // «Свой вариант» is found by its own text.
+    const guitar = matchPeople(people, { kind: 'people', text: 'гитар' }, undefined);
+    expect(guitar.map((p) => p.id)).toContain('m12');
 
-    const both = matchPeople(people, { kind: 'people', interests: ['coffee', 'books'] }, undefined);
+    const both = matchPeople(
+      people,
+      { kind: 'people', interests: ['travel', 'reading'] },
+      undefined,
+    );
+    expect(both.length).toBeGreaterThan(0);
     expect(
-      both.every((p) => p.card.interests.includes('coffee') && p.card.interests.includes('books')),
+      both.every((p) => interestsOf(p).includes('travel') && interestsOf(p).includes('reading')),
     ).toBe(true);
   });
 
   it('filters by city and intent; with nothing asked, shows the viewer’s city', () => {
     const inAlmaty = matchPeople(people, { kind: 'people', city: '750000000' }, undefined);
     expect(inAlmaty.length).toBeGreaterThan(0);
-    expect(inAlmaty.every((p) => p.city === '750000000')).toBe(true);
+    expect(inAlmaty.every((p) => p.card.questionnaire.city?.includes('750000000'))).toBe(true);
+    // Someone living in two cities is found in both.
+    expect(inAlmaty.map((p) => p.id)).toContain('m10');
 
-    const dating = matchPeople(people, { kind: 'people', intent: 'dating' }, '710000000');
-    expect(dating.every((p) => p.card.questionnaire.intent.includes('dating'))).toBe(true);
-    expect(dating.some((p) => p.city !== '710000000')).toBe(true);
+    const marriage = matchPeople(people, { kind: 'people', intent: 'marriage' }, '710000000');
+    expect(marriage.length).toBeGreaterThan(0);
+    expect(marriage.every((p) => p.card.questionnaire.intent?.includes('marriage'))).toBe(true);
+    expect(marriage.some((p) => p.city !== '710000000')).toBe(true);
+
+    const abroad = matchPeople(people, { kind: 'people', city: 'KR' }, undefined);
+    expect(abroad.map((p) => p.id)).toEqual(['m03']);
 
     const nearby = matchPeople(people, { kind: 'people' }, '710000000');
     expect(nearby.length).toBeGreaterThan(0);
-    expect(nearby.every((p) => p.city === '710000000')).toBe(true);
+    expect(nearby.every((p) => p.card.questionnaire.city?.includes('710000000'))).toBe(true);
   });
 });
 

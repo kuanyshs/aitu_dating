@@ -2,13 +2,7 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import {
-  settlementName,
-  communicationStyleLabels,
-  datingIntentLabels,
-  genderLabels,
-  interestLabels,
-} from '@/catalogs';
+import { settlementName, communicationStyleLabels, genderLabels } from '@/catalogs';
 import { isRepositoryError, type ProfileView } from '@/contracts';
 import { useProfile, useSession, useSetBlock, useSetFollow } from '@/data/hooks';
 import { useWriteTo } from '@/features/chat/useWriteTo';
@@ -24,6 +18,7 @@ import { EmptyState, ErrorState } from '@/ui/components/StateViews';
 import { AppText } from '@/ui/components/Text';
 import { BadgeCheck, ChevronLeft, Ellipsis } from '@/ui/icons';
 import { PhotoGallery } from '@/features/photo/PhotoGallery';
+import { AnswersView } from '@/features/questionnaire/AnswersView';
 import { fullName } from '@/ui/format';
 import { strings } from '@/ui/strings';
 import { useToast } from '@/ui/toast';
@@ -291,20 +286,11 @@ function Card({ card }: { card: NonNullable<ProfileView['card']> }) {
   return (
     <View style={styles.card} testID="member-card">
       {card.bio ? <AppText testID="member-bio">{card.bio}</AppText> : null}
-      <Section title={p.intent}>
-        <AppText>{card.intents.map((i) => datingIntentLabels[i]).join(', ')}</AppText>
-      </Section>
-      <Section title={p.interests}>
-        <View style={styles.tags}>
-          {card.interests.map((key) => (
-            <View key={key} style={styles.tag}>
-              <AppText variant="caption">{interestLabels[key]}</AppText>
-            </View>
-          ))}
-        </View>
-      </Section>
       <Section title={p.communication}>
         <AppText>{communicationStyleLabels[card.communicationStyle]}</AppText>
+      </Section>
+      <Section title={p.questionnaire}>
+        <AnswersView answers={card.answers} own={false} testID="member-answer" />
       </Section>
     </View>
   );
@@ -340,12 +326,5 @@ const useStyles = createStyles((colors) => ({
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.line,
-  },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  tag: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
   },
 }));

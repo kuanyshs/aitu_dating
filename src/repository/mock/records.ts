@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import {
   communicationStyles,
-  interests,
   meetingDurations,
   meetingFormats,
   meetingGoals,
@@ -12,6 +11,7 @@ import {
 } from '@/catalogs';
 import {
   ChatContext,
+  PartialAnswers,
   QuestionnaireAnswers,
   SettlementCode,
   GenderKey,
@@ -32,13 +32,13 @@ export { QuestionnaireAnswers };
 
 export const ProfileCardRecord = z.strictObject({
   bio: z.string().min(1).max(160),
-  interests: z.array(z.enum(interests)).min(1).max(5),
   communicationStyle: z.enum(communicationStyles),
   /** «Показывать фамилию в профиле»; absent means off. */
   showSurname: z.boolean().optional(),
   /** Profile Фото in order; the first is the main one. */
   photoIds: z.array(z.string()).max(4).optional(),
-  questionnaire: QuestionnaireAnswers,
+  /** Complete for anyone who filled the Анкета since v5; partial for an older one. */
+  questionnaire: PartialAnswers,
   publishedAt: IsoDateTime,
 });
 

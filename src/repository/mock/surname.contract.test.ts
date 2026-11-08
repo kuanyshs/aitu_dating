@@ -46,7 +46,6 @@ describe('surname from Passport', () => {
 
     const updated = await own.updateMyCard({
       bio: me.card.bio,
-      interests: me.card.interests,
       communicationStyle: me.card.communicationStyle,
       showSurname: true,
     });

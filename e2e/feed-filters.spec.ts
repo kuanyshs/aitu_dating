@@ -33,10 +33,11 @@ test.describe('Ленты и единый фильтр', () => {
     expect(fromSearch).toEqual(
       expect.arrayContaining([
         'feed-filter-content-plans',
-        'feed-filter-city-open',
-        'feed-filter-interests-coffee',
+        'feed-filter-gender-any',
+        'feed-filter-gender-woman',
+        'feed-filter-age-from',
+        'feed-filter-city-field-open',
         'feed-filter-topics-meetings',
-        'feed-filter-intent-dating',
         'feed-filter-format-walk',
         'feed-filter-goal-talk',
         'feed-filter-budget-up_to_3000',
@@ -44,6 +45,11 @@ test.describe('Ленты и единый фильтр', () => {
         'feed-filter-soon-weekend',
       ]),
     );
+    // Without verification «Кого ищу» is Пол, возраст and place: what the safe view shows.
+    expect(fromSearch).not.toContain('feed-filter-nationality-any');
+    expect(fromSearch).not.toContain('feed-filter-income-over_2m');
+    expect(fromSearch).not.toContain('feed-filter-interests-travel');
+    await expect(page.getByTestId('feed-filters-partner-note')).toContainText('по полу');
     await expect(page.getByTestId('feed-filters-apply')).toHaveText('Применить');
     await expect(page.getByTestId('feed-filters-reset')).toHaveText('Сбросить');
     await expect(page.getByTestId('feed-filters-cancel')).toHaveText('Отмена');
@@ -54,11 +60,15 @@ test.describe('Ленты и единый фильтр', () => {
     expect(await filterOptions(page)).toEqual(fromSearch);
 
     // 9: apply; the choice shows as chips.
-    await page.getByTestId('feed-filter-interests-coffee').click();
+    await page.getByTestId('feed-filter-gender-woman').click();
+    await expect(page.getByTestId('feed-filter-gender-any')).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
     await page.getByTestId('feed-filter-soon-weekend').click();
     await page.getByTestId('feed-filters-apply').click();
     await expect(page.getByTestId('screen-feed-filters')).toHaveCount(0);
-    await expect(page.getByTestId('feed-chip-interests-coffee')).toBeVisible();
+    await expect(page.getByTestId('feed-chip-gender-woman')).toBeVisible();
     await expect(page.getByTestId('home-filters-count')).toHaveText('2');
 
     // 10: kept across feeds, a post and a restart; «Популярное» is not filtered.
@@ -66,7 +76,7 @@ test.describe('Ленты и единый фильтр', () => {
     await expect(page.getByTestId('feed-filter-chips')).toHaveCount(0);
     await expect(page.getByTestId('home-filters')).toHaveCount(0);
     await page.getByTestId('feed-tab-for_you').click();
-    await expect(page.getByTestId('feed-chip-interests-coffee')).toBeVisible();
+    await expect(page.getByTestId('feed-chip-gender-woman')).toBeVisible();
     await page.getByRole('article').first().click();
     await page.goBack();
     await expect(page.getByTestId('feed-chip-soon-weekend')).toBeVisible();
@@ -91,7 +101,7 @@ test.describe('Ленты и единый фильтр', () => {
     await expect(page.getByTestId('home-filters-count')).toHaveText('1');
 
     await page.getByTestId('home-filters').click();
-    await page.getByTestId('feed-filter-intent-friendship').click();
+    await page.getByTestId('feed-filter-topics-thoughts').click();
     await page.getByTestId('feed-filters-cancel').click();
     await expect(page.getByTestId('home-filters-count')).toHaveText('1');
 
@@ -122,7 +132,7 @@ test.describe('Ленты и единый фильтр', () => {
 
     await page.getByTestId('home-filters').click();
     await expect(page.getByTestId('feed-filters-guest-note')).toHaveCount(0);
-    await pickSettlement(page, 'feed-filter-city', '710000000', 'Астана');
+    await pickSettlement(page, 'feed-filter-city-field', '710000000', 'Астана');
     await page.getByTestId('feed-filter-content-plans').click();
     await page.getByTestId('feed-filters-apply').click();
     await expect(page.getByTestId('feed-chip-city-710000000')).toBeVisible();
@@ -139,10 +149,72 @@ test.describe('Ленты и единый фильтр', () => {
     await expect(page.getByTestId('feed-error')).toHaveCount(0);
   });
 
+  test('«Кого ищу» asks the Анкета’s questions about the person sought', async ({ page }) => {
+    await signInAs(page, 'm02');
+    await page.goto('/');
+    await page.getByTestId('home-filters').click();
+    await expect(page.getByTestId('feed-filters-partner-note')).toContainText('Все варианты');
+    // Every question of the Анкета, each starting at «Все варианты».
+    for (const key of [
+      'gender',
+      'nationality',
+      'city',
+      'intent',
+      'familyPlans',
+      'maritalStatus',
+      'children',
+      'childrenCount',
+      'wantChildren',
+      'education',
+      'occupation',
+      'incomeSource',
+      'income',
+      'car',
+      'housing',
+      'livingWith',
+      'parents',
+      'habits',
+      'interests',
+    ]) {
+      await expect(page.getByTestId(`feed-filter-${key}-any`)).toHaveAttribute(
+        'aria-checked',
+        'true',
+      );
+    }
+    await page.getByTestId('feed-filter-gender-woman').click();
+    await page.getByTestId('feed-filter-age-from').fill('25');
+    await page.getByTestId('feed-filter-age-to').fill('30');
+    await expect(page.getByTestId('feed-filter-age-any')).toHaveAttribute('aria-checked', 'false');
+    await page.getByTestId('feed-filter-nationality-field-open').click();
+    await page.getByTestId('feed-filter-nationality-field-picker-option-005').click();
+    await page.getByTestId('feed-filter-nationality-field-picker-option-168').click();
+    await page.getByTestId('feed-filter-nationality-field-picker-done').click();
+    await page.getByTestId('feed-filter-interests-travel').click();
+    await page.getByTestId('feed-filter-habits-smoking_never').click();
+    // A one-answer question takes one value; «Все варианты» clears it again.
+    await page.getByTestId('feed-filter-car-yes').click();
+    await page.getByTestId('feed-filter-car-no').click();
+    await expect(page.getByTestId('feed-filter-car-yes')).toHaveAttribute('aria-checked', 'false');
+    await page.getByTestId('feed-filter-car-any').click();
+    await expect(page.getByTestId('feed-filter-car-no')).toHaveAttribute('aria-checked', 'false');
+    await page.getByTestId('feed-filters-apply').click();
+
+    await expect(page.getByTestId('feed-chip-age-25-30')).toHaveText('25–30 лет ✕');
+    await expect(page.getByTestId('feed-chip-nationality-168')).toBeVisible();
+    await expect(page.getByTestId('home-filters-count')).toHaveText('6');
+    // Only women of 25 to 30 who travel and never smoke, Kazakh or Korean: Алия and Диана
+    // (and Руслан's own fresh post, which leads «Поиск» whatever the filter).
+    await expect(async () => {
+      const names = await page.getByTestId('author-name').allInnerTexts();
+      expect(names.length).toBeGreaterThan(0);
+      for (const name of names) expect(['Алия', 'Диана', 'Руслан']).toContain(name.split(' ')[0]);
+    }).toPass();
+  });
+
   test('nothing under the filter offers to reset it', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('home-filters').click();
-    await pickSettlement(page, 'feed-filter-city', '790000000', 'Шымкент');
+    await pickSettlement(page, 'feed-filter-city-field', '790000000', 'Шымкент');
     await page.getByTestId('feed-filters-apply').click();
     await expect(page.getByTestId('feed-empty')).toContainText('Ничего не нашлось');
     await page.getByTestId('feed-empty-action').click();

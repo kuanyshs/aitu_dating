@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { sampleAnswers } from './testAnswers';
 
 import { fixedClock } from '@/clock';
 import {
   ApiErrorCode,
+  emptyFeedFilters,
   CLUB_RULES_VERSION,
   isRepositoryError,
   repositoryContract,
@@ -14,15 +16,7 @@ import {
 
 import { createMockRepository, type MockRepository } from './createMockRepository';
 
-const answers: QuestionnaireAnswers = {
-  city: ['750000000'],
-  intent: ['dating'],
-  communication: ['messages_first'],
-  pace: ['gradual'],
-  firstMeeting: ['coffee_talk'],
-  boundaries: ['public_place'],
-  dateFormat: ['walk'],
-};
+const answers: QuestionnaireAnswers = { ...sampleAnswers, city: ['750000000'] };
 
 const key = 'sample-key-0001';
 
@@ -38,11 +32,11 @@ const samples: { [K in RepositoryMethod]: Parameters<AituRepository[K]>[0] } = {
   acceptRules: { rulesVersion: CLUB_RULES_VERSION },
   selectMembership: { tier: 'paid', periodMonths: 3 },
   confirmPayment: { idempotencyKey: key },
-  saveProfileStep: { bio: 'Коротко.', interests: ['coffee'], communicationStyle: 'short_messages' },
-  saveAnswer: { question: 'city', answer: ['750000000'] },
+  saveProfileStep: { bio: 'Коротко.', communicationStyle: 'short_messages' },
+  saveAnswers: { answers: { nationality: ['005'], city: ['750000000'] } },
   completeOnboarding: { answers, idempotencyKey: key },
   getMyProfile: undefined,
-  updateMyCard: { bio: 'Новое о себе.', interests: ['books'], communicationStyle: 'calm_dialogue' },
+  updateMyCard: { bio: 'Новое о себе.', communicationStyle: 'calm_dialogue' },
   renewMembership: { selection: { tier: 'paid', periodMonths: 1 }, idempotencyKey: key },
   getHomeFeed: { tab: 'for_you' },
   getPost: { postId: 'p01' },
@@ -116,16 +110,13 @@ const samples: { [K in RepositoryMethod]: Parameters<AituRepository[K]>[0] } = {
     idempotencyKey: key,
   },
   updateFeedFilters: {
+    ...emptyFeedFilters(),
+    gender: ['woman'],
+    age: ['25-35'],
     city: ['750000000'],
-    interests: ['coffee'],
-    topics: [],
-    intent: [],
+    interests: ['travel'],
     format: ['walk'],
-    goal: [],
-    budget: [],
-    payment: [],
     soon: ['week'],
-    days: [],
   },
   createReport: { target: { type: 'post', id: 'p01' }, reason: 'spam', idempotencyKey: key },
   listMyReports: {},
@@ -158,7 +149,7 @@ const implemented = new Set<RepositoryMethod>([
   'selectMembership',
   'confirmPayment',
   'saveProfileStep',
-  'saveAnswer',
+  'saveAnswers',
   'completeOnboarding',
   'getMyProfile',
   'updateMyCard',
@@ -287,7 +278,6 @@ async function activeModerator(): Promise<MockRepository> {
   await repo.confirmPayment({ idempotencyKey: 'join-checkout' });
   await repo.saveProfileStep({
     bio: 'Коротко о себе.',
-    interests: ['coffee'],
     communicationStyle: 'short_messages',
   });
   await repo.completeOnboarding({ answers, idempotencyKey: 'onboard-registry' });

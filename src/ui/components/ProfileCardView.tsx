@@ -2,18 +2,11 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { View } from 'react-native';
 
-import {
-  answerLabel,
-  settlementName,
-  communicationStyleLabels,
-  datingIntentLabels,
-  interestLabels,
-  questionKeys,
-  questionLabels,
-} from '@/catalogs';
+import { settlementName, communicationStyleLabels } from '@/catalogs';
 import type { MyProfile } from '@/contracts';
 import { BadgeCheck } from '@/ui/icons';
 import { PhotoGallery } from '@/features/photo/PhotoGallery';
+import { AnswersView } from '@/features/questionnaire/AnswersView';
 import { fullName } from '@/ui/format';
 import { strings } from '@/ui/strings';
 import { useTheme } from '@/ui/theme/ThemeProvider';
@@ -59,41 +52,12 @@ export function ProfileCardView({ me, stats }: { me: MyProfile; stats?: React.Re
         <AppText variant="caption">{membershipText}</AppText>
       </View>
 
-      <Section title={t.intent}>
-        <AppText testID="profile-intents">
-          {me.card.questionnaire.intent.map((i) => datingIntentLabels[i]).join(', ')}
-        </AppText>
-      </Section>
-
-      <Section title={t.interests}>
-        <View style={styles.tags}>
-          {me.card.interests.map((key) => (
-            <View key={key} style={styles.tag}>
-              <AppText variant="caption">{interestLabels[key]}</AppText>
-            </View>
-          ))}
-        </View>
-      </Section>
-
       <Section title={t.communication}>
         <AppText>{communicationStyleLabels[me.card.communicationStyle]}</AppText>
       </Section>
 
       <Section title={t.questionnaire}>
-        <View style={{ gap: spacing.md }}>
-          {questionKeys.map((key) => (
-            <View key={key} style={{ gap: 2 }}>
-              <AppText variant="caption" tone="textMuted">
-                {questionLabels[key]}
-              </AppText>
-              <AppText testID={`profile-answer-${key}`}>
-                {me.card.questionnaire[key].length
-                  ? me.card.questionnaire[key].map((o) => answerLabel(key, o)).join(', ')
-                  : strings.settlement.noneChosen}
-              </AppText>
-            </View>
-          ))}
-        </View>
+        <AnswersView answers={me.card.questionnaire} own testID="profile-answer" />
       </Section>
     </View>
   );
@@ -127,12 +91,5 @@ const useStyles = createStyles((colors) => ({
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.line,
-  },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  tag: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
   },
 }));

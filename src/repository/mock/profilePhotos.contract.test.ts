@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { sampleAnswers } from './testAnswers';
 
 import { fixedClock } from '@/clock';
 import { CLUB_RULES_VERSION, type Session } from '@/contracts';
@@ -88,20 +89,11 @@ describe('profile Фото', () => {
     const photo = await upload(repo, 9);
     await repo.saveProfileStep({
       bio: 'Коротко о себе.',
-      interests: ['coffee'],
       communicationStyle: 'short_messages',
       photoIds: [photo.id],
     });
     const me = await repo.completeOnboarding({
-      answers: {
-        city: ['750000000'],
-        intent: ['dating'],
-        communication: ['messages_first'],
-        pace: ['gradual'],
-        firstMeeting: ['coffee_talk'],
-        boundaries: ['public_place'],
-        dateFormat: ['walk'],
-      },
+      answers: { ...sampleAnswers, city: ['750000000'] },
       idempotencyKey: 'onboard-photo',
     });
     expect(me.photos.map((p) => p.id)).toEqual([photo.id]);

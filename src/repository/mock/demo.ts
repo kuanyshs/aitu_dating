@@ -9,6 +9,7 @@ import {
   AccessFlowStep,
   FeedFilters,
   fromLegacyFeedFilters,
+  keepKnownFeedFilters,
   StoredPlanStatus,
   UserSettings,
   MembershipSelection,
@@ -211,7 +212,7 @@ export const MockState = z.strictObject({
 });
 export type MockState = z.infer<typeof MockState>;
 
-export const MOCK_STATE_VERSION = 25;
+export const MOCK_STATE_VERSION = 26;
 
 export const mockStateMigrations = [
   // v1 held only demo flags; v2 adds the access flow and mock payments.
@@ -321,7 +322,54 @@ export const mockStateMigrations = [
   },
   // v25: voice messages in chats.
   (v24: unknown) => ({ ...(v24 as object), voices: {}, voiceKeys: {} }),
+  // v26: the Анкета «Вопросы о тебе». Only the places carry over: the other questions and
+  // the card's interests are new, so the member is asked to answer them again.
+  (v25: unknown) => {
+    const old = v25 as {
+      members?: Record<string, unknown>[];
+      accessFlow?: Record<string, unknown> | null;
+      parkedFlows?: Record<string, Record<string, unknown>>;
+      feedFilters?: Record<string, unknown>;
+    };
+    return {
+      ...old,
+      // Saved filters keep what their new catalogs still know.
+      feedFilters: Object.fromEntries(
+        Object.entries(old.feedFilters ?? {}).map(([id, f]) => [id, keepKnownFeedFilters(f)]),
+      ),
+      members: (old.members ?? []).map(toV26Member),
+      accessFlow: old.accessFlow ? toV26Flow(old.accessFlow) : null,
+      parkedFlows: Object.fromEntries(
+        Object.entries(old.parkedFlows ?? {}).map(([id, flow]) => [id, toV26Flow(flow)]),
+      ),
+    };
+  },
 ];
+
+/** Answers before v26 keep only their Населённые пункты. */
+function toV26Answers(answers: unknown): { city?: string[] } {
+  const city = (answers as { city?: unknown })?.city;
+  return Array.isArray(city) && city.length ? { city: city.slice(0, 3) as string[] } : {};
+}
+
+function toV26Member(member: Record<string, unknown>): Record<string, unknown> {
+  const { interests: _interests, ...card } = member.card as Record<string, unknown>;
+  return {
+    ...member,
+    ...(member.gender === 'non_binary' ? { gender: 'woman' } : {}),
+    card: { ...card, questionnaire: toV26Answers(card.questionnaire) },
+  };
+}
+
+function toV26Flow(flow: Record<string, unknown>): Record<string, unknown> {
+  const profile = flow.profile as Record<string, unknown> | undefined;
+  const { interests: _interests, ...rest } = profile ?? {};
+  return {
+    ...flow,
+    ...(profile ? { profile: rest } : {}),
+    ...(flow.answers ? { answers: toV26Answers(flow.answers) } : {}),
+  };
+}
 
 const legacyCities: Record<string, string | undefined> = {
   almaty: '750000000',

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { sampleAnswers } from './testAnswers';
 
 import { fixedClock } from '@/clock';
 import {
@@ -15,19 +16,10 @@ const clock = fixedClock();
 
 const profile: ProfileStepInput = {
   bio: 'Люблю книги и долгие прогулки по вечернему городу.',
-  interests: ['books', 'walks'],
   communicationStyle: 'calm_dialogue',
 };
 
-const answers: QuestionnaireAnswers = {
-  city: ['351010000'],
-  intent: ['friendship'],
-  communication: ['topic_comment_first'],
-  pace: ['gradual'],
-  firstMeeting: ['coffee_talk'],
-  boundaries: ['public_place'],
-  dateFormat: ['walk'],
-};
+const answers: QuestionnaireAnswers = { ...sampleAnswers, city: ['351010000'] };
 
 function repositoryOn(store = createMemoryStore()) {
   return createMockRepository({ clock, latency: 0, store });
@@ -50,13 +42,6 @@ describe('profile step', () => {
   it.each<[string, Partial<ProfileStepInput>, string]>([
     ['empty bio', { bio: '   ' }, 'profile.bio'],
     ['bio over 160 characters', { bio: 'а'.repeat(161) }, 'profile.bio'],
-    ['no interests', { interests: [] }, 'profile.interests'],
-    [
-      'six interests',
-      { interests: ['books', 'walks', 'coffee', 'music', 'sport', 'photo'] },
-      'profile.interests',
-    ],
-    ['an unknown interest', { interests: ['knitting' as never] }, 'profile.interests'],
     ['no communication style', { communicationStyle: undefined }, 'profile.communicationStyle'],
   ])('rejects %s with a field error', async (_label, patch, field) => {
     const repo = repositoryOn();
@@ -86,25 +71,23 @@ describe('questionnaire draft', () => {
     const store = createMemoryStore();
     const repo = repositoryOn(store);
     await toQuestionnaire(repo);
-    await repo.saveAnswer({ question: 'city', answer: ['351010000'] });
-    await repo.saveAnswer({ question: 'pace', answer: ['gradual'] });
+    await repo.saveAnswers({ answers: { nationality: ['005'], city: ['351010000'] } });
+    await repo.saveAnswers({ answers: { familyPlans: ['no_plans'] } });
 
     const restarted = repositoryOn(store);
     expect(await restarted.getAccessFlow()).toMatchObject({
       step: 'questionnaire',
       profile,
-      answers: { city: ['351010000'], pace: ['gradual'] },
+      answers: { nationality: ['005'], city: ['351010000'], familyPlans: ['no_plans'] },
     });
   });
 
   it('rejects an answer that is not an option of the question', async () => {
     const repo = repositoryOn();
     await toQuestionnaire(repo);
-    await expect(
-      repo.saveAnswer({ question: 'pace', answer: ['coffee_talk'] }),
-    ).rejects.toMatchObject({
+    await expect(repo.saveAnswers({ answers: { familyPlans: ['walk'] } })).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
-      fieldErrors: { 'answers.pace': 'unknown' },
+      fieldErrors: { 'answers.familyPlans': 'unknown' },
     });
   });
 });
@@ -113,13 +96,13 @@ describe('completeOnboarding', () => {
   it('rejects missing answers, names them, and publishes nothing', async () => {
     const repo = repositoryOn();
     await toQuestionnaire(repo);
-    const { dateFormat: _omitted, pace: _alsoOmitted, ...partial } = answers;
+    const { income: _omitted, habits: _alsoOmitted, ...partial } = answers;
     const error = await repo
       .completeOnboarding({ answers: partial, idempotencyKey: 'onboard-0001' })
       .catch((e: unknown) => e);
     expect(error).toMatchObject({
       code: 'VALIDATION_ERROR',
-      fieldErrors: { 'answers.dateFormat': 'required', 'answers.pace': 'required' },
+      fieldErrors: { 'answers.income': 'required', 'answers.habits': 'required' },
     });
     expect((await repo.getSession()).accessState).toBe('GUEST_PREVIEW');
     await expect(repo.getMyProfile()).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
@@ -129,13 +112,11 @@ describe('completeOnboarding', () => {
   it('publishes the card together with the last answer and makes an active member', async () => {
     const repo = repositoryOn();
     await toQuestionnaire(repo);
-    const { dateFormat, ...firstSix } = answers;
-    for (const [question, answer] of Object.entries(firstSix)) {
-      await repo.saveAnswer({ question: question as keyof QuestionnaireAnswers, answer });
-    }
+    const { interests, interestOther, ...firstPages } = answers;
+    await repo.saveAnswers({ answers: firstPages });
 
     const me = await repo.completeOnboarding({
-      answers: { dateFormat },
+      answers: { interests, interestOther },
       idempotencyKey: 'onboard-0002',
     });
 
@@ -145,7 +126,7 @@ describe('completeOnboarding', () => {
       city: '351010000',
       verified: true,
       avatar: { kind: 'synthetic' },
-      card: { ...profile, questionnaire: answers },
+      card: { ...profile, questionnaire: answers, questionnaireComplete: true },
       membership: { tier: 'paid', periodMonths: 12, status: 'active' },
     });
     expect(await repo.getSession()).toEqual({

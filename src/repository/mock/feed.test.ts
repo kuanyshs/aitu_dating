@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { sampleAnswers } from './testAnswers';
 
-import { emptyFeedFilters, type FeedFilters, type QuestionnaireAnswers } from '@/contracts';
+import {
+  emptyFeedFilters,
+  safeFeedFilters,
+  type FeedFilters,
+  type QuestionnaireAnswers,
+} from '@/contracts';
 
 import { selectFeed, type FeedAuthor, type FeedContext } from './feed';
 import type { CurrentPlan } from './plans';
@@ -21,44 +27,42 @@ const post = (id: string, authorId: string, age: number, extra: Partial<PostReco
   }) as PostRecord;
 
 const answers = (patch: Partial<QuestionnaireAnswers> = {}): QuestionnaireAnswers => ({
+  ...sampleAnswers,
   city: ['750000000'],
-  intent: ['dating'],
-  communication: ['messages_first'],
-  pace: ['gradual'],
-  firstMeeting: ['coffee_talk'],
-  boundaries: ['public_place'],
-  dateFormat: ['walk'],
+  intent: ['serious_relationship'],
+  interests: ['art_culture'],
   ...patch,
 });
 
-// m02 answers like the viewer and shares «кино»; m03 differs in everything but the city.
+// m02 looks for the same and shares «Искусство»; m03 differs in everything but the city.
 const authors: Record<string, FeedAuthor & { answers: QuestionnaireAnswers }> = {
-  me: { answers: answers(), interests: ['cinema'], city: '750000000' },
-  m02: { answers: answers(), interests: ['cinema'], city: '750000000' },
+  me: { answers: answers(), city: '750000000', gender: 'woman', age: 27 },
+  m02: { answers: answers(), city: '750000000', gender: 'man', age: 34 },
   m03: {
     answers: answers({
       intent: ['friendship'],
-      communication: ['slow_pace'],
-      pace: ['meet_soon'],
-      firstMeeting: ['active_walk'],
-      boundaries: ['respect_boundaries'],
-      dateFormat: ['joint_activity'],
+      interests: ['sport', 'other'],
+      interestOther: ['Настольный теннис'],
+      children: ['live_apart'],
+      childrenCount: ['2'],
+      habits: ['smoking_sometimes', 'alcohol_never'],
+      nationality: ['001'],
     }),
-    interests: ['sport'],
     city: '750000000',
+    gender: 'woman',
+    age: 30,
   },
   m04: {
     answers: answers({
-      city: ['710000000'],
+      city: ['710000000', 'TR'],
       intent: ['friendship'],
-      communication: ['slow_pace'],
-      pace: ['meet_soon'],
-      firstMeeting: ['active_walk'],
-      boundaries: ['respect_boundaries'],
-      dateFormat: ['joint_activity'],
+      interests: ['sport'],
+      habits: ['smoking_never', 'alcohol_never'],
+      income: ['over_2m'],
     }),
-    interests: ['sport'],
     city: '710000000',
+    gender: 'man',
+    age: 41,
   },
 };
 
@@ -111,11 +115,10 @@ const ctx = (viewerId: string | undefined, patch: Partial<FeedContext> = {}): Fe
   viewerId,
   filters: emptyFeedFilters(),
   wanted: viewerId ? authors[viewerId]!.answers : undefined,
-  viewerInterests: new Set(viewerId ? authors[viewerId]!.interests : []),
   followingIds: new Set(),
   withReasons: !!viewerId,
   counters: () => ({ reactions: 0, reposts: 0, commentsCount: 0 }),
-  author: (p) => authors[p.authorId] ?? { interests: [] },
+  author: (p) => authors[p.authorId] ?? {},
   plan: (id) => plans[id] as CurrentPlan | undefined,
   planStats: () => ({ opens: 0, responses: 0, accepted: false }),
   ...patch,
@@ -138,8 +141,8 @@ describe('«Поиск»', () => {
   it('gives an active member up to two reasons, a shared interest first', () => {
     const [top] = selectFeed(others, { tab: 'for_you' }, ctx('me'));
     expect(top!.reasons).toEqual([
-      { kind: 'interest', interest: 'cinema' },
-      { kind: 'answer', question: 'dateFormat', option: 'walk' },
+      { kind: 'interest', interest: 'art_culture' },
+      { kind: 'answer', question: 'intent', option: 'serious_relationship' },
     ]);
   });
 
@@ -254,5 +257,98 @@ describe('the one filter of «Поиск» and «Мои подписки»', () 
   it('works the same in «Мои подписки» and leaves «Популярное» alone', () => {
     expect(run({ city: ['710000000'] }, 'following')).toEqual(['astana-coffee', 'astana-text']);
     expect(run({ city: ['710000000'] }, 'popular')).toHaveLength(5);
+  });
+});
+
+describe('«Кого ищу»', () => {
+  const items = [
+    post('m02-text', 'm02', 4),
+    post('m03-text', 'm03', 3),
+    post('m04-text', 'm04', 2),
+    post('m04-almaty-walk', 'm04', 1, { type: 'plan', planId: 'later' }),
+    post('stranger', 'nobody', 1),
+  ];
+  const run = (filters: Partial<FeedFilters>) =>
+    ids(
+      selectFeed(
+        items,
+        { tab: 'for_you' },
+        ctx(undefined, {
+          filters: { ...emptyFeedFilters(), ...filters },
+        }),
+      ),
+    ).sort();
+
+  it('compares Пол and возраст from Passport, the range ends included', () => {
+    expect(run({ gender: ['woman'] })).toEqual(['m03-text']);
+    expect(run({ age: ['30-34'] })).toEqual(['m02-text', 'm03-text']);
+    expect(run({ age: ['41-41'] })).toEqual(['m04-almaty-walk', 'm04-text']);
+  });
+
+  it('takes any place the author lives in, and for a Встреча its own place too', () => {
+    expect(run({ city: ['TR'] })).toEqual(['m04-almaty-walk', 'm04-text']);
+    // m04 lives in Astana and Turkey; the Встреча is in Almaty.
+    expect(run({ city: ['750000000'] })).toEqual(['m02-text', 'm03-text', 'm04-almaty-walk']);
+  });
+
+  it('matches any chosen answer within a question and needs every question chosen', () => {
+    expect(run({ nationality: ['001'] })).toEqual(['m03-text']);
+    expect(run({ intent: ['friendship'], income: ['over_2m'] })).toEqual([
+      'm04-almaty-walk',
+      'm04-text',
+    ]);
+    // Someone who did not answer never matches a chosen question.
+    expect(run({ intent: ['serious_relationship', 'friendship'] })).not.toContain('stranger');
+  });
+
+  it('reads «Нет детей» and a number of children as a range', () => {
+    expect(run({ childrenCount: ['none'] })).toEqual(['m02-text', 'm04-almaty-walk', 'm04-text']);
+    expect(run({ childrenCount: ['1-3'] })).toEqual(['m03-text']);
+    expect(run({ childrenCount: ['3-5'] })).toEqual([]);
+  });
+
+  it('needs every habit chosen; «никогда» or «иногда» of one habit, either', () => {
+    expect(run({ habits: ['smoking_never', 'alcohol_never'] })).toEqual([
+      'm04-almaty-walk',
+      'm04-text',
+    ]);
+    expect(run({ habits: ['smoking_never', 'smoking_sometimes', 'alcohol_never'] })).toEqual([
+      'm03-text',
+      'm04-almaty-walk',
+      'm04-text',
+    ]);
+  });
+
+  it('finds «Свой вариант» by its text, without case or «ё»', () => {
+    expect(run({ interests: ['other'] })).toEqual(['m03-text']);
+    expect(run({ interests: ['other'], interestOther: ['ТЕННИС'] })).toEqual(['m03-text']);
+    expect(run({ interests: ['other'], interestOther: ['шахматы'] })).toEqual([]);
+    expect(run({ interests: ['art_culture', 'other'], interestOther: ['шахматы'] })).toEqual([
+      'm02-text',
+    ]);
+  });
+});
+
+describe('the filter in the Безопасный вид', () => {
+  it('keeps only Пол, возраст and place of «Кого ищу», and every other field', () => {
+    const all = {
+      ...emptyFeedFilters(),
+      gender: ['woman' as const],
+      age: ['20-30'],
+      city: ['750000000'],
+      nationality: ['005'],
+      income: ['over_2m' as const],
+      habits: ['smoking_never' as const],
+      topics: ['meetings' as const],
+      format: ['walk' as const],
+    };
+    expect(safeFeedFilters(all)).toEqual({
+      ...emptyFeedFilters(),
+      gender: ['woman'],
+      age: ['20-30'],
+      city: ['750000000'],
+      topics: ['meetings'],
+      format: ['walk'],
+    });
   });
 });

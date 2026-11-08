@@ -1,11 +1,12 @@
-import type { QuestionKey } from '@/catalogs';
+import { habitOf, type QuestionKey } from '@/catalogs';
 import {
   chosenFilterCount,
+  rangeEnds,
   type FeedContent,
   type FeedFilters,
   type FeedQuery,
   type FeedReason,
-  type QuestionnaireAnswers as QuestionnaireRecord,
+  type PartialAnswers,
 } from '@/contracts';
 
 import { almatyDate, type CurrentPlan } from './plans';
@@ -14,9 +15,11 @@ import type { PostCounters } from './shaping';
 
 /** What the ranking knows about the person behind a post. */
 export type FeedAuthor = {
-  answers?: QuestionnaireRecord;
-  interests: readonly string[];
+  answers?: PartialAnswers;
   city?: string;
+  /** From Passport; absent only for someone the mock does not know. */
+  gender?: string;
+  age?: number;
 };
 
 export type PlanStats = { opens: number; responses: number; accepted: boolean };
@@ -28,9 +31,7 @@ export type FeedContext = {
   /** The filter in force for «Поиск» and «Мои подписки»; an empty field is left out. */
   filters: FeedFilters;
   /** The viewer's own Анкета answers: «Поиск» puts people like them first. Absent for a guest. */
-  wanted?: QuestionnaireRecord;
-  /** The viewer's interests; empty for a guest. */
-  viewerInterests: ReadonlySet<string>;
+  wanted?: PartialAnswers;
   followingIds: ReadonlySet<string>;
   /** Whether to explain the picks: active members only, so no answer reaches a guest. */
   withReasons: boolean;
@@ -43,19 +44,6 @@ export type FeedContext = {
 export type RankedPost = { post: PostRecord; reasons?: FeedReason[] };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** The questions that rank ahead of everything else, together with shared interests. */
-const coreQuestions: QuestionKey[] = ['communication', 'pace', 'firstMeeting', 'boundaries'];
-/** Order in which matched answers are offered as reasons, after a shared interest. */
-const reasonOrder: QuestionKey[] = [
-  'dateFormat',
-  'intent',
-  'communication',
-  'pace',
-  'firstMeeting',
-  'boundaries',
-  'city',
-];
 
 function newestFirst(a: PostRecord, b: PostRecord): number {
   return b.createdAt.localeCompare(a.createdAt);
@@ -70,25 +58,15 @@ export function planPopularity(stats: PlanStats): number {
   return stats.opens + 2 * stats.responses + (stats.accepted ? 5 : 0);
 }
 
-/** The first of a person's answers to a question that the viewer also gave. */
-function matchedOption(
-  wanted: QuestionnaireRecord,
-  answers: QuestionnaireRecord,
-  q: QuestionKey,
-): string | undefined {
-  const mine = wanted[q] as readonly string[];
-  return (answers[q] as readonly string[]).find((a) => mine.includes(a));
-}
-
-/** Questions where the person shares at least one answer with the viewer. */
-function matchedQuestions(
-  wanted?: QuestionnaireRecord,
-  answers?: QuestionnaireRecord,
-): QuestionKey[] {
-  if (!wanted || !answers) return [];
-  return (Object.keys(wanted) as QuestionKey[]).filter(
-    (q) => matchedOption(wanted, answers, q) !== undefined,
-  );
+/** The answers two people share to a question; «Свой вариант» is nobody's in common. */
+function shared(
+  question: 'interests' | 'intent' | 'city',
+  wanted?: PartialAnswers,
+  answers?: PartialAnswers,
+): string[] {
+  const mine = (wanted?.[question] ?? []) as readonly string[];
+  const theirs = (answers?.[question] ?? []) as readonly string[];
+  return theirs.filter((a) => a !== 'other' && mine.includes(a));
 }
 
 const overlaps = (chosen: readonly string[], values: readonly string[] | undefined) =>
@@ -111,16 +89,86 @@ function soonDates(soon: FeedFilters['soon'], now: Date): Set<string> {
   return dates;
 }
 
+/** The questions of «Кого ищу» compared value by value with the author's answer. */
+const answerFields = [
+  'nationality',
+  'intent',
+  'familyPlans',
+  'maritalStatus',
+  'children',
+  'wantChildren',
+  'education',
+  'occupation',
+  'incomeSource',
+  'income',
+  'car',
+  'housing',
+  'livingWith',
+  'parents',
+] as const satisfies readonly QuestionKey[];
+
+/** Lower case, «ё» as «е»: how «Свой вариант» texts are compared. */
+const plain = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(new RegExp(String.fromCharCode(0x0451), 'g'), String.fromCharCode(0x0435))
+    .trim();
+
+/** «Кого ищу»: whether the author is someone the viewer looks for. */
+function matchesPartner(f: FeedFilters, author: FeedAuthor, plan?: CurrentPlan): boolean {
+  const answers = author.answers ?? {};
+  if (f.gender.length && !f.gender.includes(author.gender as never)) return false;
+  if (f.age.length) {
+    const [from, to] = rangeEnds(f.age[0]!);
+    if (author.age === undefined || author.age < from || author.age > to) return false;
+  }
+  // Where the author lives; a Встреча also counts where it takes place.
+  const places = [
+    ...(answers.city ?? (author.city ? [author.city] : [])),
+    ...(plan ? [plan.city] : []),
+  ];
+  if (f.city.length && !places.some((p) => f.city.includes(p))) return false;
+  for (const field of answerFields) {
+    const chosen = f[field] as readonly string[];
+    if (chosen.length && !(answers[field] ?? []).some((a) => chosen.includes(a))) return false;
+  }
+  if (f.childrenCount.length) {
+    const count = answers.childrenCount?.[0];
+    const wanted = f.childrenCount[0]!;
+    if (!count) return false;
+    if (wanted === 'none' ? count !== 'none' : count === 'none') return false;
+    if (wanted !== 'none') {
+      const [from, to] = rangeEnds(wanted);
+      if (Number(count) < from || Number(count) > to) return false;
+    }
+  }
+  // Each habit chosen must match; «никогда» or «иногда» of one habit, either will do.
+  for (const habit of new Set(f.habits.map(habitOf))) {
+    const options = f.habits.filter((h) => habitOf(h) === habit);
+    if (!(answers.habits ?? []).some((h) => options.includes(h as never))) return false;
+  }
+  if (f.interests.length) {
+    const theirs = answers.interests ?? [];
+    const own = plain(answers.interestOther?.[0] ?? '');
+    const text = plain(f.interestOther[0] ?? '');
+    const matched = f.interests.some((i) =>
+      i === 'other'
+        ? theirs.includes('other') && (!text || own.includes(text))
+        : theirs.includes(i),
+    );
+    if (!matched) return false;
+  }
+  return true;
+}
+
 /** Whether a post passes the filter: every field with a choice, any one value within it. */
 export function matchesFilters(post: PostRecord, ctx: FeedContext): boolean {
   const f = ctx.filters;
   if (chosenFilterCount(f) === 0) return true;
   const author = ctx.author(post);
   const plan = post.type === 'plan' && post.planId ? ctx.plan(post.planId) : undefined;
-  if (!overlaps(f.city, [plan ? plan.city : (author.city ?? '')].filter(Boolean))) return false;
-  if (!overlaps(f.interests, author.interests)) return false;
+  if (!matchesPartner(f, author, plan)) return false;
   if (!overlaps(f.topics, post.topics)) return false;
-  if (!overlaps(f.intent, author.answers?.intent)) return false;
   if (!plan) return true;
   if (!overlaps(f.format, [plan.format])) return false;
   if (!overlaps(f.goal, [plan.goal])) return false;
@@ -146,43 +194,38 @@ function ofContent(post: PostRecord, content: FeedContent): boolean {
   return true;
 }
 
-/** How well a post fits «Поиск» for this viewer, and why. */
+/**
+ * How well a post fits «Поиск» for this viewer, and why: shared interests first, then the
+ * same Намерение, then the same place.
+ */
 function forYou(post: PostRecord, ctx: FeedContext): { score: number; reasons: FeedReason[] } {
   const author = ctx.author(post);
-  const matched = matchedQuestions(ctx.wanted, author.answers);
-  const shared = author.interests.filter((i) => ctx.viewerInterests.has(i));
-  const core = matched.filter((q) => coreQuestions.includes(q)).length + shared.length;
-  const has = (q: QuestionKey) => (matched.includes(q) ? 1 : 0);
+  const interests = shared('interests', ctx.wanted, author.answers);
+  const intents = shared('intent', ctx.wanted, author.answers);
+  const places = shared('city', ctx.wanted, author.answers);
   let score =
-    core * 100 +
-    has('city') * 30 +
-    has('intent') * 20 +
-    has('dateFormat') * 10 +
+    interests.length * 100 +
+    (intents.length ? 40 : 0) +
+    (places.length ? 30 : 0) +
     (ctx.followingIds.has(post.authorId) ? 5 : 0);
 
   const plan = post.planId ? ctx.plan(post.planId) : undefined;
   if (plan) {
-    // A nearer date, and a format and goal the viewer looks for, lift a План.
+    // A nearer date lifts a Встреча, and one in a place the viewer lives in.
     const daysAway = (new Date(`${plan.date}T12:00:00Z`).getTime() - ctx.now.getTime()) / DAY_MS;
     score += Math.max(0, 14 - Math.max(daysAway, 0)) / 14;
-    const formats = (ctx.wanted?.dateFormat ?? []) as readonly string[];
-    if (formats.includes('walk') && plan.format === 'walk') score += 5;
-    if (formats.includes('joint_activity') && plan.goal === 'joint_activity') score += 5;
-    if (formats.includes('short_meeting') && plan.durationMinutes <= 60) score += 5;
+    if ((ctx.wanted?.city ?? []).includes(plan.city)) score += 10;
   }
   const ageDays = (ctx.now.getTime() - new Date(post.createdAt).getTime()) / DAY_MS;
   score += 1 / (1 + Math.max(ageDays, 0));
 
   const reasons: FeedReason[] = [];
-  if (shared[0]) reasons.push({ kind: 'interest', interest: shared[0] as never });
-  for (const question of reasonOrder) {
-    if (reasons.length === 2) break;
-    if (matched.includes(question) && author.answers && ctx.wanted) {
-      const option = matchedOption(ctx.wanted, author.answers, question);
-      if (option) reasons.push({ kind: 'answer', question, option });
-    }
+  if (interests[0]) reasons.push({ kind: 'interest', interest: interests[0] as never });
+  if (intents[0]) reasons.push({ kind: 'answer', question: 'intent', option: intents[0] });
+  if (reasons.length < 2 && places[0]) {
+    reasons.push({ kind: 'answer', question: 'city', option: places[0] });
   }
-  return { score, reasons };
+  return { score, reasons: reasons.slice(0, 2) };
 }
 
 /** Orders and filters visible posts for a Лента. Access checks happen before this. */

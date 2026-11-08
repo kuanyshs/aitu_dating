@@ -1,7 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import {
-  answerQuestion,
+  chooseAnswer,
+  defaultChoices,
+  fillQuestionnaire,
   choosePhotos,
   joinAsMadina,
   openCreate,
@@ -171,37 +173,49 @@ test.describe('guide @guide', () => {
     await page.getByTestId('payment-pay').click();
     await expect(page.getByTestId('access-profile')).toBeVisible({ timeout: 10_000 });
     await page.getByTestId('profile-bio').fill('Люблю разговоры о книгах и долгие прогулки.');
-    await page.getByTestId('interest-books').click();
-    await page.getByTestId('interest-walks').click();
     await page.getByTestId('profile-style-calm_dialogue').click();
     await shot(page, 'join-card');
     await page.getByTestId('access-next').click();
 
-    // Question 1: the Passport city is matched to the directory; a second place is found by name.
-    await expect(page.getByTestId('questionnaire-question')).toBeVisible();
-    await page.getByTestId('question-city-open').click();
-    await page.getByTestId('question-city-picker-search').fill('Карааул');
-    await expect(page.getByTestId('question-city-picker-option-103230100')).toBeVisible();
+    // Page 1: Пол and возраст from Passport; the Passport city is matched to the directory,
+    // a second place is found by name, a country is offered too.
+    await expect(page.getByTestId('questionnaire-basics-passport')).toBeVisible();
+    await chooseAnswer(page, 'nationality', ['005']);
+    await page.getByTestId('answer-city-open').click();
+    await page.getByTestId('answer-city-picker-search').fill('Карааул');
+    await expect(page.getByTestId('answer-city-picker-option-103230100')).toBeVisible();
     await shot(page, 'join-settlement');
-    await page.getByTestId('question-city-picker-option-103230100').click();
-    await page.getByTestId('question-city-picker-done').click();
-    await expect(page.getByTestId('question-city-chosen-103230100')).toBeVisible();
+    await page.getByTestId('answer-city-picker-option-103230100').click();
+    await page.getByTestId('answer-city-picker-done').click();
+    await expect(page.getByTestId('answer-city-chosen-103230100')).toBeVisible();
+    await shot(page, 'join-questionnaire-basics');
     await page.getByTestId('questionnaire-next').click();
 
-    // Question 2 takes up to three answers.
-    await page.getByTestId('question-intent-dating').click();
-    await page.getByTestId('question-intent-friendship').click();
+    // Page 2 takes several answers where the question allows.
+    await chooseAnswer(page, 'intent', ['friendship', 'serious_relationship']);
+    await chooseAnswer(page, 'familyPlans', ['within_5_years']);
+    await chooseAnswer(page, 'maritalStatus', ['never_married']);
     await shot(page, 'join-questionnaire');
     await page.getByTestId('questionnaire-next').click();
-    for (const [question, answer] of [
-      ['communication', 'messages_first'],
-      ['pace', 'gradual'],
-      ['firstMeeting', 'coffee_talk'],
-      ['boundaries', 'public_place'],
-      ['dateFormat', 'walk'],
-    ] as const) {
-      await answerQuestion(page, question, answer);
+    // Page 3: having children asks how many.
+    await chooseAnswer(page, 'children', ['live_together']);
+    await chooseAnswer(page, 'childrenCount', ['1']);
+    await chooseAnswer(page, 'wantChildren', ['later']);
+    await shot(page, 'join-questionnaire-children');
+    await page.getByTestId('questionnaire-next').click();
+    for (const question of ['education', 'occupation', 'incomeSource', 'income']) {
+      await chooseAnswer(page, question, defaultChoices[question]!);
     }
+    await page.getByTestId('questionnaire-next').click();
+    for (const question of ['car', 'housing', 'livingWith', 'parents']) {
+      await chooseAnswer(page, question, defaultChoices[question]!);
+    }
+    await page.getByTestId('questionnaire-next').click();
+    // Page 6: habits pair up; «Свой вариант» takes its own text.
+    await chooseAnswer(page, 'habits', ['smoking_never', 'alcohol_sometimes']);
+    await chooseAnswer(page, 'interests', ['reading', 'travel', 'other']);
+    await page.getByTestId('answer-interestOther-input').fill('Настольные игры');
+    await shot(page, 'join-questionnaire-lifestyle');
     await page.getByTestId('questionnaire-create').click();
     await expect(page.getByTestId('access-welcome')).toBeVisible();
     await shot(page, 'join-welcome');
@@ -213,18 +227,24 @@ test.describe('guide @guide', () => {
 
   // 3. Feeds and the filter
   test('feed-filters', async ({ page }) => {
-    await signInAs(page, 'm01');
+    await signInAs(page, 'm02');
     await page.goto('/');
     await page.getByTestId('home-filters').click();
-    await page.getByTestId('feed-filter-interests-coffee').click();
-    await page.getByTestId('feed-filter-topics-meetings').click();
-    await page.getByTestId('feed-filter-format-coffee').click();
-    await page.getByTestId('feed-filter-soon-weekend').click();
-    await page.getByTestId('feed-filter-format-coffee').scrollIntoViewIfNeeded();
+    await page.getByTestId('feed-filter-gender-woman').click();
+    await page.getByTestId('feed-filter-age-from').fill('25');
+    await page.getByTestId('feed-filter-age-to').fill('35');
     await shot(page, 'feed-filters');
+    await page.getByTestId('feed-filter-nationality-field-open').click();
+    await page.getByTestId('feed-filter-nationality-field-picker-option-005').click();
+    await page.getByTestId('feed-filter-nationality-field-picker-option-168').click();
+    await page.getByTestId('feed-filter-nationality-field-picker-done').click();
+    await page.getByTestId('feed-filter-intent-serious_relationship').click();
+    await page.getByTestId('feed-filter-habits-smoking_never').click();
+    await page.getByTestId('feed-filter-intent').scrollIntoViewIfNeeded();
+    await shot(page, 'feed-filters-partner');
     await page.getByTestId('feed-filters-apply').click();
     await expect(page.getByTestId('screen-feed-filters')).toHaveCount(0);
-    await expect(page.getByTestId('feed-chip-interests-coffee')).toBeVisible();
+    await expect(page.getByTestId('feed-chip-age-25-35')).toBeVisible();
     await shot(page, 'feed-chips');
   });
 
@@ -365,9 +385,9 @@ test.describe('guide @guide', () => {
     await page.getByTestId('profile-edit-card').click();
     await expect(page.getByTestId('card-edit-passport')).toBeVisible();
     await shot(page, 'card-edit');
-    await page.getByTestId('card-edit-answer-intent-dating').click();
-    await pickSettlement(page, 'card-edit-answer-city', '103230100', 'Карааул');
-    await page.getByTestId('card-edit-answer-city').scrollIntoViewIfNeeded();
+    await page.getByTestId('answer-intent-marriage').click();
+    await pickSettlement(page, 'answer-city', '103230100', 'Карааул');
+    await page.getByTestId('answer-city').scrollIntoViewIfNeeded();
     await shot(page, 'card-edit-answers');
     await page.getByTestId('card-edit-cancel').click();
     await expect(page.getByTestId('card-edit-sheet')).toBeVisible();

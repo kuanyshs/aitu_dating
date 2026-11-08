@@ -1,19 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { answerQuestion } from './helpers';
+import { chooseAnswer, defaultChoices, fillQuestionnaire } from './helpers';
 import { loadSeed } from '../src/repository/mock/seed';
 
 const seed = loadSeed();
-
-const answers = {
-  city: 'karaganda',
-  intent: 'friendship',
-  communication: 'topic_comment_first',
-  pace: 'gradual',
-  firstMeeting: 'coffee_talk',
-  boundaries: 'public_place',
-  dateFormat: 'walk',
-} as const;
 
 /** Madina with a paid membership, up to the profile step. */
 async function toProfileStep(page: Page) {
@@ -30,15 +20,9 @@ async function toProfileStep(page: Page) {
 
 async function fillProfile(page: Page) {
   await page.getByTestId('profile-bio').fill('Люблю книги и долгие прогулки по вечернему городу.');
-  await page.getByTestId('interest-books').click();
-  await page.getByTestId('interest-walks').click();
   await page.getByTestId('profile-style-calm_dialogue').click();
   await page.getByTestId('access-next').click();
   await expect(page.getByTestId('access-questionnaire')).toBeVisible();
-}
-
-async function answer(page: Page, question: keyof typeof answers) {
-  await answerQuestion(page, question, answers[question]);
 }
 
 test.describe('onboarding', () => {
@@ -46,11 +30,25 @@ test.describe('onboarding', () => {
     await toProfileStep(page);
     await fillProfile(page);
 
-    const keys = Object.keys(answers) as (keyof typeof answers)[];
-    for (const [i, question] of keys.entries()) {
-      await expect(page.getByTestId('questionnaire-progress')).toHaveText(`Вопрос ${i + 1} из 7`);
-      await answer(page, question);
-    }
+    // The first page: Пол and возраст from Passport, locked; the Passport city suggested.
+    await expect(page.getByTestId('questionnaire-basics-gender')).toHaveText('Женщина');
+    await expect(page.getByTestId('questionnaire-basics-age')).toHaveText('29');
+    await expect(page.getByTestId('answer-city-chosen-351010000')).toBeVisible();
+    await expect(page.getByTestId('questionnaire-next')).toHaveAttribute('aria-disabled', 'true');
+    await fillQuestionnaire(
+      page,
+      {
+        ...defaultChoices,
+        children: ['live_apart'],
+        childrenCount: ['2'],
+        interests: ['reading', 'other'],
+      },
+      5,
+    );
+    await chooseAnswer(page, 'interests', ['travel', 'other']);
+    // «Свой вариант» asks for its text before the card can be created.
+    await expect(page.getByTestId('questionnaire-create')).toHaveAttribute('aria-disabled', 'true');
+    await page.getByTestId('answer-interestOther-input').fill('Настольные игры');
     await testInfo.attach(`questionnaire-${testInfo.project.name}`, {
       body: await page.screenshot(),
       contentType: 'image/png',
@@ -81,7 +79,12 @@ test.describe('onboarding', () => {
     await expect(page.getByTestId('profile-name')).toHaveText('Мадина Тулегенова');
     await expect(page.getByTestId('profile-bio-text')).toContainText('Люблю книги');
     await expect(page.getByTestId('profile-membership')).toContainText('Подписка активна до');
-    await expect(page.getByTestId('profile-card')).toContainText('Дружба');
+    const card = page.getByTestId('profile-card');
+    await expect(card.getByTestId('profile-answer-nationality')).toHaveText('Казахи');
+    await expect(card.getByTestId('profile-answer-childrenCount')).toHaveText('2');
+    await expect(card.getByTestId('profile-answer-interests')).toHaveText(
+      'Путешествия и туризм, Настольные игры',
+    );
     await testInfo.attach(`profile-member-${testInfo.project.name}`, {
       body: await page.screenshot({ fullPage: true }),
       contentType: 'image/png',
@@ -98,36 +101,31 @@ test.describe('onboarding', () => {
     await expect(next).toHaveAttribute('aria-disabled', 'true');
     await page.getByTestId('profile-bio').fill('Коротко о себе');
     await expect(page.getByTestId('profile-bio-counter')).toHaveText('14 / 160');
-    await page.getByTestId('interest-coffee').click();
     await expect(next).toHaveAttribute('aria-disabled', 'true');
     await page.getByTestId('profile-style-short_messages').click();
     await expect(next).not.toHaveAttribute('aria-disabled', 'true');
   });
 
-  test('at most five interests can be chosen', async ({ page }) => {
-    test.skip(test.info().project.name !== 'light', 'layout-independent rule');
-    await toProfileStep(page);
-    for (const key of ['coffee', 'cinema', 'books', 'sport', 'walks']) {
-      await page.getByTestId(`interest-${key}`).click();
-    }
-    await expect(page.getByTestId('interest-music')).toHaveAttribute('aria-disabled', 'true');
-    await expect(page.getByTestId('profile-interests-hint')).toContainText('до 5');
-  });
-
   test('the questionnaire draft survives a reload', async ({ page }) => {
     await toProfileStep(page);
     await fillProfile(page);
-    await answer(page, 'city');
-    await answer(page, 'intent');
-    await expect(page.getByTestId('questionnaire-progress')).toHaveText('Вопрос 3 из 7');
+    await fillQuestionnaire(page, defaultChoices, 2);
+    await expect(page.getByTestId('questionnaire-progress')).toHaveText('Страница 3 из 6');
 
     await page.reload();
-    await expect(page.getByTestId('questionnaire-progress')).toHaveText('Вопрос 3 из 7');
+    await expect(page.getByTestId('questionnaire-progress')).toHaveText('Страница 3 из 6');
+    // «Нет» children hides «Сколько детей»; having them asks for the number.
+    await chooseAnswer(page, 'children', ['no']);
+    await expect(page.getByTestId('answer-childrenCount')).toHaveCount(0);
+    await chooseAnswer(page, 'children', ['live_together']);
+    await expect(page.getByTestId('answer-childrenCount')).toBeVisible();
     await page.getByTestId('questionnaire-previous').click();
-    await expect(page.getByTestId(`question-intent-${answers.intent}`)).toHaveAttribute(
+    await expect(page.getByTestId('answer-intent-serious_relationship')).toHaveAttribute(
       'aria-checked',
       'true',
     );
+    await page.getByTestId('questionnaire-previous').click();
+    await expect(page.getByTestId('answer-nationality-chosen-005')).toBeVisible();
 
     await page.getByTestId('access-back').click();
     await expect(page.getByTestId('profile-bio')).toHaveValue(

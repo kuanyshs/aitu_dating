@@ -46,8 +46,8 @@ export function FeedFilterButton() {
 export function FeedFilterChips() {
   const styles = useStyles();
   const clock = useClock();
-  const { filters, apply } = useFeedFilter();
-  if (!filters) return null;
+  const { filters, stored, apply } = useFeedFilter();
+  if (!filters || !stored) return null;
   const chips = filterChips(filters, clock);
   if (!chips.length) return null;
   const t = strings.feedFilters;
@@ -66,7 +66,7 @@ export function FeedFilterChips() {
           role="checkbox"
           selected
           label={`${chip.label} ✕`}
-          onPress={() => apply(withoutValue(filters, chip.key, chip.value))}
+          onPress={() => apply(withoutValue(stored, chip.key, chip.value))}
           testID={`feed-chip-${chip.key}-${chip.value}`}
         />
       ))}

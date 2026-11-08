@@ -1,16 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-import { expectMemberNames, expectNoMemberNames, openDemoPanel, answerQuestion } from './helpers';
-
-const answers = [
-  ['city', 'almaty'],
-  ['intent', 'dating'],
-  ['communication', 'messages_first'],
-  ['pace', 'gradual'],
-  ['firstMeeting', 'coffee_talk'],
-  ['boundaries', 'public_place'],
-  ['dateFormat', 'walk'],
-] as const;
+import {
+  expectMemberNames,
+  expectNoMemberNames,
+  fillQuestionnaire,
+  openDemoPanel,
+} from './helpers';
 
 /** The whole first slice through the UI, as flows A–D and G of the spec package. */
 test('guest → paid member → «Выйти» → «Войти» → expiry → renewal', async ({ page }) => {
@@ -43,13 +38,10 @@ test('guest → paid member → «Выйти» → «Войти» → expiry →
   // Flow B: profile step and the Анкета, last answer published with the card.
   await expect(page.getByTestId('access-profile')).toBeVisible({ timeout: 10_000 });
   await page.getByTestId('profile-bio').fill('Люблю разговоры о книгах.');
-  await page.getByTestId('interest-books').click();
   await page.getByTestId('profile-style-calm_dialogue').click();
   await page.getByTestId('access-next').click();
-  for (const [question, answer] of answers) {
-    await answerQuestion(page, question, answer);
-  }
-  await expect(page.getByTestId('questionnaire-progress')).toHaveText('Вопрос 7 из 7');
+  await fillQuestionnaire(page);
+  await expect(page.getByTestId('questionnaire-progress')).toHaveText('Страница 6 из 6');
   await page.getByTestId('questionnaire-create').click();
   await expect(page.getByTestId('access-welcome')).toBeVisible();
   await page.getByTestId('welcome-feed').click();

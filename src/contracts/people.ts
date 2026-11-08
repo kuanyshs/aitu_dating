@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { genders, isSettlementCode } from '@/catalogs';
+import { genders, isNationalityCode, isPlaceCode, isSettlementCode } from '@/catalogs';
 
 import { Id } from './common';
 
@@ -8,6 +8,13 @@ import { Id } from './common';
 export const SettlementCode = z.string().refine(isSettlementCode, 'unknown');
 export type SettlementCode = z.infer<typeof SettlementCode>;
 export const GenderKey = z.enum(genders);
+
+/** «Где живёт»: a KATO settlement or another country (ISO 3166-1 alpha-2). */
+export const PlaceCode = z.string().refine(isPlaceCode, 'unknown');
+export type PlaceCode = z.infer<typeof PlaceCode>;
+
+/** A Национальность of the BNS list. */
+export const NationalityCode = z.string().refine(isNationalityCode, 'unknown');
 
 /**
  * How an avatar is drawn. The mock has no photos: members get a deterministic

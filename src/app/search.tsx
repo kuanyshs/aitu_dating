@@ -189,6 +189,7 @@ export default function SearchScreen() {
                 value={filters.city ? [filters.city] : []}
                 onChange={(codes) => setFilters((f) => ({ ...f, city: codes[0] }))}
                 max={1}
+                withCountries
                 testID="search-city"
               />
               <FilterGroup title={t.interests} hint={t.interestsHint}>
@@ -369,7 +370,9 @@ function PeopleResults({
                   <AppText variant="caption" tone="textMuted" numberOfLines={1}>
                     {[
                       strings.follows.age(hit.person.age),
-                      ...(hit.card?.interests ?? []).map((i) => interestLabels[i]),
+                      ...(hit.card?.answers.interests ?? [])
+                        .filter((i) => i !== 'other')
+                        .map((i) => interestLabels[i]),
                     ].join(' · ')}
                   </AppText>
                 </View>
