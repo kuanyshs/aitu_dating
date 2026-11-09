@@ -13,7 +13,15 @@ if (entries.length !== 1) throw new Error(`Expected one entry bundle, found ${en
 const js = readFileSync(path.join(dir, entries[0]), 'utf8');
 if (js.toLowerCase().includes('</script')) throw new Error('The bundle would close its script tag');
 
-const head = `<title>Aitu Dating</title>
+// A whole document: opened from disk on a phone, the viewport meta keeps it at the phone's
+// width instead of a 980-pixel desktop page shrunk to fit.
+const head = `<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Aitu Dating</title>
 <style>
   :root { --bg: #ffffff; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #101010; color-scheme: dark; } }
@@ -22,6 +30,8 @@ const head = `<title>Aitu Dating</title>
   body { overflow: hidden; background: var(--bg); }
   #root { display: flex; height: 100%; flex: 1; }
 </style>
+</head>
+<body>
 <div id="root"></div>
 <script>
   (function () {
@@ -45,5 +55,5 @@ const head = `<title>Aitu Dating</title>
 </script>
 <script>
 `;
-writeFileSync(out, `${head}${js}\n</script>\n`);
+writeFileSync(out, `${head}${js}\n</script>\n</body>\n</html>\n`);
 console.log(`written ${out} (${Math.round((head.length + js.length) / 1024)} KB)`);
